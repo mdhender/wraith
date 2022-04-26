@@ -1,0 +1,95 @@
+= Wraith Systems Operator Manual
+Doc Writer <doc@example.com>
+v0.0.0, 2022-04-25
+:doctype: book
+:sectnums:
+:sectnumlevels: 5
+:partnums:
+:toc: right
+:toclevels: 3
+:icons: font
+:url-quickref: https://docs.asciidoctor.org/asciidoc/latest/syntax-quick-reference/
+
+[quote,Me]
+____
+How the heck do I make this work?
+____
+
+TIP:  This manual does not tell you how to play *_Wraith_*.
+Please refer to the rulebook for that information.
+
+The Wraith Systems Operator Manual is copyright &copy; 2022 by Michael D Henderson.
+All rights reserved.
+
+:sectnums:
+== Introduction
+*_Wraith_* is a game unlike any other that I have published in the past.
+
+NOTE:  This is a NOTE.
+
+=== Components
+The *_Wraith Server_* (also called "the game engine" or just "the engine")
+is a single executable.
+
+== Installation
+
+=== System Requirements
+You must have Git installed.
+
+You must have Go version 1.18 or newer.
+
+You should have a proxy like Nginx between the engine and the Internet.
+
+=== Fetch
+Use Git to clone the repository.
+
+=== Compile
+Run `go build` in the repository directory.
+
+This manual assumes that you will move the `wraith` executable into your PATH.
+If you do not, you must specify the path as part of the command line.
+For example,
+
+    $ ~/src/wraith/wraith version
+
+=== Initialize
+The `wraith init` command creates a configuration file containing:
+
+1. Secrets
+2. Default Accounts
+3. Default Paths
+
+    $ wraith init \
+      --config ~/.wraith.json \
+      --hash-secret 'fooofoooofooo' \
+      --admin-secret 'boooboooobooo' \
+      --sysop-secret 'baaabaaaabaaa'
+
+=== Start Server
+After you have created the configuration file, start the server:
+
+    $ wraith server --config ~/.wraith.json
+
+The configuration file defaults to `~/.wraith.json` on Linux systems, so you can start the server with:
+
+    $ wraith server
+
+== Role Based Access Control
+
+1. authorized
+2. admin
+3. sysop
+4. gamemaster
+5. player
+
+== Configuration
+To make configuration changes,
+you may edit the configuration file or use the API.
+
+=== Creating Games
+
+=== Adding Accounts
+
+== Datastore Management
+
+== CORS and Proxy Management
