@@ -7,6 +7,10 @@ v0.0.0, 2022-04-25
 
 Content entered directly below the header but before the first section heading is called the preamble.
 
+*_Wraith_* is a game unlike any other that I have published in the past.
+
+NOTE:  This is a NOTE.
+
 == First level heading
 
 This is a paragraph with a *bold* word and an _italicized_ word.

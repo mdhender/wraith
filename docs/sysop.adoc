@@ -24,9 +24,6 @@ All rights reserved.
 
 :sectnums:
 == Introduction
-*_Wraith_* is a game unlike any other that I have published in the past.
-
-NOTE:  This is a NOTE.
 
 === Components
 The *_Wraith Server_* (also called "the game engine" or just "the engine")
@@ -42,8 +39,8 @@ You don't need this information to be a good person.
 ==== Role Based Access Control
 
 1. authorized
-2. admin
-3. sysop
+2. sysop
+3. admin
 4. gameop
 5. player
 
@@ -127,7 +124,7 @@ The `wraith server` command starts the API server.
 It loads the global configuration file before loading the datastores containing the current game data.
 
 === Version
-The `wraith version` shows the version of the application.
+The `wraith version` command shows the version of the application.
 
 Usage:
 
