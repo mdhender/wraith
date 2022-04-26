@@ -113,19 +113,17 @@ This section details the command line options for the application.
 The examples in this section assume a Bash shell.
 
 === Init
-The `wraith init` command creates a minimal configuration file for the application.
+The `init` command creates a minimal configuration file for the application.
 The configuration data includes the location of the datastore,
 secrets for the `sysop` account and signing tokens.
 
-Usage:
-
+==== Usage
     $ wraith init \
       --config ~/.wraith.json \
       --sysop-password 'password.should.be.kept.secret.and.safe'
     2022/04/26 18:23:42 [init] created "/home/mdhender/.wraith.json"
 
-Options:
-
+==== Options
 [glossary]
 --config:: (optional)
 Specifies the location of the global configuration file to create.
@@ -151,25 +149,23 @@ Sets the initial password for the `sysop` account.
 The password must be at least 12 characters long.
 
 === Server
-The `wraith server` command starts the API server.
-It loads the global configuration file before loading the datastores containing the current game data.
+The `server` command starts the API server.
+It reads the global configuration file before loading the datastores containing the current game data.
 
-Usage:
-
+==== Usage
     $ wraith server
+    2022/04/26 20:57:03 listening on ":8080"
 
-Configuration:
-
+==== Configuration
 This command uses the following paths in the global configuration file:
 
 1. Server.Host
 2. Server.Port
 
 === Version
-The `wraith version` command shows the version of the application.
+The `version` command shows the version of the application.
 
-Usage:
-
+==== Usage
     $ wraith version
 
 [appendix]
