@@ -154,6 +154,17 @@ The password must be at least 12 characters long.
 The `wraith server` command starts the API server.
 It loads the global configuration file before loading the datastores containing the current game data.
 
+Usage:
+
+    $ wraith server
+
+Configuration:
+
+This command uses the following paths in the global configuration file:
+
+1. Server.Host
+2. Server.Port
+
 === Version
 The `wraith version` command shows the version of the application.
 
