@@ -20,8 +20,11 @@ package cmd
 
 import (
 	"github.com/mdhender/wraith/internal/config"
+	"github.com/mdhender/wraith/internal/server"
 	"github.com/spf13/cobra"
 	"log"
+	"net"
+	"net/http"
 )
 
 var globalServe struct {
@@ -32,8 +35,8 @@ var cmdServe = &cobra.Command{
 	Short: "start the API server",
 	Long:  `Start the API server.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg := config.Config{ConfigFile: globalBase.ConfigFile}
-		if err := config.Read(&cfg); err != nil {
+		cfg := &config.Config{ConfigFile: globalBase.ConfigFile}
+		if err := config.Read(cfg); err != nil {
 			log.Fatal(err)
 		}
 		if globalBase.VerboseFlag {
@@ -41,8 +44,12 @@ var cmdServe = &cobra.Command{
 			log.Printf("[serve] %-30s == %q\n", "host", cfg.Server.Host)
 			log.Printf("[serve] %-30s == %q\n", "port", cfg.Server.Port)
 		}
-		log.Printf("[serve] starting API server on %s:%s\n", cfg.Server.Host, cfg.Server.Port)
-		return nil
+		s, err := server.New(cfg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("listening on %q\n", net.JoinHostPort(cfg.Server.Host, cfg.Server.Port))
+		return http.ListenAndServe(net.JoinHostPort(cfg.Server.Host, cfg.Server.Port), s)
 	},
 }
 
