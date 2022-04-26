@@ -32,6 +32,10 @@ var globalInit struct {
 		Signing string
 		Sysop   string
 	}
+	Server struct {
+		Host string
+		Port string
+	}
 }
 
 var cmdInit = &cobra.Command{
@@ -57,16 +61,12 @@ var cmdInit = &cobra.Command{
 		if len(globalInit.Secrets.Signing) < 12 {
 			return fmt.Errorf("signing-key must be at least 12 characters long")
 		}
-		cfg := config.Config{
-			ConfigFile: globalInit.ConfigFile,
-			Secrets: struct {
-				Signing string `json:"signing-secret"`
-				Sysop   string `json:"sysop-password"`
-			}{
-				Signing: globalInit.Secrets.Signing,
-				Sysop:   globalInit.Secrets.Sysop,
-			},
-		}
+		cfg := config.Config{ConfigFile: globalInit.ConfigFile}
+		cfg.Secrets.Signing = globalInit.Secrets.Signing
+		cfg.Secrets.Sysop = globalInit.Secrets.Sysop
+		cfg.Server.Host = globalInit.Server.Host
+		cfg.Server.Port = globalInit.Server.Port
+
 		if err := config.Write(globalInit.ConfigFile, &cfg); err != nil {
 			return err
 		}
@@ -79,6 +79,8 @@ func init() {
 	cmdInit.Flags().StringVar(&globalInit.Secrets.Signing, "signing-key", "", "key for signing tokens")
 	cmdInit.Flags().StringVar(&globalInit.Secrets.Sysop, "sysop-password", "", "password for sysop account")
 	_ = cmdInit.MarkFlagRequired("sysop-password")
+	cmdInit.Flags().StringVar(&globalInit.Server.Host, "host", "", "binding for server")
+	cmdInit.Flags().StringVar(&globalInit.Server.Port, "port", "8080", "port for server")
 
 	cmdBase.AddCommand(cmdInit)
 }

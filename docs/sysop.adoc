@@ -131,6 +131,16 @@ Options:
 Specifies the location of the global configuration file to create.
 Defaults to `$HOME/.wraith.json`.
 
+--host:: (optional)
+Sets the host to bind to.
+Recommended values are '' (which is the default), 'localhost', or '0.0.0.0'.
+
+--port:: (optional)
+Sets the port to bind to.
+Defaults to 8080.
+We do no recommend setting this to 80 or 443.
+You should put a proxy (for example, Nginx) between this application and the Internet.
+
 --signing-key:: (optional)
 Sets the initial key used to sign tokens.
 The key must be at least 12 characters long.

@@ -29,6 +29,10 @@ type Config struct {
 		Signing string `json:"signing-secret"`
 		Sysop   string `json:"sysop-password"`
 	} `json:"secrets"`
+	Server struct {
+		Host string `json:"host,omitempty"`
+		Port string `json:"port"`
+	} `json:"server"`
 }
 
 // Read loads a configuration from file.
