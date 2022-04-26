@@ -7,5 +7,5 @@ Please read the
 for instructions on installing and configuring the Wraith server.
 
 # Influences
-Wraith draws inspiration from Far Horizons, Empyrean Challenge, and The Campaign for North America.
+Wraith draws inspiration from Far Horizons, Empyrean Challenge, and The Campaign for North Africa.
 
