@@ -34,12 +34,12 @@ import (
 func bindConfig(cmd *cobra.Command) error {
 	var err error
 
-	if rootGlobals.ConfigFile == "" { // use default location of ~/.wraith
-		viper.AddConfigPath(rootGlobals.homeFolder)
+	if globalBase.ConfigFile == "" { // use default location of ~/.wraith
+		viper.AddConfigPath(globalBase.homeFolder)
 		viper.SetConfigType("json")
-		viper.SetConfigName(rootGlobals.cfgName)
+		viper.SetConfigName(globalBase.cfgName)
 	} else { // Use config file from the flag.
-		viper.SetConfigFile(rootGlobals.ConfigFile)
+		viper.SetConfigFile(globalBase.ConfigFile)
 	}
 
 	// Try to read the config file. Ignore file-not-found errors.
@@ -55,7 +55,7 @@ func bindConfig(cmd *cobra.Command) error {
 	}
 
 	// read in environment variables that match
-	viper.SetEnvPrefix(rootGlobals.envPrefix)
+	viper.SetEnvPrefix(globalBase.envPrefix)
 	viper.AutomaticEnv()
 
 	// bind the current command's flags to viper
@@ -64,7 +64,7 @@ func bindConfig(cmd *cobra.Command) error {
 		// keys with underscores, e.g. --favorite-color to STING_FAVORITE_COLOR
 		if strings.Contains(f.Name, "-") {
 			envVarSuffix := strings.ToUpper(strings.ReplaceAll(f.Name, "-", "_"))
-			_ = viper.BindEnv(f.Name, fmt.Sprintf("%s_%s", rootGlobals.envPrefix, envVarSuffix))
+			_ = viper.BindEnv(f.Name, fmt.Sprintf("%s_%s", globalBase.envPrefix, envVarSuffix))
 		}
 
 		// Apply the viper config value to the flag when the flag is not set and viper has a value

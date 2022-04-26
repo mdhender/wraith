@@ -25,7 +25,7 @@ import (
 	"log"
 )
 
-var rootGlobals struct {
+var globalBase struct {
 	TestFlag    bool
 	VerboseFlag bool
 	ConfigFile  string // configuration file from command line flag
@@ -35,25 +35,25 @@ var rootGlobals struct {
 	homeFolder string // derived path to home directory
 }
 
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
+// cmdBase represents the base command when called without any subcommands
+var cmdBase = &cobra.Command{
 	Use:   "wraith",
 	Short: "Wraith game engine",
 	Long: `wraith is the game engine for Wraith.
 This application provides an API to the game engine.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// set the env and config since this hook always runs first
-		rootGlobals.envPrefix, rootGlobals.cfgName = "WRAITH", ".wraith"
+		globalBase.envPrefix, globalBase.cfgName = "WRAITH", ".wraith"
 		// find home directory
 		var err error
-		if rootGlobals.homeFolder, err = homedir.Dir(); err != nil {
+		if globalBase.homeFolder, err = homedir.Dir(); err != nil {
 			return err
 		}
 		// now bind viper and cobra configuration
 		return bindConfig(cmd)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Printf("env: %-30s == %q\n", "HOME", rootGlobals.homeFolder)
+		log.Printf("env: %-30s == %q\n", "HOME", globalBase.homeFolder)
 		log.Printf("env: %-30s == %q\n", "WRAITH_CONFIG", viper.ConfigFileUsed())
 	},
 }
@@ -61,14 +61,14 @@ This application provides an API to the game engine.`,
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	cobra.CheckErr(rootCmd.Execute())
+	cobra.CheckErr(cmdBase.Execute())
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&rootGlobals.ConfigFile, "config", "", "Config file (default is $HOME/.wraith)")
-	rootCmd.PersistentFlags().BoolVar(&rootGlobals.TestFlag, "test", false, "Test mode")
-	rootCmd.PersistentFlags().BoolVar(&rootGlobals.VerboseFlag, "verbose", false, "Verbose mode")
+	cmdBase.PersistentFlags().StringVar(&globalBase.ConfigFile, "config", "", "Config file (default is $HOME/.wraith)")
+	cmdBase.PersistentFlags().BoolVar(&globalBase.TestFlag, "test", false, "Test mode")
+	cmdBase.PersistentFlags().BoolVar(&globalBase.VerboseFlag, "verbose", false, "Verbose mode")
 
-	// Cobra also supports local flags, which will only run when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	//// Cobra also supports local flags, which will only run when this action is called directly.
+	//cmdBase.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

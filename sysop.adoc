@@ -15,8 +15,9 @@ ____
 How the heck do I make this work?
 ____
 
-TIP:  This manual does not tell you how to play *_Wraith_*.
-Please refer to the rulebook for that information.
+TIP:  This manual contains several sections.
+The <<Internals>> section explains the mechanics of the server.
+<<Installation>> details specific steps for building, installing, and configuring the application.
 
 The Wraith Systems Operator Manual is copyright &copy; 2022 by Michael D Henderson.
 All rights reserved.
@@ -31,7 +32,24 @@ NOTE:  This is a NOTE.
 The *_Wraith Server_* (also called "the game engine" or just "the engine")
 is a single executable.
 
+== Internals
+You don't need this information to be a good person.
+
+=== Environment
+
+=== Security
+
+==== Role Based Access Control
+
+1. authorized
+2. admin
+3. sysop
+4. gameop
+5. player
+
+
 == Installation
+This section describes the steps for building, installing, and configuring the application.
 
 === System Requirements
 You must have Git installed.
@@ -74,13 +92,12 @@ The configuration file defaults to `~/.wraith.json` on Linux systems, so you can
 
     $ wraith server
 
-== Role Based Access Control
+=== Linux
 
-1. authorized
-2. admin
-3. sysop
-4. gameop
-5. player
+=== MacOS
+
+=== Windows
+
 
 == Configuration
 To make configuration changes,
@@ -93,3 +110,39 @@ you may edit the configuration file or use the API.
 == Datastore Management
 
 == CORS and Proxy Management
+
+[appendix]
+== Commands
+This section details the command line options for the application.
+
+The examples in this section assume a Bash shell.
+
+=== Init
+The `wraith init` command creates a minimal configuration file for the application.
+The configuration data includes the location of the datastore,
+secrets for the `sysop` account and signing tokens.
+
+=== Server
+The `wraith server` command starts the API server.
+It loads the global configuration file before loading the datastores containing the current game data.
+
+=== Version
+The `wraith version` shows the version of the application.
+
+Usage:
+
+    $ wraith version
+
+[appendix]
+== Role Based Access Control
+The API uses the following roles to control access to functionality.
+
+[glossary]
+admin:: This role is assigned to all users that have administrative rights on the game data.
+authorized:: This role is assigned to all users that have successfully logged in to the server.
+gameop:: This role is assigned to users that have administrative rights to a specific game.
+player:: This role is assigned to all users that are playing in a specific game.
+sysop:: This role is assigned only to the `sysop` account.
+
+[index]
+== Index
