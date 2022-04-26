@@ -79,7 +79,7 @@ The configuration file defaults to `~/.wraith.json` on Linux systems, so you can
 1. authorized
 2. admin
 3. sysop
-4. gamemaster
+4. gameop
 5. player
 
 == Configuration
