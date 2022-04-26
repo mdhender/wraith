@@ -3,7 +3,7 @@ Wraith Game Engine
 
 # Installation Notes
 Please read the
-[Systems Operator Manual](https://github.com/mdhender/wraith/sysop.adoc)
+[Systems Operator Manual](https://github.com/mdhender/wraith/blob/main/sysop.adoc)
 for instructions on installing and configuring the Wraith server.
 
 # Influences
