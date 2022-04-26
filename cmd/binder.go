@@ -32,26 +32,26 @@ import (
 
 // bindConfig reads in config file and ENV variables if set.
 func bindConfig(cmd *cobra.Command) error {
-	var err error
-
-	if globalBase.ConfigFile == "" { // use default location of ~/.wraith
+	if globalBase.ConfigFile == "" { // use default location of ~/.wraith.json
 		viper.AddConfigPath(globalBase.homeFolder)
-		viper.SetConfigType("json")
 		viper.SetConfigName(globalBase.cfgName)
+		viper.SetConfigType("json")
+		globalBase.ConfigFile = filepath.Clean(filepath.Join(globalBase.homeFolder, globalBase.cfgName+".json"))
 	} else { // Use config file from the flag.
 		viper.SetConfigFile(globalBase.ConfigFile)
 	}
 
 	// Try to read the config file. Ignore file-not-found errors.
-	if err = viper.ReadInConfig(); err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return err
 		}
 	} else {
-		log.Printf("viper: using config file: %q\n", viper.ConfigFileUsed())
-		if err = viper.WriteConfigAs(filepath.Join(viper.Get("files.path").(string), "viper.json")); err != nil {
+		log.Printf("[viper] using config file: %q\n", viper.ConfigFileUsed())
+		if err = viper.WriteConfigAs("viper.json"); err != nil {
 			return err
 		}
+		globalBase.ConfigFile = filepath.Clean(viper.ConfigFileUsed())
 	}
 
 	// read in environment variables that match

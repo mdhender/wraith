@@ -16,21 +16,37 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package main
+package config
 
 import (
-	"github.com/mdhender/wraith/cmd"
-	"log"
-	"math/rand"
-	"time"
+	"encoding/json"
+	"io/ioutil"
 )
 
-func main() {
-	rand.Seed(time.Now().UnixNano())
+type Config struct {
+	ConfigFile string `json:"-"`
+	Secrets    struct {
+		Signing string `json:"signing-secret"`
+		Sysop   string `json:"sysop-password"`
+	} `json:"secrets"`
+}
 
-	// default log format to UTC
-	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
+// Read loads a configuration from file.
+// It returns any errors.
+func Read(c *Config) error {
+	b, err := ioutil.ReadFile(c.ConfigFile)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, c)
+}
 
-	// run the command as given
-	cmd.Execute()
+// Write writes a configuration to a JSON file.
+// It returns any errors.
+func Write(name string, c *Config) error {
+	b, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(name, b, 0600)
 }

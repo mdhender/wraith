@@ -19,6 +19,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -42,14 +43,7 @@ var cmdBase = &cobra.Command{
 	Long: `wraith is the game engine for Wraith.
 This application provides an API to the game engine.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// set the env and config since this hook always runs first
-		globalBase.envPrefix, globalBase.cfgName = "WRAITH", ".wraith"
-		// find home directory
-		var err error
-		if globalBase.homeFolder, err = homedir.Dir(); err != nil {
-			return err
-		}
-		// now bind viper and cobra configuration
+		// now bind viper and cobra configuration since this hook always runs early
 		return bindConfig(cmd)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
@@ -65,9 +59,16 @@ func Execute() {
 }
 
 func init() {
-	cmdBase.PersistentFlags().StringVar(&globalBase.ConfigFile, "config", "", "Config file (default is $HOME/.wraith)")
-	cmdBase.PersistentFlags().BoolVar(&globalBase.TestFlag, "test", false, "Test mode")
-	cmdBase.PersistentFlags().BoolVar(&globalBase.VerboseFlag, "verbose", false, "Verbose mode")
+	// set the env and config
+	globalBase.envPrefix, globalBase.cfgName = "WRAITH", ".wraith"
+	// find home directory
+	if home, err := homedir.Dir(); err == nil {
+		globalBase.homeFolder = home
+	}
+
+	cmdBase.PersistentFlags().StringVar(&globalBase.ConfigFile, "config", "", fmt.Sprintf("config file (default is $HOME/%s.json)", globalBase.cfgName))
+	cmdBase.PersistentFlags().BoolVar(&globalBase.TestFlag, "test", false, "test mode")
+	cmdBase.PersistentFlags().BoolVar(&globalBase.VerboseFlag, "verbose", false, "verbose mode")
 
 	//// Cobra also supports local flags, which will only run when this action is called directly.
 	//cmdBase.Flags().BoolP("toggle", "t", false, "Help message for toggle")

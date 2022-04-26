@@ -76,9 +76,7 @@ The `wraith init` command creates a configuration file containing:
 
     $ wraith init \
       --config ~/.wraith.json \
-      --hash-secret 'fooofoooofooo' \
-      --admin-secret 'boooboooobooo' \
-      --sysop-secret 'baaabaaaabaaa'
+      --sysop-password 'baaabaaaabaaa'
 
 === Start Server
 After you have created the configuration file, start the server:
@@ -118,6 +116,29 @@ The examples in this section assume a Bash shell.
 The `wraith init` command creates a minimal configuration file for the application.
 The configuration data includes the location of the datastore,
 secrets for the `sysop` account and signing tokens.
+
+Usage:
+
+    $ wraith init \
+      --config ~/.wraith.json \
+      --sysop-password 'password.should.be.kept.secret.and.safe'
+    2022/04/26 18:23:42 [init] created "/home/mdhender/.wraith.json"
+
+Options:
+
+[glossary]
+--config:: (optional)
+Specifies the location of the global configuration file to create.
+Defaults to `$HOME/.wraith.json`.
+
+--signing-key:: (optional)
+Sets the initial key used to sign tokens.
+The key must be at least 12 characters long.
+If not provided, the application will generate a key for you.
+
+--sysop-password:: (required)
+Sets the initial password for the `sysop` account.
+The password must be at least 12 characters long.
 
 === Server
 The `wraith server` command starts the API server.
