@@ -71,6 +71,7 @@ func Options(opts ...Option) Option {
 	}
 }
 
+// WithContext adds a context to the server so that we can shut it down gracefully.
 func WithContext(ctx context.Context) Option {
 	return func(s *Server) (err error) {
 		s.ctx = ctx

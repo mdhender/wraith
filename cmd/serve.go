@@ -51,7 +51,9 @@ var cmdServe = &cobra.Command{
 		}
 
 		// start the server with the ability to shut it down gracefully
-		// thanks to https://clavinjune.dev/en/blogs/golang-http-server-graceful-shutdown/
+		// thanks to https://clavinjune.dev/en/blogs/golang-http-server-graceful-shutdown/.
+		// TODO: this should be part of the server.Server implementation!
+		log.Printf("todo: please move the shutdown logic to the server implementation!\n")
 
 		// create a context that we can use to cancel the server
 		ctx, cancel := context.WithCancel(context.Background())
