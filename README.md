@@ -20,3 +20,6 @@ Logic for binding viper and cobra taken from
 
 Mat Ryer's Way sourced from
 [matryer/way](https://github.com/matryer/way/commit/9632d0c407b008073d19d0c4da1e0fc3e9477508).
+
+Start the server with the ability to shut it down gracefully from
+[clavinejune blog](https://clavinjune.dev/en/blogs/golang-http-server-graceful-shutdown/).

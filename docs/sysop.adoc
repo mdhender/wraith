@@ -155,6 +155,8 @@ It reads the global configuration file before loading the datastores containing 
 ==== Usage
     $ wraith server
     2022/04/26 20:57:03 listening on ":8080"
+    2022/04/27 00:58:09 server: signal: interrupt: shutting down...
+    2022/04/27 00:58:09 server: stopped
 
 ==== Configuration
 This command uses the following paths in the global configuration file:

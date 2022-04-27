@@ -19,6 +19,7 @@
 package server
 
 import (
+	"context"
 	"github.com/mdhender/wraith/internal/config"
 	"github.com/mdhender/wraith/internal/way"
 	"net"
@@ -31,6 +32,7 @@ func New(cfg *config.Config, opts ...func(*Server) error) (*Server, error) {
 		router: way.NewRouter(),
 	}
 	s.Addr = net.JoinHostPort(cfg.Server.Host, cfg.Server.Port)
+	s.BaseContext = func(_ net.Listener) context.Context { return s.ctx }
 	s.ReadTimeout = 5 * time.Second
 	s.WriteTimeout = 10 * time.Second
 	s.MaxHeaderBytes = 1 << 20 // 1mb?
@@ -51,6 +53,7 @@ func New(cfg *config.Config, opts ...func(*Server) error) (*Server, error) {
 
 type Server struct {
 	http.Server
+	ctx    context.Context
 	router *way.Router
 }
 
@@ -64,6 +67,13 @@ func Options(opts ...Option) Option {
 				return err
 			}
 		}
+		return nil
+	}
+}
+
+func WithContext(ctx context.Context) Option {
+	return func(s *Server) (err error) {
+		s.ctx = ctx
 		return nil
 	}
 }

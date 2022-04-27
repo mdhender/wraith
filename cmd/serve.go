@@ -19,12 +19,17 @@
 package cmd
 
 import (
+	"context"
 	"github.com/mdhender/wraith/internal/config"
 	"github.com/mdhender/wraith/internal/server"
 	"github.com/spf13/cobra"
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 var globalServe struct {
@@ -44,12 +49,52 @@ var cmdServe = &cobra.Command{
 			log.Printf("[serve] %-30s == %q\n", "host", cfg.Server.Host)
 			log.Printf("[serve] %-30s == %q\n", "port", cfg.Server.Port)
 		}
-		s, err := server.New(cfg)
+
+		// start the server with the ability to shut it down gracefully
+		// thanks to https://clavinjune.dev/en/blogs/golang-http-server-graceful-shutdown/
+
+		// create a context that we can use to cancel the server
+		ctx, cancel := context.WithCancel(context.Background())
+
+		s, err := server.New(cfg, server.WithContext(ctx))
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("listening on %q\n", net.JoinHostPort(cfg.Server.Host, cfg.Server.Port))
-		return http.ListenAndServe(net.JoinHostPort(cfg.Server.Host, cfg.Server.Port), s)
+
+		// run server in a go routine that we can cancel
+		go func() {
+			log.Printf("listening on %q\n", net.JoinHostPort(cfg.Server.Host, cfg.Server.Port))
+			err := http.ListenAndServe(net.JoinHostPort(cfg.Server.Host, cfg.Server.Port), s)
+			if err != http.ErrServerClosed {
+				log.Fatalf("server: %v", err)
+			}
+		}()
+
+		// catch signals to interrupt the server and shut it down
+		chanSignal := make(chan os.Signal, 1)
+		signal.Notify(chanSignal, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
+		<-chanSignal
+		log.Print("server: signal: interrupt: shutting down...\n")
+		go func() {
+			// in case the user is spraying us with interrupts...
+			<-chanSignal
+			log.Fatal("server: signal: kill: terminating...\n")
+		}()
+
+		// allow 5 seconds for a graceful shutdown
+		ctxWithDelay, cancelNow := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelNow()
+		// if that fails, panic!
+		if err := s.Shutdown(ctxWithDelay); err != nil {
+			panic(err)
+		}
+		log.Printf("server: stopped\n")
+
+		// manually cancel context if not using httpServer.RegisterOnShutdown(cancel)
+		cancel()
+
+		defer os.Exit(0)
+		return nil
 	},
 }
 
