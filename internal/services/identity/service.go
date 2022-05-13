@@ -26,7 +26,10 @@ import (
 type Service struct{}
 
 func (s Service) AuthenticateUser(ctx context.Context, request AuthenticateUserRequest) (*AuthenticatedUserResponse, error) {
-	if request.Email == "fred.flintrock@example.com" && request.Secret == "$2a$12$7hRCqIDEQ05MD7nmzFgfxuTl/cwZkDF8.Hb3s1bpC78ey.dbUdXCW" {
+	if request.Email == nil {
+		return nil, errors.New("not authorized")
+	}
+	if *request.Email == "fred.flintrock@example.com" && request.Secret == "$2a$12$7hRCqIDEQ05MD7nmzFgfxuTl/cwZkDF8.Hb3s1bpC78ey.dbUdXCW" {
 		return &AuthenticatedUserResponse{
 			Id:    "fb6c1b87-41ef-4e92-91cc-1a5c59e5cd2d",
 			Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",

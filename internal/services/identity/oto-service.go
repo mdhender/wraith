@@ -130,10 +130,15 @@ func (s *identityServiceServer) handleUpdateUser(w http.ResponseWriter, r *http.
 }
 
 // AuthenticateUserRequest is the request object for IdentityService.Authenticate.
+// The caller must supply an email or handle, never both.
 type AuthenticateUserRequest struct {
-	// Email is the e-mail address the user registered with. Required.
-	Email string `json:"email"`
-	// Secret is the hex-encoded passphrase used to authenticate the request.
+	// Email is the e-mail address the user registered with. Optional - omit or set to
+	// null if not using.
+	Email *string `json:"email"`
+	// Handle is the nickname for the user. Optional - omit or set to null if not
+	// using.
+	Handle *string `json:"handle"`
+	// Secret is the hex-encoded passphrase used to authenticate the request. Required.
 	Secret string `json:"secret"`
 }
 
@@ -142,6 +147,8 @@ type AuthenticateUserRequest struct {
 type AuthenticatedUserResponse struct {
 	// Id is the unique identifier for the user.
 	Id string `json:"id"`
+	// Handle is the nickname for the user.
+	Handle string `json:"handle"`
 	// Token is the signed JWT if the request is authorized.
 	Token string `json:"token"`
 	// Error is string explaining what went wrong. Empty if everything was fine.
@@ -152,6 +159,8 @@ type AuthenticatedUserResponse struct {
 type CreateUserRequest struct {
 	// Email is the e-mail address the user registered with. Required.
 	Email string `json:"email"`
+	// Handle is the nickname for the user. Required.
+	Handle string `json:"handle"`
 	// Secret is the hex-encoded passphrase used to authenticate the user on future
 	// requests. Required.
 	Secret string `json:"secret"`
@@ -161,30 +170,37 @@ type CreateUserRequest struct {
 type DeleteUserRequest struct {
 	// Id is the identifier for the user to delete. Required.
 	Id string `json:"id"`
-	// Email is the e-mail address the user registered with. Optional - include as a
-	// second consistency check.
-	Email string `json:"email"`
+	// Email is the e-mail address the user registered with. Optional - omit or set to
+	// null if not using.
+	Email *string `json:"email"`
 }
 
-// FetchUserRequest is the request object for IdentityService.FetchUser. The caller
-// may supply id or e-mail (or both).
+// FetchUserRequest is the request object for IdentityService.FetchUser.
 type FetchUserRequest struct {
-	// Id is the identifier for the user to retrieve. Optional.
-	Id string `json:"id"`
-	// Email is the e-mail address for the user to retrieve. Optional.
-	Email string `json:"email"`
+	// Id is the identifier for the user to retrieve. Optional - omit or set to null if
+	// not using.
+	Id *string `json:"id"`
+	// Email is the e-mail address for the user to retrieve. Optional - omit or set to
+	// null if not using.
+	Email *string `json:"email"`
+	// Handle is the nickname for the user. Optional - omit or set to null if not
+	// using.
+	Handle *string `json:"handle"`
 }
 
 // UpdateUserRequest is the request object for IdentityService.UpdateUser.
 type UpdateUserRequest struct {
-	// Id is the identifier for the user to update.
+	// Id is the identifier for the user to update. Required.
 	Id string `json:"id"`
-	// Email is the e-mail address the user registered with. Optional - omit if not
+	// Email is the e-mail address the user registered with. Optional - omit or set to
+	// null if not updating.
+	Email *string `json:"email"`
+	// Handle is the nickname for the user. Optional - omit or set to null if not
 	// updating.
-	Email string `json:"email"`
+	Handle *string `json:"handle"`
 	// Secret is the hex-encoded passphrase used to authenticate the user on future
-	// requests. Optional - omit if not updating.
-	Secret string `json:"secret"`
+	// requests. Optional - omit or set to null if not updating.
+	Secret *string `json:"secret"`
 }
 
 // UserResponse is the response object containing the user's data if authenticated.
@@ -193,6 +209,8 @@ type UserResponse struct {
 	Id string `json:"id"`
 	// Email is the e-mail address the user registered with.
 	Email string `json:"email"`
+	// Handle is the nickname for the user.
+	Handle string `json:"handle"`
 	// Error is string explaining what went wrong. Empty if everything was fine.
 	Error string `json:"error,omitempty"`
 }
