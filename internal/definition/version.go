@@ -16,26 +16,25 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-package main
+package definition
 
-import (
-	"github.com/mdhender/wraith/cmd"
-	"github.com/mdhender/wraith/internal/seeder"
-	"log"
-	"math/rand"
-)
+// VersionService makes nice greetings.
+type VersionService interface {
+	// Version returns the version of the engine.
+	Version(VersionRequest) VersionResponse
+}
 
-func main() {
-	// default log format to UTC
-	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
+// VersionRequest is the request object for VersionService.Version.
+type VersionRequest struct {
+	// Semver is a boolean.
+	// example: true
+	Semver bool
+}
 
-	// seed the default PRNG source.
-	if seed, err := seeder.Seed(); err != nil {
-		log.Fatalln(err)
-	} else {
-		rand.Seed(seed)
-	}
-
-	// run the command as given
-	cmd.Execute()
+// VersionResponse is the response object containing a
+// person's greeting.
+type VersionResponse struct {
+	// Version is the semantic version of the engine.
+	// example: "0.1.0"
+	Version string
 }

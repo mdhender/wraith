@@ -1,0 +1,105 @@
+= Wraith Design
+Michael D Henderson <author@asciidoctor.org>
+0.0.1, May 2, 2022: AsciiDoc article template
+:toc:
+:icons: font
+:url-quickref: https://docs.asciidoctor.org/asciidoc/latest/syntax-quick-reference/
+
+Design of the Wraith Game Engine.
+
+== Context
+[glossary]
+System::
+Lorem.
+
+Game::
+Ipsum.
+
+== Language
+This section documents the terminology for the Wraith Game Engine.
+
+[glossary]
+Account::
+An _Account_ uniquely identifies the *User* that is logged in to the *System* and issuing commands.
+An Account may participate in multiple *Games* but may never control more than one *Player* in any Game.
+
+Authorization::
+An _Authorization_ is a signed token listing an *Account* and all *Roles* that the Account has in the *System*, *Engine*, and *Game*.
+
+Engine::
+The _Engine_ is.
+
+Game::
+A _Game_ is.
+Each Game will be managed by at least an *Account* that has the *GameOp* role assigned for that Game.
+The Game is played by *Users* that have the *Player* role assigned to them for that Game.
+A Game may have up to 25 *Players*.
+
+GameOp::
+The _GameOp_ *Role* is assigned to the *Account* that creates a new *Game*.
+The GameOp may add the Role to other Accounts.
+This Role should not be assigned to an Account that has the *Player* Role in the Game.
+
+Player::
+The _Player_ *Role* is assigned to *Account* that are participating in a *Game*.
+This Role should not be assigned to an Account that has the *GameOp* Role in the Game.
+
+Role::
+A _Role_ is a unique identifier that is used to control access to data and functionality.
+Roles are assigned to *Accounts* to control access to the *System*, *Engine* and *Games*.
+An example is the *Player* Role, which allows access to a specific *Game*.
+
+SysOp::
+The _SysOp_ *Role* is assigned to *Accounts* which are authorized to manage the *System*.
+
+System::
+The _System_ is.
+The System controls access to the *Engine* while the Engine controls access to the data.
+
+User::
+A _User_ is the person interacting with the *System* via the web interface.
+The User is identified by the e-mail address used to create the *Account*.
+Users are not permitted to create multiple Accounts.
+The distinction between User and Account is subtle:
+the User uses the web interface and the User's Account interacts with the System.
+
+== Entity
+
+== Value Object
+
+== Aggregate
+
+== Service
+[glossary]
+Authentication::
+The _Authentication_ service accepts credentials from a *User* and, if verified, returns a token authorizing the User.
+
+== Domain Event
+
+== Repository
+"Essentially a facade over a back end store."
+
+== Factory
+
+== Notes
+What are the building blocks of the system?
+
+* Context
+* Language
+* Entity
+* Value Object
+* Aggregate
+* Service
+* Domain Event
+* Repository
+* Factory
+
+=== Hexagonal Architecture
+
+Framework > Application > Domain > Core Domain
+
+Core Domain can not "reach" anything outside itself.
+
+"Ports and Adapters."
+
+"Dependencies are only allowed to point inwards."

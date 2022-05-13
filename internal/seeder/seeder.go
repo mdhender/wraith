@@ -16,26 +16,26 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-package main
+package seeder
 
 import (
-	"github.com/mdhender/wraith/cmd"
-	"github.com/mdhender/wraith/internal/seeder"
-	"log"
-	"math/rand"
+	crand "crypto/rand"
+	"encoding/binary"
 )
 
-func main() {
-	// default log format to UTC
-	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
-
-	// seed the default PRNG source.
-	if seed, err := seeder.Seed(); err != nil {
-		log.Fatalln(err)
-	} else {
-		rand.Seed(seed)
+// Seed returns the best seed we can get from the operating system.
+// It is suitable to be used directly as a seed or to build a new source.
+// For example:
+//  seed, err := seeder.Seed()
+// Then
+//  rand.New(rand.NewSource(seed))
+// Or
+//  rand.Seed(seed)
+// Please don't ignore errors from this function.
+func Seed() (int64, error) {
+	var seed [8]byte
+	if _, err := crand.Read(seed[:]); err != nil {
+		return 0, err
 	}
-
-	// run the command as given
-	cmd.Execute()
+	return int64(binary.LittleEndian.Uint64(seed[:])), nil
 }

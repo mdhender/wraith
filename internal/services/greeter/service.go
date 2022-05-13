@@ -16,26 +16,22 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-package main
+package greeter
 
 import (
-	"github.com/mdhender/wraith/cmd"
-	"github.com/mdhender/wraith/internal/seeder"
-	"log"
-	"math/rand"
+	"context"
+	"github.com/pkg/errors"
+	"strings"
 )
 
-func main() {
-	// default log format to UTC
-	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
+type Service struct{}
 
-	// seed the default PRNG source.
-	if seed, err := seeder.Seed(); err != nil {
-		log.Fatalln(err)
-	} else {
-		rand.Seed(seed)
+func (s Service) Greet(ctx context.Context, request GreetRequest) (*GreetResponse, error) {
+	// consider rejecting unknown fields (https://www.alexedwards.net/blog/how-to-properly-parse-a-json-request-body)
+	if request.Name == "" {
+		return nil, errors.New("missing 'name'")
 	}
-
-	// run the command as given
-	cmd.Execute()
+	return &GreetResponse{
+		Greeting: strings.ToUpper(request.Name),
+	}, nil
 }
