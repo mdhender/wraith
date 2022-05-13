@@ -3,10 +3,14 @@ module github.com/mdhender/wraith
 go 1.18
 
 require (
+	github.com/google/uuid v1.1.2
+	github.com/mdhender/jsonwt v0.0.0-20220513021555-78d2d1aa589f
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.11.0
+	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 )
 
 require (

@@ -20,8 +20,14 @@ package cmd
 
 import (
 	"context"
+	"github.com/mdhender/jsonwt"
+	"github.com/mdhender/jsonwt/signers"
 	"github.com/mdhender/wraith/internal/config"
-	"github.com/mdhender/wraith/internal/server"
+	"github.com/mdhender/wraith/internal/otohttp"
+	gsvc "github.com/mdhender/wraith/internal/services/greeter"
+	isvc "github.com/mdhender/wraith/internal/services/identity"
+	vsvc "github.com/mdhender/wraith/internal/services/version"
+	"github.com/mdhender/wraith/internal/storage/identity"
 	"github.com/spf13/cobra"
 	"log"
 	"net"
@@ -33,6 +39,8 @@ import (
 )
 
 var globalServe struct {
+	PIDFile bool // create a file containing the PID if set
+	pid     int  // current PID
 }
 
 var cmdServe = &cobra.Command{
@@ -48,7 +56,28 @@ var cmdServe = &cobra.Command{
 			log.Printf("[serve] %-30s == %q\n", "config", cfg.ConfigFile)
 			log.Printf("[serve] %-30s == %q\n", "host", cfg.Server.Host)
 			log.Printf("[serve] %-30s == %q\n", "port", cfg.Server.Port)
+			log.Printf("[serve] %-30s == %q\n", "identity.config", cfg.Identity.Repository.JSONFile)
 		}
+
+		if globalServe.PIDFile {
+			globalServe.pid = os.Getpid()
+			//if err := ioutil.WriteFile("/tmp/.fhapp.pid", []byte(fmt.Sprintf("%d", pid)), 0600); err != nil {
+			//	log.Printf("unable to create pid file: %+v", err)
+			//	os.Exit(2)
+			//}
+			log.Printf("server: pid %8d: file %q\n", globalServe.pid, "/tmp/.wraith.pid")
+		}
+
+		// load the identity store
+		hs256, err := signers.NewHS256([]byte(cfg.Secrets.Signing))
+		if err != nil {
+			log.Fatal(err)
+		}
+		i, err := identity.Load(cfg.Identity.Repository.JSONFile, jsonwt.NewFactory("る", hs256))
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("[serve] %-30s == %q\n", "identity.factory", i.Version)
 
 		// start the server with the ability to shut it down gracefully
 		// thanks to https://clavinjune.dev/en/blogs/golang-http-server-graceful-shutdown/.
@@ -58,10 +87,17 @@ var cmdServe = &cobra.Command{
 		// create a context that we can use to cancel the server
 		ctx, cancel := context.WithCancel(context.Background())
 
-		s, err := server.New(cfg, server.WithContext(ctx))
+		options := []otohttp.Option{
+			otohttp.WithContext(ctx),
+			otohttp.WithAddr("", "8080"),
+		}
+		s, err := otohttp.NewServer(otohttp.Options(options...))
 		if err != nil {
 			log.Fatal(err)
 		}
+		gsvc.RegisterGreeterService(s, gsvc.Service{})
+		isvc.RegisterIdentityService(s, isvc.Service{})
+		vsvc.RegisterVersionService(s, vsvc.Service{})
 
 		// run server in a go routine that we can cancel
 		go func() {
@@ -76,19 +112,21 @@ var cmdServe = &cobra.Command{
 		chanSignal := make(chan os.Signal, 1)
 		signal.Notify(chanSignal, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 		<-chanSignal
-		log.Print("server: signal: interrupt: shutting down...\n")
+		if globalServe.PIDFile {
+			log.Printf("server: signal: interrupt: shutting down pid %d...\n", globalServe.pid)
+		} else {
+			log.Print("server: signal: interrupt: shutting down...\n")
+		}
 		go func() {
-			// in case the user is spraying us with interrupts...
-			<-chanSignal
+			<-chanSignal // in case the user is spraying us with interrupts...
 			log.Fatal("server: signal: kill: terminating...\n")
 		}()
 
 		// allow 5 seconds for a graceful shutdown
 		ctxWithDelay, cancelNow := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelNow()
-		// if that fails, panic!
 		if err := s.Shutdown(ctxWithDelay); err != nil {
-			panic(err)
+			panic(err) // if that fails, panic!
 		}
 		log.Printf("server: stopped\n")
 
@@ -101,5 +139,7 @@ var cmdServe = &cobra.Command{
 }
 
 func init() {
+	cmdServe.Flags().BoolVar(&globalServe.PIDFile, "pid-file", false, "create pid file on startup")
+
 	cmdBase.AddCommand(cmdServe)
 }

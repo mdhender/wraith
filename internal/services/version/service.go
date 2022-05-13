@@ -16,26 +16,15 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-package main
+// Package version implements a version service.
+package version
 
-import (
-	"github.com/mdhender/wraith/cmd"
-	"github.com/mdhender/wraith/internal/seeder"
-	"log"
-	"math/rand"
-)
+import "context"
 
-func main() {
-	// default log format to UTC
-	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
+type Service struct {
+	version string
+}
 
-	// seed the default PRNG source.
-	if seed, err := seeder.Seed(); err != nil {
-		log.Fatalln(err)
-	} else {
-		rand.Seed(seed)
-	}
-
-	// run the command as given
-	cmd.Execute()
+func (s Service) Version(ctx context.Context, request VersionRequest) (*VersionResponse, error) {
+	return &VersionResponse{Version: "0.1.0"}, nil
 }

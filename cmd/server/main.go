@@ -19,23 +19,21 @@
 package main
 
 import (
-	"github.com/mdhender/wraith/cmd"
-	"github.com/mdhender/wraith/internal/seeder"
+	"github.com/mdhender/wraith/internal/otohttp"
+	"github.com/mdhender/wraith/internal/services/greeter"
+	"github.com/mdhender/wraith/internal/services/identity"
 	"log"
-	"math/rand"
+	"net/http"
 )
 
 func main() {
-	// default log format to UTC
-	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
+	otoServer, _ := otohttp.NewServer()
 
-	// seed the default PRNG source.
-	if seed, err := seeder.Seed(); err != nil {
-		log.Fatalln(err)
-	} else {
-		rand.Seed(seed)
-	}
+	identity.RegisterIdentityService(otoServer, identity.Service{})
+	greeter.RegisterGreeterService(otoServer, greeter.Service{})
 
-	// run the command as given
-	cmd.Execute()
+	http.Handle("/oto/", otoServer)
+
+	log.Println("server listening on :8080")
+	log.Fatalln(http.ListenAndServe(":8080", nil))
 }
