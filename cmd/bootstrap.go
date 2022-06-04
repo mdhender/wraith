@@ -117,7 +117,7 @@ This includes the configuration file, sysop account, and starting data.`,
 		}
 
 		// create the sysop account used by the command line interface
-		if err := i.Create(identity.Credentials{
+		if err := i.Create(identity.Identity{
 			Email:  "sysop",
 			Handle: "sysop",
 			Secret: cfg.Secrets.Sysop,
@@ -125,7 +125,7 @@ This includes the configuration file, sysop account, and starting data.`,
 		}); err != nil {
 			log.Fatal(err)
 		}
-		sysops := i.Fetch(func(u identity.Credentials) bool {
+		sysops := i.Fetch(func(u identity.Identity) bool {
 			return u.Handle == "sysop"
 		})
 		if len(sysops) != 1 {

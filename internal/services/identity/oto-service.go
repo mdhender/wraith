@@ -14,7 +14,7 @@ type IdentityService interface {
 
 	// AuthenticateUser verifies the email and secret against the stored values. It
 	// returns the user data if successful.
-	AuthenticateUser(context.Context, AuthenticateUserRequest) (*AuthenticatedUserResponse, error)
+	AuthenticateUser(context.Context, AuthenticateUserRequest) (*UserResponse, error)
 	// CreateUser creates a new user and returns the user data if successful.
 	CreateUser(context.Context, CreateUserRequest) (*UserResponse, error)
 	// DeleteUser deletes an existing user and returns the old user data if successful.
@@ -147,12 +147,12 @@ type AuthenticateUserRequest struct {
 type AuthenticatedUserResponse struct {
 	// Id is the unique identifier for the user.
 	Id string `json:"id"`
+	// Email is the e-mail address the user registered with.
+	Email string `json:"email"`
 	// Handle is the nickname for the user.
 	Handle string `json:"handle"`
-	// Token is the signed JWT if the request is authorized.
-	Token string `json:"token"`
-	// Error is string explaining what went wrong. Empty if everything was fine.
-	Error string `json:"error,omitempty"`
+	// Roles is the list of roles granted to the user.
+	Roles []string `json:"roles"`
 }
 
 // CreateUserRequest is the request object for IdentityService.CreateUser.
@@ -211,6 +211,8 @@ type UserResponse struct {
 	Email string `json:"email"`
 	// Handle is the nickname for the user.
 	Handle string `json:"handle"`
+	// Roles is the list of roles granted to the user.
+	Roles []string `json:"roles"`
 	// Error is string explaining what went wrong. Empty if everything was fine.
 	Error string `json:"error,omitempty"`
 }

@@ -16,22 +16,25 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-// Package identity implements a store for identification data.
+// Package identity implements a store for identity data.
 package identity
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/mdhender/jsonwt"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
-// Store defines
+// Store implements a file based data store for identity data.
 type Store struct {
 	sync.Mutex
 	// semantic version of the data
@@ -43,20 +46,26 @@ type Store struct {
 		Cost int `json:"cost"`
 	} `json:"bcrypt"`
 	// map of credentials indexed by id
-	Credentials map[string]Credentials `json:"credentials"`
-	Keys        map[string]*Key        `json:"keys"`
-	signers     map[string]*jsonwt.Factory
-	authSigner  *jsonwt.Factory
+	Users      map[string]Identity `json:"users"`
+	Keys       map[string]*Key     `json:"keys"`
+	signers    map[string]*jsonwt.Factory
+	authSigner *jsonwt.Factory
 }
 
-// Credentials defines information for a user.
-type Credentials struct {
+// Identity defines information for a user.
+type Identity struct {
 	Id           string   `json:"id"`
 	Handle       string   `json:"handle"`
 	Email        string   `json:"email"`
 	Secret       string   `json:"-"`
 	HashedSecret string   `json:"hashed_secret"`
 	Roles        []string `json:"roles"`
+}
+
+type UserValue struct {
+	Id     string
+	Handle string
+	Roles  []string
 }
 
 // Key defines information for keys used to sign authorization tokens.
@@ -80,11 +89,11 @@ func Bootstrap(filename string, cost int, signer *jsonwt.Factory) (*Store, error
 	}
 
 	s := &Store{
-		Version:     "0.1.0",
-		Filename:    filepath.Clean(filename),
-		Credentials: make(map[string]Credentials),
-		Keys:        make(map[string]*Key),
-		signers:     make(map[string]*jsonwt.Factory),
+		Version:  "0.1.0",
+		Filename: filepath.Clean(filename),
+		Users:    make(map[string]Identity),
+		Keys:     make(map[string]*Key),
+		signers:  make(map[string]*jsonwt.Factory),
 	}
 	s.BCrypt.Cost = cost
 	s.signers[signer.ID()] = signer
@@ -108,10 +117,10 @@ func Load(filename string, signer *jsonwt.Factory) (*Store, error) {
 	filename = filepath.Clean(filename)
 
 	s := &Store{
-		Filename:    filename,
-		Credentials: make(map[string]Credentials),
-		Keys:        make(map[string]*Key),
-		signers:     make(map[string]*jsonwt.Factory),
+		Filename: filename,
+		Users:    make(map[string]Identity),
+		Keys:     make(map[string]*Key),
+		signers:  make(map[string]*jsonwt.Factory),
 	}
 	if err := s.Read(); err != nil {
 		return nil, err
@@ -130,12 +139,19 @@ func (s *Store) AuthenticateCredentials(credentials struct {
 	Handle string
 	Secret string // hex-encoded passphrase
 }) (string, error) {
-	if len(credentials.Handle) != 0 || len(credentials.Secret) == 0 || len(credentials.Secret)%2 != 0 {
+	if len(credentials.Handle) != 0 || len(credentials.Secret) == 0 {
 		return "", errors.New("invalid credentials")
 	}
 
+	secret, err := hex.DecodeString(credentials.Secret)
+	if err != nil {
+		log.Printf("[identity] authCred: secret %q: %+v\n", credentials.Secret, err)
+		return "", errors.New("invalid credentials")
+	}
+	log.Printf("[identity] authCred: secret %q: %q\n", credentials.Secret, secret)
+
 	s.Lock()
-	users := s.fetch(func(u Credentials) bool {
+	users := s.fetch(func(u Identity) bool {
 		return credentials.Handle == u.Handle
 	})
 	s.Unlock()
@@ -143,9 +159,12 @@ func (s *Store) AuthenticateCredentials(credentials struct {
 	if len(users) != 1 {
 		return "", errors.New("invalid credentials")
 	}
+	user := users[0]
 
 	// bcrypt.CompareHashAndPassword returns an error if the credentials don't match the stored values.
-	if err := bcrypt.CompareHashAndPassword([]byte(users[0].HashedSecret), []byte(credentials.Secret)); err != nil {
+	err = bcrypt.CompareHashAndPassword([]byte(users[0].HashedSecret), secret)
+	if err != nil {
+		log.Printf("[identity] authCred: secret %q: %+v\n", credentials.Secret, err)
 		return "", errors.New("invalid credentials")
 	}
 
@@ -153,19 +172,19 @@ func (s *Store) AuthenticateCredentials(credentials struct {
 		Id    string   `json:"id"`
 		Roles []string `json:"roles"`
 	}
-	claim.Id = users[0].Id
+	claim.Id = user.Id
 	claim.Roles = []string{"authenticated"}
 
-	//t, err := s.authSigner.Token(91*time.Second, claim)
-	//if err != nil {
-	//	return "", err
-	//}
-	//return t.String(), nil
+	t, err := s.authSigner.Token(91*time.Second, claim)
+	if err != nil {
+		log.Printf("[identity] authCred: secret %q: %+v\n", credentials.Secret, err)
+		return "", err
+	}
 
-	return claim.Id, nil
+	return t.String(), nil
 }
 
-func (s *Store) Create(user Credentials) error {
+func (s *Store) Create(user Identity) error {
 	hashedSecretBytes, err := bcrypt.GenerateFromPassword([]byte(user.Secret), s.BCrypt.Cost)
 	if err != nil {
 		return err
@@ -176,7 +195,7 @@ func (s *Store) Create(user Credentials) error {
 	s.Lock()
 	defer s.Unlock()
 
-	if len(s.fetch(func(u Credentials) bool {
+	if len(s.fetch(func(u Identity) bool {
 		return u.Handle == user.Handle || u.Email == user.Email
 	})) != 0 {
 		return errors.New("duplicate handle")
@@ -189,7 +208,7 @@ func (s *Store) Create(user Credentials) error {
 	return s.Write()
 }
 
-func (s *Store) Delete(user Credentials) error {
+func (s *Store) Delete(user Identity) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -200,7 +219,7 @@ func (s *Store) Delete(user Credentials) error {
 	return s.Write()
 }
 
-func (s *Store) Fetch(filter func(Credentials) bool) []Credentials {
+func (s *Store) Fetch(filter func(Identity) bool) []Identity {
 	s.Lock()
 	defer s.Unlock()
 
@@ -227,19 +246,19 @@ func (s *Store) Write() error {
 	return ioutil.WriteFile(s.Filename, b, 0600)
 }
 
-func (s *Store) create(user Credentials) error {
-	s.Credentials[user.Id] = user
+func (s *Store) create(user Identity) error {
+	s.Users[user.Id] = user
 	return nil
 }
 
 func (s *Store) delete(id string) error {
-	delete(s.Credentials, id)
+	delete(s.Users, id)
 	return nil
 }
 
-func (s *Store) fetch(filter func(Credentials) bool) []Credentials {
-	var set []Credentials
-	for _, user := range s.Credentials {
+func (s *Store) fetch(filter func(Identity) bool) []Identity {
+	var set []Identity
+	for _, user := range s.Users {
 		if filter(user) {
 			set = append(set, user)
 		}
