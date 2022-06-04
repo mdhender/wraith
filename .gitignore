@@ -11,4 +11,5 @@
 *.tgz
 *.zip
 .idea/
+notes.txt
 vendor/
