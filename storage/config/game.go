@@ -24,22 +24,24 @@ import (
 	"io/ioutil"
 )
 
-// Global configuration
-type Global struct {
-	FileName  string `json:"file-name"`
-	GamesPath string `json:"games-path"`
+// Game configuration
+type Game struct {
+	FileName    string `json:"file-name"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	GamePath    string `json:"game-path"`
 }
 
-// LoadGlobal loads an existing configuration.
+// LoadGame loads an existing configuration.
 // It returns any errors.
-func LoadGlobal(filename string) (*Global, error) {
-	c := Global{FileName: filename}
+func LoadGame(filename string) (*Game, error) {
+	c := Game{FileName: filename}
 	return &c, c.Read()
 }
 
 // Read loads a configuration from a JSON file.
 // It returns any errors.
-func (c *Global) Read() error {
+func (c *Game) Read() error {
 	b, err := ioutil.ReadFile(c.FileName)
 	if err != nil {
 		return err
@@ -49,7 +51,7 @@ func (c *Global) Read() error {
 
 // Write writes a configuration to a JSON file.
 // It returns any errors.
-func (c *Global) Write() error {
+func (c *Game) Write() error {
 	if c.FileName == "" {
 		return errors.New("missing config file name")
 	}

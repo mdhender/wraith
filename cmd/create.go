@@ -19,7 +19,7 @@
 package cmd
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -32,38 +32,12 @@ var cmdCreate = &cobra.Command{
 	Short: "create new items",
 	Long:  `Create a new thing.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if globalBase.ConfigFile == "" {
-			return fmt.Errorf("missing config file name")
-		}
-		return nil
-	},
-}
-
-var globalCreateGame struct {
-	Name      string
-	ShortName string
-}
-
-var cmdCreateGame = &cobra.Command{
-	Use:   "game",
-	Short: "create new game",
-	Long:  `Create a new game.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if globalBase.ConfigFile == "" {
-			return fmt.Errorf("missing config file name")
-		}
-		return nil
+		return errors.New("please specify an item to create")
 	},
 }
 
 func init() {
 	cmdCreate.PersistentFlags().BoolVar(&globalCreate.Force, "force", false, "force overwrite of existing data")
 
-	cmdCreateGame.Flags().StringVar(&globalCreateGame.Name, "name", "", "full name of new game")
-	_ = cmdCreate.MarkFlagRequired("name")
-	cmdCreateGame.Flags().StringVar(&globalCreateGame.ShortName, "short-name", "", "short name of new game")
-	_ = cmdCreate.MarkFlagRequired("short-name")
-
 	cmdBase.AddCommand(cmdCreate)
-	cmdCreate.AddCommand(cmdCreateGame)
 }
