@@ -16,15 +16,34 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-// Package version implements a version service.
-package version
+package config
 
-import "context"
+import (
+	"encoding/json"
+	"io/ioutil"
+)
 
-type Service struct {
-	version string
+type Config struct {
+	ConfigFile string `json:"config-file"`
+	GamesPath  string `json:"games-path"`
 }
 
-func (s Service) Version(ctx context.Context, request VersionRequest) (*VersionResponse, error) {
-	return &VersionResponse{Version: "0.1.0"}, nil
+// Read loads a configuration from file.
+// It returns any errors.
+func Read(c *Config) error {
+	b, err := ioutil.ReadFile(c.ConfigFile)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, c)
+}
+
+// Write writes a configuration to a JSON file.
+// It returns any errors.
+func Write(name string, c *Config) error {
+	b, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(name, b, 0600)
 }

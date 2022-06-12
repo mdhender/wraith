@@ -38,7 +38,54 @@ func main() {
 }
 
 func run() error {
-	b, err := os.ReadFile("playtestSetup.json")
+	b, err := os.ReadFile("playtestCluster.json")
+	if err != nil {
+		return err
+	}
+	var c Cluster
+	if err := json.Unmarshal(b, &c); err != nil {
+		return err
+	}
+
+	var minX, maxX, minY, maxY, minZ, maxZ int
+	for i, s := range c {
+		if i == 0 || s.X < minX {
+			minX = s.X
+		}
+		if i == 0 || s.X > maxX {
+			maxX = s.X
+		}
+		if i == 0 || s.Y < minY {
+			minY = s.Y
+		}
+		if i == 0 || s.Y > maxY {
+			maxY = s.Y
+		}
+		if i == 0 || s.Z < minZ {
+			minZ = s.Z
+		}
+		if i == 0 || s.Z > maxZ {
+			maxZ = s.Z
+		}
+	}
+	dX, dY, dZ := (maxX-minX)/2, (maxY-minY)/2, (maxZ-minZ)/2
+	fmt.Printf("min %3d %3d %3d max %3d %3d %3d avg %3d %3d %3d\n", minX, minY, minZ, maxX, maxY, maxZ, dX, dY, dZ)
+	dX, dY, dZ = 3, 1, 2
+	fmt.Printf("min %3d %3d %3d max %3d %3d %3d avg %3d %3d %3d\n", minX+dX, minY+dY, minZ+dZ, maxX+dX, maxY+dY, maxZ+dZ, dX, dY, dZ)
+
+	k := make(map[string]bool)
+	j := make(map[string]int)
+	for _, s := range c {
+		k[fmt.Sprintf("%4d %4d %4d", s.X+dX, s.Y+dY, s.Z+dZ)] = true
+		fmt.Printf("Star %4d %4d %4d %s %3d\n", s.X+dX, s.Y+dY, s.Z+dZ, s.Id, s.SysHab)
+		for _, o := range s.Orbits {
+			j[o.PType] = j[o.PType] + 1
+		}
+	}
+	fmt.Printf("%3d systems %3d stars\n", len(k), len(c))
+	fmt.Printf("%+v\n", j)
+
+	b, err = os.ReadFile("playtestSetup.json")
 	if err != nil {
 		return err
 	}
@@ -909,4 +956,19 @@ type Skills struct {
 	Military      int `json:"military,omitempty"`
 	Mining        int `json:"mining,omitempty"`
 	Shields       int `json:"shields,omitempty"`
+}
+
+type Cluster []System
+
+type System struct {
+	X      int    `json:"x"`
+	Y      int    `json:"y"`
+	Z      int    `json:"z"`
+	Id     string `json:"id"`
+	SysHab int    `json:"sys_hab"`
+	Orbits []struct {
+		Orbit int    `json:"orbit"`
+		PType string `json:"ptype"`
+		Hab   int    `json:"hab"`
+	} `json:"orbits"`
 }
