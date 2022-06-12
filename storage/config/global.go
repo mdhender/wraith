@@ -20,18 +20,20 @@ package config
 
 import (
 	"encoding/json"
+	"github.com/pkg/errors"
 	"io/ioutil"
 )
 
-type Config struct {
-	ConfigFile string `json:"config-file"`
-	GamesPath  string `json:"games-path"`
+// Global configuration
+type Global struct {
+	FileName  string `json:"file-name"`
+	GamesPath string `json:"games-path"`
 }
 
-// Read loads a configuration from file.
+// Read loads a configuration from a JSON file.
 // It returns any errors.
-func Read(c *Config) error {
-	b, err := ioutil.ReadFile(c.ConfigFile)
+func (c *Global) Read() error {
+	b, err := ioutil.ReadFile(c.FileName)
 	if err != nil {
 		return err
 	}
@@ -40,10 +42,13 @@ func Read(c *Config) error {
 
 // Write writes a configuration to a JSON file.
 // It returns any errors.
-func Write(name string, c *Config) error {
+func (c *Global) Write() error {
+	if c.FileName == "" {
+		return errors.New("missing config file name")
+	}
 	b, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(name, b, 0600)
+	return ioutil.WriteFile(c.FileName, b, 0600)
 }

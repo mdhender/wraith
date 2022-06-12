@@ -19,8 +19,8 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/mdhender/wraith/storage/config"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
@@ -41,18 +41,17 @@ var cmdBootstrap = &cobra.Command{
 	Long: `Create the initial system configuration.
 This includes the configuration file, games path, and starting data.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		globalBootstrap.ConfigFile = globalBase.ConfigFile
-		if globalBootstrap.ConfigFile == "" {
-			return fmt.Errorf("missing config file name")
+		if globalBase.ConfigFile == "" {
+			return errors.New("missing config file name")
 		}
 
 		if globalBootstrap.GamesPath == "" {
-			return fmt.Errorf("missing games path")
+			return errors.New("missing games path")
 		}
 
-		cfg := config.Config{
-			ConfigFile: globalBootstrap.ConfigFile,
-			GamesPath:  globalBootstrap.GamesPath,
+		cfg := config.Global{
+			FileName:  globalBase.ConfigFile,
+			GamesPath: globalBootstrap.GamesPath,
 		}
 
 		if _, err := os.Stat(globalBootstrap.ConfigFile); err == nil {
@@ -63,7 +62,7 @@ This includes the configuration file, games path, and starting data.`,
 		} else {
 			log.Printf("creating config store %q\n", globalBootstrap.ConfigFile)
 		}
-		if err := config.Write(globalBootstrap.ConfigFile, &cfg); err != nil {
+		if err := cfg.Write(); err != nil {
 			return err
 		}
 
