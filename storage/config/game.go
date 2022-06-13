@@ -32,10 +32,11 @@ type Games struct {
 
 // Game configuration
 type Game struct {
-	FileName    string `json:"file-name"`
-	GamePath    string `json:"game-path"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	FileName     string `json:"file-name"`
+	GamePath     string `json:"game-path"`
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	NationsStore string `json:"nations-store"`
 }
 
 // LoadGames loads an existing configuration.

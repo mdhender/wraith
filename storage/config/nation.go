@@ -24,28 +24,28 @@ import (
 	"io/ioutil"
 )
 
-// Players configuration
-type Players struct {
+// Nations configuration
+type Nations struct {
 	FileName string   `json:"file-name"`
-	Players  []Player `json:"players"`
+	Nations  []Nation `json:"Nations"`
 }
 
-// Player configuration
-type Player struct {
+// Nation configuration
+type Nation struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
-// LoadPlayers loads an existing configuration.
+// LoadNations loads an existing configuration.
 // It returns any errors.
-func LoadPlayers(filename string) (*Players, error) {
-	c := Players{FileName: filename}
+func LoadNations(filename string) (*Nations, error) {
+	c := Nations{FileName: filename}
 	return &c, c.Read()
 }
 
 // Read loads a configuration from a JSON file.
 // It returns any errors.
-func (c *Players) Read() error {
+func (c *Nations) Read() error {
 	b, err := ioutil.ReadFile(c.FileName)
 	if err != nil {
 		return err
@@ -55,9 +55,9 @@ func (c *Players) Read() error {
 
 // Write writes a configuration to a JSON file.
 // It returns any errors.
-func (c *Players) Write() error {
+func (c *Nations) Write() error {
 	if c.FileName == "" {
-		return errors.New("missing config file name")
+		return errors.New("missing nations store file name")
 	}
 	b, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {

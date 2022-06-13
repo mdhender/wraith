@@ -103,9 +103,9 @@ var cmdCreateGame = &cobra.Command{
 		}
 
 		// create the default players store
-		players := config.Players{
+		players := config.Nations{
 			FileName: filepath.Join(game.GamePath, "players.json"),
-			Players:  []config.Player{},
+			Nations:  []config.Nation{},
 		}
 		if err := players.Write(); err != nil {
 			log.Fatal(err)
