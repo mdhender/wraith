@@ -19,18 +19,17 @@
 package cmd
 
 import (
+	"errors"
 	"github.com/mdhender/wraith/storage/config"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 var globalBootstrap struct {
 	// overwrite any existing configuration only if set.
 	Force bool
-	// location of global configuration file.
-	ConfigFile string
 	// location to create game data files in.
 	GamesPath string
 }
@@ -50,23 +49,44 @@ This includes the configuration file, games path, and starting data.`,
 		}
 
 		cfg := config.Global{
-			FileName:  globalBase.ConfigFile,
-			GamesPath: globalBootstrap.GamesPath,
+			FileName:   globalBase.ConfigFile,
+			GamesPath:  globalBootstrap.GamesPath,
+			GamesStore: filepath.Join(globalBootstrap.GamesPath, "games.json"),
+			UsersStore: filepath.Join(globalBootstrap.GamesPath, "users.json"),
 		}
 
-		if _, err := os.Stat(globalBootstrap.ConfigFile); err == nil {
+		log.Printf("intended config store %q\n", globalBase.ConfigFile)
+		if _, err := os.Stat(globalBase.ConfigFile); err == nil {
 			if !globalBootstrap.Force {
 				log.Fatal("cowardly refusing to overwrite existing configuration store")
 			}
-			log.Printf("overwriting config store %q\n", globalBootstrap.ConfigFile)
+			log.Printf("overwriting config store %q\n", globalBase.ConfigFile)
 		} else {
-			log.Printf("creating config store %q\n", globalBootstrap.ConfigFile)
+			log.Printf("creating config store %q\n", globalBase.ConfigFile)
 		}
 		if err := cfg.Write(); err != nil {
-			return err
+			log.Fatal(err)
 		}
+		log.Printf("created config store %q\n", globalBase.ConfigFile)
 
-		log.Printf("created config store %q\n", globalBootstrap.ConfigFile)
+		cfgGames := config.Games{
+			FileName: cfg.GamesStore,
+			Games:    []config.Game{},
+		}
+		if err := cfgGames.Write(); err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("created games store %q\n", cfgGames.FileName)
+
+		cfgUsers := config.Users{
+			FileName: cfg.UsersStore,
+			Users:    []config.User{},
+		}
+		if err := cfgUsers.Write(); err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("created users store %q\n", cfgUsers.FileName)
+
 		return nil
 	},
 }

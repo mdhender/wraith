@@ -20,16 +20,52 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
+	"errors"
 	"io/ioutil"
 )
+
+// Games configuration
+type Games struct {
+	FileName string `json:"file-name"`
+	Games    []Game `json:"games"`
+}
 
 // Game configuration
 type Game struct {
 	FileName    string `json:"file-name"`
+	GamePath    string `json:"game-path"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	GamePath    string `json:"game-path"`
+}
+
+// LoadGames loads an existing configuration.
+// It returns any errors.
+func LoadGames(filename string) (*Games, error) {
+	c := Games{FileName: filename}
+	return &c, c.Read()
+}
+
+// Read loads a configuration from a JSON file.
+// It returns any errors.
+func (c *Games) Read() error {
+	b, err := ioutil.ReadFile(c.FileName)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, c)
+}
+
+// Write writes a configuration to a JSON file.
+// It returns any errors.
+func (c *Games) Write() error {
+	if c.FileName == "" {
+		return errors.New("missing games store file name")
+	}
+	b, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(c.FileName, b, 0600)
 }
 
 // LoadGame loads an existing configuration.
@@ -53,7 +89,7 @@ func (c *Game) Read() error {
 // It returns any errors.
 func (c *Game) Write() error {
 	if c.FileName == "" {
-		return errors.New("missing config file name")
+		return errors.New("missing game store file name")
 	}
 	b, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {

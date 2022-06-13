@@ -16,28 +16,52 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-package cmd
+package config
 
 import (
+	"encoding/json"
 	"errors"
-	"github.com/spf13/cobra"
+	"io/ioutil"
 )
 
-var globalCreate struct {
-	Force bool
+// Users configuration
+type Users struct {
+	FileName string `json:"file-name"`
+	Users    []User `json:"users"`
 }
 
-var cmdCreate = &cobra.Command{
-	Use:   "create",
-	Short: "create new items",
-	Long:  `Create a new thing.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return errors.New("please specify an item to create")
-	},
+// User configuration
+type User struct {
+	Id     string `json:"id"`
+	Handle string `json:"handle"`
 }
 
-func init() {
-	cmdCreate.PersistentFlags().BoolVar(&globalCreate.Force, "force", false, "force overwrite of existing data")
+// LoadUsers loads an existing configuration.
+// It returns any errors.
+func LoadUsers(filename string) (*Users, error) {
+	c := Users{FileName: filename}
+	return &c, c.Read()
+}
 
-	cmdBase.AddCommand(cmdCreate)
+// Read loads a configuration from a JSON file.
+// It returns any errors.
+func (c *Users) Read() error {
+	b, err := ioutil.ReadFile(c.FileName)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, c)
+}
+
+// Write writes a configuration to a JSON file.
+// It returns any errors.
+func (c *Users) Write() error {
+	if c.FileName == "" {
+		return errors.New("missing config file name")
+	}
+	b, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(c.FileName, b, 0600)
 }

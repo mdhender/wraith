@@ -20,14 +20,16 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
+	"errors"
 	"io/ioutil"
 )
 
 // Global configuration
 type Global struct {
-	FileName  string `json:"file-name"`
-	GamesPath string `json:"games-path"`
+	FileName   string `json:"file-name"`
+	GamesPath  string `json:"games-path"`
+	GamesStore string `json:"games-store"`
+	UsersStore string `json:"users-store"`
 }
 
 // LoadGlobal loads an existing configuration.

@@ -20,27 +20,32 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
+	"errors"
 	"io/ioutil"
 )
 
+// Players configuration
+type Players struct {
+	FileName string   `json:"file-name"`
+	Players  []Player `json:"players"`
+}
+
 // Player configuration
 type Player struct {
-	FileName    string `json:"file-name"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
-// LoadPlayer loads an existing configuration.
+// LoadPlayers loads an existing configuration.
 // It returns any errors.
-func LoadPlayer(filename string) (*Player, error) {
-	c := Player{FileName: filename}
+func LoadPlayers(filename string) (*Players, error) {
+	c := Players{FileName: filename}
 	return &c, c.Read()
 }
 
 // Read loads a configuration from a JSON file.
 // It returns any errors.
-func (c *Player) Read() error {
+func (c *Players) Read() error {
 	b, err := ioutil.ReadFile(c.FileName)
 	if err != nil {
 		return err
@@ -50,7 +55,7 @@ func (c *Player) Read() error {
 
 // Write writes a configuration to a JSON file.
 // It returns any errors.
-func (c *Player) Write() error {
+func (c *Players) Write() error {
 	if c.FileName == "" {
 		return errors.New("missing config file name")
 	}

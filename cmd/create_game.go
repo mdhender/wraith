@@ -19,8 +19,8 @@
 package cmd
 
 import (
+	"errors"
 	"github.com/mdhender/wraith/storage/config"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
@@ -42,61 +42,84 @@ var cmdCreateGame = &cobra.Command{
 		if globalBase.ConfigFile == "" {
 			return errors.New("missing config file name")
 		}
+
+		// validate the new game name
 		globalCreateGame.Name = strings.TrimSpace(globalCreateGame.Name)
 		if globalCreateGame.Name == "" {
 			return errors.New("missing config game name")
 		}
-		// validate name
 		for _, r := range globalCreateGame.Name {
 			if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-') {
 				return errors.New("invalid rune in game name")
 			}
 		}
+
+		// validate the new game long name
 		globalCreateGame.LongName = strings.TrimSpace(globalCreateGame.LongName)
 		if globalCreateGame.LongName == "" {
 			globalCreateGame.LongName = globalCreateGame.Name
 		}
-		// validate long name
 		for _, r := range globalCreateGame.LongName {
 			if r == '\'' || r == '"' || r == '`' || r == '&' || r == '<' || r == '>' || unicode.IsControl(r) {
 				return errors.New("invalid rune in game long name")
 			}
 		}
 
+		// load the base configuration to get the games store
 		gCfg, err := config.LoadGlobal(globalBase.ConfigFile)
 		if err != nil {
-			return err
+			log.Fatal(err)
 		}
 		log.Printf("loaded %q\n", gCfg.FileName)
 
-		gamePath := filepath.Join(gCfg.GamesPath, globalCreateGame.Name)
-		if _, err = os.Stat(gamePath); err != nil {
-			log.Printf("creating game folder %q\n", gamePath)
-			if err = os.MkdirAll(gamePath, 0700); err != nil {
-				return err
-			}
+		// load the games store
+		gamesCfg, err := config.LoadGames(gCfg.GamesStore)
+		if err != nil {
+			log.Fatal(err)
 		}
+		log.Printf("loaded %q\n", gamesCfg.FileName)
 
-		cfg := config.Game{
-			FileName:    filepath.Join(gamePath, "game.json"),
+		// create the game to add
+		game := config.Game{
+			FileName:    filepath.Join(gCfg.GamesPath, globalCreateGame.Name, "game.json"),
+			GamePath:    filepath.Join(gCfg.GamesPath, globalCreateGame.Name),
 			Name:        globalCreateGame.Name,
 			Description: globalCreateGame.LongName,
-			GamePath:    gamePath,
 		}
 
-		if _, err := os.Stat(cfg.FileName); err == nil {
-			if !globalCreate.Force {
-				log.Fatal("cowardly refusing to overwrite existing game store")
+		// error on duplicate name
+		for _, g := range gamesCfg.Games {
+			if g.Name == game.Name {
+				log.Fatalf("duplicate game name %q", g.Name)
 			}
-			log.Printf("overwriting game store %q\n", cfg.FileName)
-		} else {
-			log.Printf("creating game store %q\n", cfg.FileName)
-		}
-		if err := cfg.Write(); err != nil {
-			return err
 		}
 
-		log.Printf("created game store %q\n", cfg.FileName)
+		// create the folder for the new game store
+		if _, err = os.Stat(game.GamePath); err != nil {
+			log.Printf("creating game folder %q\n", game.GamePath)
+			if err = os.MkdirAll(game.GamePath, 0700); err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		// create the default players store
+		players := config.Players{
+			FileName: filepath.Join(game.GamePath, "players.json"),
+			Players:  []config.Player{},
+		}
+		if err := players.Write(); err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("created players store %q\n", players.FileName)
+
+		// and update the games store
+		gamesCfg.Games = append(gamesCfg.Games, game)
+		if err := gamesCfg.Write(); err != nil {
+			log.Printf("internal error - games store corrupted\n")
+			log.Fatalf("%+v", err)
+		}
+		log.Printf("updated games store %q\n", gamesCfg.FileName)
+
 		return nil
 	},
 }

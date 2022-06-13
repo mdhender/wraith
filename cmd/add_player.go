@@ -19,8 +19,8 @@
 package cmd
 
 import (
+	"errors"
 	"github.com/mdhender/wraith/storage/config"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
@@ -65,33 +65,34 @@ var cmdAddPlayer = &cobra.Command{
 			}
 		}
 
-		cfg := config.Player{
-			FileName:    filepath.Join(gamePath, "players.json"),
-			Name:        globalAddPlayer.Name,
-			Description: globalAddPlayer.LongName,
+		cfg := config.Players{
+			FileName: filepath.Join(gamePath, "players.json"),
+			Players: []config.Player{
+				{Name: globalAddPlayer.Name, Description: globalAddPlayer.LongName},
+			},
 		}
 
 		if _, err := os.Stat(cfg.FileName); err == nil {
-			log.Printf("overwriting player store %q\n", cfg.FileName)
-			if !globalCreate.Force {
-				log.Fatal("cowardly refusing to overwrite existing player store")
+			log.Printf("overwriting players store %q\n", cfg.FileName)
+			if !globalAdd.Force {
+				log.Fatal("cowardly refusing to overwrite existing players store")
 			}
-			log.Printf("overwriting player store %q\n", cfg.FileName)
+			log.Printf("overwriting players store %q\n", cfg.FileName)
 		} else {
-			log.Printf("creating player store %q\n", cfg.FileName)
+			log.Printf("creating players store %q\n", cfg.FileName)
 		}
 		if err := cfg.Write(); err != nil {
 			return err
 		}
 
-		log.Printf("created player store %q\n", cfg.FileName)
+		log.Printf("created players store %q\n", cfg.FileName)
 		return nil
 	},
 }
 
 func init() {
 	cmdAddPlayer.Flags().StringVar(&globalAddPlayer.Name, "name", "", "name of new game (eg PT-1)")
-	//_ = cmdAddPlayer.MarkFlagRequired("name")
+	_ = cmdAddPlayer.MarkFlagRequired("name")
 	cmdAddPlayer.Flags().StringVar(&globalAddPlayer.LongName, "long-name", "", "descriptive name of new game")
 	//_ = cmdAddPlayer.MarkFlagRequired("long-name")
 
