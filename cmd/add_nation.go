@@ -20,6 +20,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
@@ -98,18 +99,25 @@ var cmdAddNation = &cobra.Command{
 		}
 		log.Printf("loaded nations store %q\n", cfgNations.Path)
 
+		// generate an id for the new nation
+		id := fmt.Sprintf("SP%d", len(cfgNations.Nations)+1)
+
 		// check for duplicates in the nations store
 		for _, n := range cfgNations.Nations {
-			if n.Name == globalAddNation.Name {
+			if strings.ToLower(n.Name) == strings.ToLower(globalAddNation.Name) {
 				log.Fatalf("error: duplicate nation name %q\n", globalAddNation.Name)
+			} else if strings.ToLower(n.Id) == strings.ToLower(id) {
+				log.Fatalf("error: duplicate nation id %q\n", id)
 			}
 		}
 
 		// add the new nation to the nations store
-		cfgNations.Nations = append(cfgNations.Nations, config.Nation{
-			Name:        globalAddNation.Name,
-			Description: globalAddNation.LongName,
-		})
+		nationIndex := config.NationsIndex{
+			Id:   id,
+			Name: globalAddNation.Name,
+			Path: filepath.Clean(filepath.Join(cfgGame.GamePath, id)),
+		}
+		cfgNations.Nations = append(cfgNations.Nations, nationIndex)
 
 		log.Printf("updating nations store %q\n", cfgNations.Path)
 		if err := cfgNations.Write(); err != nil {
@@ -117,6 +125,8 @@ var cmdAddNation = &cobra.Command{
 		}
 
 		log.Printf("updated nations store %q\n", cfgNations.Path)
+
+		log.Printf("created nation %s %q\n", nationIndex.Id, nationIndex.Name)
 		return nil
 	},
 }

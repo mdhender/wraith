@@ -34,8 +34,8 @@ type Games struct {
 }
 
 type GamesIndex struct {
-	Name string // name of game
-	Path string // path to the game store file
+	Name string `json:"name"` // name of game
+	Path string `json:"path"` // path to the game store file
 }
 
 // LoadGames loads an existing store.

@@ -20,6 +20,21 @@ package config
 
 // Nation configuration
 type Nation struct {
+	Id          string
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	Speciality  string `json:"speciality"`
+	Government  struct {
+		Kind string `json:"kind"`
+		Name string `json:"name"`
+	} `json:"government"`
+	Homeworld struct {
+		Name     string `json:"name"`
+		Location struct {
+			X     int `json:"x"`
+			Y     int `json:"y"`
+			Z     int `json:"z"`
+			Orbit int `json:"orbit"`
+		} `json:"location"`
+	} `json:"homeworld"`
 }

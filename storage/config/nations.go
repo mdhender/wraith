@@ -28,8 +28,14 @@ import (
 
 // Nations configuration
 type Nations struct {
-	Path    string   `json:"path"` // path to this store file
-	Nations []Nation `json:"nations"`
+	Path    string         `json:"path"` // path to this store file
+	Nations []NationsIndex `json:"nations"`
+}
+
+type NationsIndex struct {
+	Id   string `json:"id"`   // species number
+	Name string `json:"name"` // name of nation
+	Path string `json:"path"` // path to the species game data
 }
 
 // LoadNations loads an existing store.

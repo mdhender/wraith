@@ -86,7 +86,7 @@ var cmdCreateGame = &cobra.Command{
 			Description: globalCreateGame.LongName,
 		}
 		nations := config.Nations{
-			Nations: []config.Nation{},
+			Nations: []config.NationsIndex{},
 		}
 
 		// error on duplicate name
