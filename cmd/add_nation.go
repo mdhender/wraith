@@ -51,7 +51,7 @@ var cmdAddNation = &cobra.Command{
 			return errors.New("missing nation name")
 		}
 		for _, r := range globalAddNation.Name {
-			if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-') {
+			if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == ' ') {
 				return errors.New("invalid rune in nation name")
 			}
 		}
