@@ -79,7 +79,7 @@ var cmdAddNation = &cobra.Command{
 		// find the game in the store
 		var cfgGame *config.Game
 		for _, g := range cfgGames.Games {
-			if g.Name == globalAddNation.Game {
+			if strings.ToLower(g.Name) == strings.ToLower(globalAddNation.Game) {
 				cfgGame, err = config.LoadGame(g.Path)
 				if err != nil {
 					log.Fatal(err)
