@@ -50,7 +50,7 @@ var cmdReport = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		err = e.Report("SP1")
+		err = e.Report(1)
 		if err != nil {
 			log.Fatal(err)
 		}

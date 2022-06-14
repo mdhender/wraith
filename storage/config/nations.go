@@ -28,40 +28,46 @@ import (
 
 // Nations configuration
 type Nations struct {
-	Path    string         `json:"path"` // path to this store file
-	Nations []NationsIndex `json:"nations"`
+	Store string         `json:"store"` // path to store data
+	Index []NationsIndex `json:"index"`
 }
 
 type NationsIndex struct {
-	Id   string `json:"id"`   // species number
+	Id   int    `json:"id"`   // unique identifier for nation
 	Name string `json:"name"` // name of nation
 	Path string `json:"path"` // path to the species game data
+}
+
+// CreateNations creates a new store.
+// Assumes that the path to store the data already exists.
+// It returns any errors.
+func CreateNations(path string, overwrite bool) (*Nations, error) {
+	s := &Nations{
+		Store: filepath.Clean(filepath.Join(path, "nations")),
+		Index: []NationsIndex{},
+	}
+	if _, err := os.Stat(filepath.Join(s.Store, "store.json")); err == nil {
+		if !overwrite {
+			return nil, errors.New("nations store exists")
+		}
+	}
+	return s, s.Write()
 }
 
 // LoadNations loads an existing store.
 // It returns any errors.
 func LoadNations(path string) (*Nations, error) {
-	s := Nations{Path: filepath.Clean(path)}
-	return &s, s.Read()
-}
-
-// Create creates a new store.
-// Assumes that the path to store the data already exists.
-// It returns any errors.
-func (s *Nations) Create(path string, overwrite bool) error {
-	s.Path = filepath.Clean(filepath.Join(path, "nations.json"))
-	if _, err := os.Stat(s.Path); err == nil {
-		if !overwrite {
-			return errors.New("nations store exists")
-		}
+	s := &Nations{
+		Store: filepath.Clean(filepath.Join(path, "nations")),
+		Index: []NationsIndex{},
 	}
-	return s.Write()
+	return s, s.Read()
 }
 
 // Read loads a store from a JSON file.
 // It returns any errors.
 func (s *Nations) Read() error {
-	b, err := ioutil.ReadFile(s.Path)
+	b, err := ioutil.ReadFile(filepath.Join(s.Store, "store.json"))
 	if err != nil {
 		return err
 	}
@@ -71,12 +77,12 @@ func (s *Nations) Read() error {
 // Write writes a store to a JSON file.
 // It returns any errors.
 func (s *Nations) Write() error {
-	if s.Path == "" {
+	if s.Store == "" {
 		return errors.New("missing nations store path")
 	}
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(s.Path, b, 0600)
+	return ioutil.WriteFile(filepath.Join(s.Store, "store.json"), b, 0600)
 }

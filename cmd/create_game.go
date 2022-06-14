@@ -30,8 +30,8 @@ import (
 )
 
 var globalCreateGame struct {
-	Name     string
-	LongName string
+	Name        string
+	Description string
 }
 
 var cmdCreateGame = &cobra.Command{
@@ -54,77 +54,83 @@ var cmdCreateGame = &cobra.Command{
 			}
 		}
 
-		// validate the new game long name
-		globalCreateGame.LongName = strings.TrimSpace(globalCreateGame.LongName)
-		if globalCreateGame.LongName == "" {
-			globalCreateGame.LongName = globalCreateGame.Name
+		// validate the new game description
+		globalCreateGame.Description = strings.TrimSpace(globalCreateGame.Description)
+		if globalCreateGame.Description == "" {
+			globalCreateGame.Description = globalCreateGame.Name
 		}
-		for _, r := range globalCreateGame.LongName {
+		for _, r := range globalCreateGame.Description {
 			if r == '\'' || r == '"' || r == '`' || r == '&' || r == '<' || r == '>' || unicode.IsControl(r) {
 				return errors.New("invalid rune in game long name")
 			}
 		}
 
-		// load the base configuration to get the games store
+		// load the base configuration to find the games store
 		cfgBase, err := config.LoadGlobal(globalBase.ConfigFile)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded %q\n", cfgBase.Path)
+		log.Printf("loaded %q\n", cfgBase.Self)
 
 		// load the games store
-		cfgGames, err := config.LoadGames(cfgBase.GamesStore)
+		cfgGames, err := config.LoadGames(cfgBase.Store)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded games store %q\n", cfgGames.Path)
-
-		// initialize the stores for the new game and its nations
-		game := config.Game{
-			GamePath:    filepath.Clean(filepath.Join(cfgBase.GamesPath, globalCreateGame.Name)),
-			Name:        strings.ToUpper(globalCreateGame.Name),
-			Description: globalCreateGame.LongName,
-		}
-		nations := config.Nations{
-			Nations: []config.NationsIndex{},
-		}
+		log.Printf("loaded games store %q\n", cfgGames.Store)
 
 		// error on duplicate name
-		for _, g := range cfgGames.Games {
-			if strings.ToUpper(g.Name) == strings.ToUpper(game.Name) {
-				log.Fatalf("duplicate game name %q", game.Name)
+		for _, g := range cfgGames.Index {
+			if strings.ToLower(g.Name) == strings.ToLower(globalCreateGame.Name) {
+				log.Fatalf("duplicate game name %q", globalCreateGame.Name)
 			}
 		}
 
-		// create the folder for the new game store
-		if _, err = os.Stat(game.GamePath); err != nil {
-			log.Printf("creating game folder %q\n", game.GamePath)
-			if err = os.MkdirAll(game.GamePath, 0700); err != nil {
+		// create the folders for the new game store
+		gameFolder := filepath.Clean(filepath.Join(cfgBase.Store, "game", globalCreateGame.Name))
+		if _, err = os.Stat(gameFolder); err != nil {
+			log.Printf("creating game folder %q\n", gameFolder)
+			if err = os.MkdirAll(gameFolder, 0700); err != nil {
 				log.Fatal(err)
 			}
+			log.Printf("created game folder %q\n", gameFolder)
+		}
+		for _, dir := range []string{"colonies", "nations", "ships", "turns"} {
+			folder := filepath.Clean(filepath.Join(gameFolder, dir))
+			if _, err = os.Stat(folder); err != nil {
+				log.Printf("creating game %s folder %q\n", dir, folder)
+				if err = os.MkdirAll(folder, 0700); err != nil {
+					log.Fatal(err)
+				}
+				log.Printf("created game %s folder %q\n", dir, folder)
+			}
+
 		}
 
-		// create the game and nations stores
-		if err := nations.Create(game.GamePath, true); err != nil {
+		// create the game store
+		cfgGame, err := config.CreateGame(strings.ToUpper(globalCreateGame.Name), globalCreateGame.Description, gameFolder, false)
+		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("created nations store %q\n", nations.Path)
-		game.NationsStore = nations.Path
-		if err := game.Create(game.GamePath, true); err != nil {
+		log.Printf("created game store %q\n", cfgGame.Store)
+
+		// create the nations store
+		cfgNations, err := config.CreateNations(cfgGame.Store, false)
+		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("created game store %q\n", game.Path)
+		log.Printf("created nations store %q\n", cfgNations.Store)
 
 		// and update the games store
-		cfgGames.Games = append(cfgGames.Games, config.GamesIndex{
-			Name: game.Name,
-			Path: game.Path,
+		cfgGames.Index = append(cfgGames.Index, config.GamesIndex{
+			Name:  cfgGame.Name,
+			Store: cfgGame.Store,
 		})
 		if err := cfgGames.Write(); err != nil {
 			log.Printf("internal error - games store corrupted\n")
-			log.Fatalf("%+v", err)
+			log.Fatalf("%+v\n", err)
 		}
-		log.Printf("updated games store %q\n", cfgGames.Path)
+		log.Printf("updated games store %q\n", cfgGames.Store)
 
 		return nil
 	},
@@ -133,8 +139,8 @@ var cmdCreateGame = &cobra.Command{
 func init() {
 	cmdCreateGame.Flags().StringVar(&globalCreateGame.Name, "name", "", "name of new game (eg PT-1)")
 	_ = cmdCreateGame.MarkFlagRequired("name")
-	cmdCreateGame.Flags().StringVar(&globalCreateGame.LongName, "long-name", "", "descriptive name of new game")
-	_ = cmdCreateGame.MarkFlagRequired("long-name")
+	cmdCreateGame.Flags().StringVar(&globalCreateGame.Description, "descr", "", "descriptive name of new game")
+	_ = cmdCreateGame.MarkFlagRequired("descr")
 
 	cmdCreate.AddCommand(cmdCreateGame)
 }

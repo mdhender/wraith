@@ -31,10 +31,10 @@ import (
 	"time"
 )
 
-func (e *Engine) Report(spId string) error {
+func (e *Engine) Report(spId int) error {
 	// load the setup store
 	var s Store
-	b, err := os.ReadFile(filepath.Clean(filepath.Join(e.config.game.GamePath, spId, "setup.json")))
+	b, err := os.ReadFile(filepath.Clean(filepath.Join(e.config.game.Store, fmt.Sprintf("%d", spId), "setup.json")))
 	if err != nil {
 		return err
 	}
@@ -43,7 +43,7 @@ func (e *Engine) Report(spId string) error {
 	}
 
 	// run the report for just the one nation
-	for _, n := range e.config.nations.Nations {
+	for _, n := range e.config.nations.Index {
 		if n.Id != spId {
 			continue
 		}
@@ -62,19 +62,16 @@ func (e *Engine) Report(spId string) error {
 	return nil
 }
 
-func (s *Store) Report(w io.Writer, spId string) error {
+func (s *Store) Report(w io.Writer, spId int) error {
 	p := message.NewPrinter(language.English)
 
 	rptDate := time.Now().Format("2006/01/02")
 
-	for n, player := range s.Players {
-		if n != spId {
-			continue
-		}
+	for _, player := range s.Players {
 		_, _ = p.Fprintf(w, "Status Report\n")
-		_, _ = p.Fprintf(w, "Game: %-6s    Turn: %5d    Player: %-5s    Date: %s\n", s.Game.Id, s.Game.Turn, spId, rptDate)
+		_, _ = p.Fprintf(w, "Game: %-6s    Turn: %5d    Player: %3d    Date: %s\n", s.Game.Id, s.Game.Turn, spId, rptDate)
 
-		_, _ = p.Fprintf(w, "\nSpecies %-5s ----------------------------------------------------------------\n", spId)
+		_, _ = p.Fprintf(w, "\nSpecies %3d ------------------------------------------------------------------\n", spId)
 		_, _ = p.Fprintf(w, "  Bureaucracy:   %2d    Biology: %2d    Gravitics: %2d    LifeSupport: %2d\n",
 			player.Skills.Bureaucracy, player.Skills.Biology, player.Skills.Gravitics, player.Skills.LifeSupport)
 		_, _ = p.Fprintf(w, "  Manufacturing: %2d    Mining:  %2d    Military:  %2d    Shields:     %2d\n",

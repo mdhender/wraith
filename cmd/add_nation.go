@@ -67,20 +67,20 @@ var cmdAddNation = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded %q\n", cfgBase.Path)
+		log.Printf("loaded %q\n", cfgBase.Self)
 
 		// load the games store to find the game store
-		cfgGames, err := config.LoadGames(filepath.Join(cfgBase.GamesPath, "games.json"))
+		cfgGames, err := config.LoadGames(cfgBase.Store)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded games store %q\n", cfgGames.Path)
+		log.Printf("loaded games store %q\n", cfgGames.Store)
 
 		// find the game in the store
 		var cfgGame *config.Game
-		for _, g := range cfgGames.Games {
+		for _, g := range cfgGames.Index {
 			if strings.ToLower(g.Name) == strings.ToLower(globalAddNation.Game) {
-				cfgGame, err = config.LoadGame(g.Path)
+				cfgGame, err = config.LoadGame(g.Store)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -90,23 +90,23 @@ var cmdAddNation = &cobra.Command{
 		if cfgGame == nil {
 			log.Fatalf("unable to find game %q\n", globalAddNation.Game)
 		}
-		log.Printf("loaded game store %q\n", cfgGame.Path)
+		log.Printf("loaded game store %q\n", cfgGame.Store)
 
 		// use the game store to load the nations store
-		cfgNations, err := config.LoadNations(cfgGame.NationsStore)
+		cfgNations, err := config.LoadNations(cfgGame.Store)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded nations store %q\n", cfgNations.Path)
+		log.Printf("loaded nations store %q\n", cfgNations.Store)
 
 		// generate an id for the new nation
-		id := fmt.Sprintf("SP%d", len(cfgNations.Nations)+1)
+		id := len(cfgNations.Index) + 1
 
 		// check for duplicates in the nations store
-		for _, n := range cfgNations.Nations {
+		for _, n := range cfgNations.Index {
 			if strings.ToLower(n.Name) == strings.ToLower(globalAddNation.Name) {
 				log.Fatalf("error: duplicate nation name %q\n", globalAddNation.Name)
-			} else if strings.ToLower(n.Id) == strings.ToLower(id) {
+			} else if n.Id == id {
 				log.Fatalf("error: duplicate nation id %q\n", id)
 			}
 		}
@@ -115,18 +115,18 @@ var cmdAddNation = &cobra.Command{
 		nationIndex := config.NationsIndex{
 			Id:   id,
 			Name: globalAddNation.Name,
-			Path: filepath.Clean(filepath.Join(cfgGame.GamePath, id)),
+			Path: filepath.Clean(filepath.Join(cfgGame.Store, fmt.Sprintf("%d", id))),
 		}
-		cfgNations.Nations = append(cfgNations.Nations, nationIndex)
+		cfgNations.Index = append(cfgNations.Index, nationIndex)
 
-		log.Printf("updating nations store %q\n", cfgNations.Path)
+		log.Printf("updating nations store %q\n", cfgNations.Store)
 		if err := cfgNations.Write(); err != nil {
 			return err
 		}
 
-		log.Printf("updated nations store %q\n", cfgNations.Path)
+		log.Printf("updated nations store %q\n", cfgNations.Store)
 
-		log.Printf("created nation %s %q\n", nationIndex.Id, nationIndex.Name)
+		log.Printf("created nation %d %q\n", nationIndex.Id, nationIndex.Name)
 		return nil
 	},
 }

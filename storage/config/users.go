@@ -28,40 +28,45 @@ import (
 
 // Users configuration
 type Users struct {
-	Path  string `json:"path"` // path to this store file
-	Users []User `json:"users"`
+	Store string       `json:"store"` // default path to store data
+	Index []UsersIndex `json:"index"`
 }
 
-// User configuration
-type User struct {
+type UsersIndex struct {
 	Id     string `json:"id"`
 	Handle string `json:"handle"`
+}
+
+// CreateUsers creates a new store.
+// Assumes that the path to store the data already exists.
+// It returns any errors.
+func CreateUsers(path string, overwrite bool) (*Users, error) {
+	s := &Users{
+		Store: filepath.Clean(filepath.Join(path, "users")),
+		Index: []UsersIndex{},
+	}
+	if _, err := os.Stat(filepath.Join(s.Store, "store.json")); err == nil {
+		if !overwrite {
+			return nil, errors.New("users store exists")
+		}
+	}
+	return s, s.Write()
 }
 
 // LoadUsers loads an existing store.
 // It returns any errors.
 func LoadUsers(path string) (*Users, error) {
-	s := Users{Path: filepath.Clean(path)}
-	return &s, s.Read()
-}
-
-// Create creates a new store.
-// Assumes that the path to store the data already exists.
-// It returns any errors.
-func (s *Users) Create(path string, overwrite bool) error {
-	s.Path = filepath.Clean(filepath.Join(path, "users.json"))
-	if _, err := os.Stat(s.Path); err == nil {
-		if !overwrite {
-			return errors.New("users store exists")
-		}
+	s := &Users{
+		Store: filepath.Clean(filepath.Join(path, "users")),
+		Index: []UsersIndex{},
 	}
-	return s.Write()
+	return s, s.Read()
 }
 
 // Read loads a store from a JSON file.
 // It returns any errors.
 func (s *Users) Read() error {
-	b, err := ioutil.ReadFile(s.Path)
+	b, err := ioutil.ReadFile(filepath.Join(s.Store, "store.json"))
 	if err != nil {
 		return err
 	}
@@ -71,12 +76,12 @@ func (s *Users) Read() error {
 // Write writes a store to a JSON file.
 // It returns any errors.
 func (s *Users) Write() error {
-	if s.Path == "" {
+	if s.Store == "" {
 		return errors.New("missing users store path")
 	}
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(s.Path, b, 0600)
+	return ioutil.WriteFile(filepath.Join(s.Store, "store.json"), b, 0600)
 }

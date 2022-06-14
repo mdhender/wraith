@@ -50,19 +50,19 @@ func LoadGame(baseStore string, game string) (e *Engine, err error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("loaded %q\n", e.config.base.Path)
+	log.Printf("loaded %q\n", e.config.base.Self)
 
 	// load the games store to find the game store
-	e.config.games, err = config.LoadGames(filepath.Join(e.config.base.GamesPath, "games.json"))
+	e.config.games, err = config.LoadGames(filepath.Join(e.config.base.Store, "games"))
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("loaded games store %q\n", e.config.games.Path)
+	log.Printf("loaded games store %q\n", e.config.games.Store)
 
 	// find the game in the store
-	for _, g := range e.config.games.Games {
+	for _, g := range e.config.games.Index {
 		if strings.ToLower(g.Name) == strings.ToLower(game) {
-			e.config.game, err = config.LoadGame(g.Path)
+			e.config.game, err = config.LoadGame(g.Store)
 			if err != nil {
 				return nil, err
 			}
@@ -72,14 +72,14 @@ func LoadGame(baseStore string, game string) (e *Engine, err error) {
 	if e.config.game == nil {
 		log.Fatalf("unable to find game %q\n", game)
 	}
-	log.Printf("loaded game store %q\n", e.config.game.Path)
+	log.Printf("loaded game store %q\n", e.config.game.Store)
 
 	// use the game store to load the nations store
-	e.config.nations, err = config.LoadNations(e.config.game.NationsStore)
+	e.config.nations, err = config.LoadNations(e.config.game.Store)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("loaded nations store %q\n", e.config.nations.Path)
+	log.Printf("loaded nations store %q\n", e.config.nations.Store)
 
 	return e, nil
 }

@@ -28,39 +28,45 @@ import (
 
 // Games configuration
 type Games struct {
-	Path      string       `json:"path"`       // path to this store file
-	GamesPath string       `json:"games-path"` // default path to store game data
-	Games     []GamesIndex `json:"games"`      // todo: this should be just name of game and name of game store
+	Store string       `json:"store"` // default path to store data
+	Index []GamesIndex `json:"index"`
 }
 
 type GamesIndex struct {
-	Name string `json:"name"` // name of game
-	Path string `json:"path"` // path to the game store file
+	Name  string `json:"name"`  // name of game
+	Store string `json:"store"` // path to the game store file
+}
+
+// CreateGames creates a new store.
+// Assumes that the path to store the data already exists.
+// It returns any errors.
+func CreateGames(path string, overwrite bool) (*Games, error) {
+	s := &Games{
+		Store: filepath.Clean(filepath.Join(path, "games")),
+		Index: []GamesIndex{},
+	}
+	if _, err := os.Stat(filepath.Join(s.Store, "store.json")); err == nil {
+		if !overwrite {
+			return nil, errors.New("games store exists")
+		}
+	}
+	return s, s.Write()
 }
 
 // LoadGames loads an existing store.
 // It returns any errors.
 func LoadGames(path string) (*Games, error) {
-	s := Games{Path: filepath.Clean(path)}
-	return &s, s.Read()
-}
-
-// Create creates a new store.
-// It returns any errors.
-func (s *Games) Create(path string, overwrite bool) error {
-	s.Path = filepath.Clean(filepath.Join(path, "games.json"))
-	if _, err := os.Stat(s.Path); err == nil {
-		if !overwrite {
-			return errors.New("games store exists")
-		}
+	s := &Games{
+		Store: filepath.Clean(filepath.Join(path, "games")),
+		Index: []GamesIndex{},
 	}
-	return s.Write()
+	return s, s.Read()
 }
 
 // Read loads a store from a JSON file.
 // It returns any errors.
 func (s *Games) Read() error {
-	b, err := ioutil.ReadFile(s.Path)
+	b, err := ioutil.ReadFile(filepath.Join(s.Store, "store.json"))
 	if err != nil {
 		return err
 	}
@@ -70,12 +76,12 @@ func (s *Games) Read() error {
 // Write writes a store to a JSON file.
 // It returns any errors.
 func (s *Games) Write() error {
-	if s.Path == "" {
-		return errors.New("missing games store file name")
+	if s.Store == "" {
+		return errors.New("missing games store path")
 	}
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(s.Path, b, 0600)
+	return ioutil.WriteFile(filepath.Join(s.Store, "store.json"), b, 0600)
 }

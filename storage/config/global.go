@@ -28,37 +28,34 @@ import (
 
 // Global configuration
 type Global struct {
-	Path       string `json:"path"`        // path to this store
-	GamesPath  string `json:"games-path"`  // default path to store game data in
-	GamesStore string `json:"games-store"` // path to the games store
-	UsersPath  string `json:"users-path"`  // default path to store user data in
-	UsersStore string `json:"users-store"` // path to the users store
+	Self  string `json:"self"` // path to this file
+	Store string `json:"data"` // path to data store
+}
+
+// CreateGlobal creates a new store.
+// Assumes that the path to store the data already exists.
+// It returns any errors.
+func CreateGlobal(filename, store string, overwrite bool) (*Global, error) {
+	s := &Global{Self: filepath.Clean(filename), Store: filepath.Clean(store)}
+	if _, err := os.Stat(s.Self); err == nil {
+		if !overwrite {
+			return nil, errors.New("global store exists")
+		}
+	}
+	return s, s.Write()
 }
 
 // LoadGlobal loads an existing store.
 // It returns any errors.
-func LoadGlobal(path string) (*Global, error) {
-	c := Global{Path: filepath.Clean(path)}
-	return &c, c.Read()
-}
-
-// Create creates a new store.
-// Assumes that the path to store the data already exists.
-// It returns any errors.
-func (s *Global) Create(path string, overwrite bool) error {
-	s.Path = filepath.Clean(filepath.Join(path, ".wraith.json"))
-	if _, err := os.Stat(s.Path); err == nil {
-		if !overwrite {
-			return errors.New("global store exists")
-		}
-	}
-	return s.Write()
+func LoadGlobal(filename string) (*Global, error) {
+	s := &Global{Self: filepath.Clean(filename)}
+	return s, s.Read()
 }
 
 // Read loads a store from a JSON file.
 // It returns any errors.
 func (s *Global) Read() error {
-	b, err := ioutil.ReadFile(s.Path)
+	b, err := ioutil.ReadFile(s.Self)
 	if err != nil {
 		return err
 	}
@@ -68,12 +65,12 @@ func (s *Global) Read() error {
 // Write writes a store to a JSON file.
 // It returns any errors.
 func (s *Global) Write() error {
-	if s.Path == "" {
+	if s.Self == "" {
 		return errors.New("missing global store path")
 	}
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(s.Path, b, 0600)
+	return ioutil.WriteFile(s.Self, b, 0600)
 }
