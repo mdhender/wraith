@@ -18,50 +18,8 @@
 
 package config
 
-import (
-	"encoding/json"
-	"errors"
-	"io/ioutil"
-)
-
-// Nations configuration
-type Nations struct {
-	FileName string   `json:"file-name"`
-	Nations  []Nation `json:"Nations"`
-}
-
 // Nation configuration
 type Nation struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
-}
-
-// LoadNations loads an existing configuration.
-// It returns any errors.
-func LoadNations(filename string) (*Nations, error) {
-	c := Nations{FileName: filename}
-	return &c, c.Read()
-}
-
-// Read loads a configuration from a JSON file.
-// It returns any errors.
-func (c *Nations) Read() error {
-	b, err := ioutil.ReadFile(c.FileName)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(b, c)
-}
-
-// Write writes a configuration to a JSON file.
-// It returns any errors.
-func (c *Nations) Write() error {
-	if c.FileName == "" {
-		return errors.New("missing nations store file name")
-	}
-	b, err := json.MarshalIndent(c, "", "  ")
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(c.FileName, b, 0600)
 }

@@ -23,7 +23,6 @@ import (
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 	"unicode"
@@ -41,98 +40,83 @@ var cmdAddNation = &cobra.Command{
 	Short: "add a new nation",
 	Long:  `Add a new nation to the game.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO: this has to be updated to use the base configuration and command line flag for game name
 		if globalBase.ConfigFile == "" {
 			return errors.New("missing config file name")
 		}
 
-		gamePath, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-		gameCfgFile := filepath.Join(gamePath, "game.json")
-		gCfg, err := config.LoadGame(gameCfgFile)
-		if err != nil {
-			return err
-		} else if gCfg.FileName != gameCfgFile {
-			log.Printf("loaded     %q\n", gameCfgFile)
-			log.Printf("but wanted %q\n", gCfg.FileName)
-			log.Fatal("error: internal error: path mismatch\n")
-		}
-		log.Printf("loaded %q\n", gameCfgFile)
-
+		// validate the new nation name
 		globalAddNation.Name = strings.TrimSpace(globalAddNation.Name)
 		if globalAddNation.Name == "" {
-			return errors.New("missing player name")
+			return errors.New("missing nation name")
 		}
-		// validate name
 		for _, r := range globalAddNation.Name {
 			if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-') {
-				return errors.New("invalid rune in player name")
+				return errors.New("invalid rune in nation name")
 			}
+		}
+
+		// validate the new nation long name
+		globalAddNation.LongName = strings.TrimSpace(globalAddNation.LongName)
+		if globalAddNation.LongName == "" {
+			return errors.New("missing nation long name")
 		}
 
 		// load the base configuration to find the games store
-		baseCfg, err := config.LoadGlobal(globalBase.ConfigFile)
+		cfgBase, err := config.LoadGlobal(globalBase.ConfigFile)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded %q\n", baseCfg.FileName)
+		log.Printf("loaded %q\n", cfgBase.Path)
 
 		// load the games store to find the game store
-		gamesCfg, err := config.LoadGames(baseCfg.GamesStore)
+		cfgGames, err := config.LoadGames(filepath.Join(cfgBase.GamesPath, "games.json"))
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded %q\n", gamesCfg.FileName)
+		log.Printf("loaded games store %q\n", cfgGames.Path)
 
 		// find the game in the store
-		var game config.Game
-		for _, g := range gamesCfg.Games {
-			if g.Name != globalAddNation.Game {
-				continue
+		var cfgGame *config.Game
+		for _, g := range cfgGames.Games {
+			if g.Name == globalAddNation.Game {
+				cfgGame, err = config.LoadGame(g.Path)
+				if err != nil {
+					log.Fatal(err)
+				}
+				break
 			}
-			game = g
-			break
 		}
-		if game.Name != globalAddNation.Game {
+		if cfgGame == nil {
 			log.Fatalf("unable to find game %q\n", globalAddNation.Game)
 		}
+		log.Printf("loaded game store %q\n", cfgGame.Path)
 
-		// load the game store to find the nations store
-		gameCfg, err := config.LoadGame(game.FileName)
+		// use the game store to load the nations store
+		cfgNations, err := config.LoadNations(cfgGame.NationsStore)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded %q\n", gameCfg.FileName)
+		log.Printf("loaded nations store %q\n", cfgNations.Path)
 
-		// load the nations store
-		nationsCfg, err := config.LoadNations(gameCfg.NationsStore)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("loaded %q\n", gameCfg.FileName)
-
-		nation := config.Nation{
-			Name:        globalAddNation.Name,
-			Description: globalAddNation.LongName,
-		}
-
-		// check for duplicates
-		for _, n := range nationsCfg.Nations {
-			if n.Name == nation.Name {
-				log.Fatalf("error: duplicate nation name %q\n", nation.Name)
+		// check for duplicates in the nations store
+		for _, n := range cfgNations.Nations {
+			if n.Name == globalAddNation.Name {
+				log.Fatalf("error: duplicate nation name %q\n", globalAddNation.Name)
 			}
 		}
 
-		nationsCfg.Nations = append(nationsCfg.Nations, nation)
+		// add the new nation to the nations store
+		cfgNations.Nations = append(cfgNations.Nations, config.Nation{
+			Name:        globalAddNation.Name,
+			Description: globalAddNation.LongName,
+		})
 
-		log.Printf("updating nations store %q\n", nationsCfg.FileName)
-		if err := nationsCfg.Write(); err != nil {
+		log.Printf("updating nations store %q\n", cfgNations.Path)
+		if err := cfgNations.Write(); err != nil {
 			return err
 		}
 
-		log.Printf("updated nations store %q\n", nationsCfg.FileName)
+		log.Printf("updated nations store %q\n", cfgNations.Path)
 		return nil
 	},
 }

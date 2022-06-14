@@ -26,30 +26,27 @@ import (
 	"path/filepath"
 )
 
-// Game configuration
-type Game struct {
-	Path         string `json:"path"`      // path to this store file
-	GamePath     string `json:"game-path"` // path to store game data
-	Name         string `json:"name"`
-	Description  string `json:"description"`
-	NationsStore string `json:"nations-store"`
+// Nations configuration
+type Nations struct {
+	Path    string   `json:"path"` // path to this store file
+	Nations []Nation `json:"nations"`
 }
 
-// LoadGame loads an existing configuration.
+// LoadNations loads an existing store.
 // It returns any errors.
-func LoadGame(path string) (*Game, error) {
-	s := Game{Path: filepath.Clean(path)}
+func LoadNations(path string) (*Nations, error) {
+	s := Nations{Path: filepath.Clean(path)}
 	return &s, s.Read()
 }
 
 // Create creates a new store.
 // Assumes that the path to store the data already exists.
 // It returns any errors.
-func (s *Game) Create(path string, overwrite bool) error {
-	s.Path = filepath.Clean(filepath.Join(path, "game.json"))
+func (s *Nations) Create(path string, overwrite bool) error {
+	s.Path = filepath.Clean(filepath.Join(path, "nations.json"))
 	if _, err := os.Stat(s.Path); err == nil {
 		if !overwrite {
-			return errors.New("game store exists")
+			return errors.New("nations store exists")
 		}
 	}
 	return s.Write()
@@ -57,7 +54,7 @@ func (s *Game) Create(path string, overwrite bool) error {
 
 // Read loads a store from a JSON file.
 // It returns any errors.
-func (s *Game) Read() error {
+func (s *Nations) Read() error {
 	b, err := ioutil.ReadFile(s.Path)
 	if err != nil {
 		return err
@@ -67,9 +64,9 @@ func (s *Game) Read() error {
 
 // Write writes a store to a JSON file.
 // It returns any errors.
-func (s *Game) Write() error {
+func (s *Nations) Write() error {
 	if s.Path == "" {
-		return errors.New("missing game store path")
+		return errors.New("missing nations store path")
 	}
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {

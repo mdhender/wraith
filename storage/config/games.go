@@ -26,30 +26,32 @@ import (
 	"path/filepath"
 )
 
-// Game configuration
-type Game struct {
-	Path         string `json:"path"`      // path to this store file
-	GamePath     string `json:"game-path"` // path to store game data
-	Name         string `json:"name"`
-	Description  string `json:"description"`
-	NationsStore string `json:"nations-store"`
+// Games configuration
+type Games struct {
+	Path      string       `json:"path"`       // path to this store file
+	GamesPath string       `json:"games-path"` // default path to store game data
+	Games     []GamesIndex `json:"games"`      // todo: this should be just name of game and name of game store
 }
 
-// LoadGame loads an existing configuration.
+type GamesIndex struct {
+	Name string // name of game
+	Path string // path to the game store file
+}
+
+// LoadGames loads an existing store.
 // It returns any errors.
-func LoadGame(path string) (*Game, error) {
-	s := Game{Path: filepath.Clean(path)}
+func LoadGames(path string) (*Games, error) {
+	s := Games{Path: filepath.Clean(path)}
 	return &s, s.Read()
 }
 
 // Create creates a new store.
-// Assumes that the path to store the data already exists.
 // It returns any errors.
-func (s *Game) Create(path string, overwrite bool) error {
-	s.Path = filepath.Clean(filepath.Join(path, "game.json"))
+func (s *Games) Create(path string, overwrite bool) error {
+	s.Path = filepath.Clean(filepath.Join(path, "games.json"))
 	if _, err := os.Stat(s.Path); err == nil {
 		if !overwrite {
-			return errors.New("game store exists")
+			return errors.New("games store exists")
 		}
 	}
 	return s.Write()
@@ -57,7 +59,7 @@ func (s *Game) Create(path string, overwrite bool) error {
 
 // Read loads a store from a JSON file.
 // It returns any errors.
-func (s *Game) Read() error {
+func (s *Games) Read() error {
 	b, err := ioutil.ReadFile(s.Path)
 	if err != nil {
 		return err
@@ -67,9 +69,9 @@ func (s *Game) Read() error {
 
 // Write writes a store to a JSON file.
 // It returns any errors.
-func (s *Game) Write() error {
+func (s *Games) Write() error {
 	if s.Path == "" {
-		return errors.New("missing game store path")
+		return errors.New("missing games store file name")
 	}
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {

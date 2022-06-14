@@ -22,12 +22,14 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 )
 
 // Users configuration
 type Users struct {
-	FileName string `json:"file-name"`
-	Users    []User `json:"users"`
+	Path  string `json:"path"` // path to this store file
+	Users []User `json:"users"`
 }
 
 // User configuration
@@ -36,32 +38,45 @@ type User struct {
 	Handle string `json:"handle"`
 }
 
-// LoadUsers loads an existing configuration.
+// LoadUsers loads an existing store.
 // It returns any errors.
-func LoadUsers(filename string) (*Users, error) {
-	c := Users{FileName: filename}
-	return &c, c.Read()
+func LoadUsers(path string) (*Users, error) {
+	s := Users{Path: filepath.Clean(path)}
+	return &s, s.Read()
 }
 
-// Read loads a configuration from a JSON file.
+// Create creates a new store.
+// Assumes that the path to store the data already exists.
 // It returns any errors.
-func (c *Users) Read() error {
-	b, err := ioutil.ReadFile(c.FileName)
+func (s *Users) Create(path string, overwrite bool) error {
+	s.Path = filepath.Clean(filepath.Join(path, "users.json"))
+	if _, err := os.Stat(s.Path); err == nil {
+		if !overwrite {
+			return errors.New("users store exists")
+		}
+	}
+	return s.Write()
+}
+
+// Read loads a store from a JSON file.
+// It returns any errors.
+func (s *Users) Read() error {
+	b, err := ioutil.ReadFile(s.Path)
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(b, c)
+	return json.Unmarshal(b, s)
 }
 
-// Write writes a configuration to a JSON file.
+// Write writes a store to a JSON file.
 // It returns any errors.
-func (c *Users) Write() error {
-	if c.FileName == "" {
-		return errors.New("missing config file name")
+func (s *Users) Write() error {
+	if s.Path == "" {
+		return errors.New("missing users store path")
 	}
-	b, err := json.MarshalIndent(c, "", "  ")
+	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(c.FileName, b, 0600)
+	return ioutil.WriteFile(s.Path, b, 0600)
 }

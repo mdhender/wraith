@@ -25,6 +25,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var globalBootstrap struct {
@@ -32,6 +33,8 @@ var globalBootstrap struct {
 	Force bool
 	// location to create game data files in.
 	GamesPath string
+	// location to create user data files in.
+	UsersPath string
 }
 
 var cmdBootstrap = &cobra.Command{
@@ -44,15 +47,24 @@ This includes the configuration file, games path, and starting data.`,
 			return errors.New("missing config file name")
 		}
 
+		// validate games path
+		globalBootstrap.GamesPath = strings.TrimSpace(globalBootstrap.GamesPath)
 		if globalBootstrap.GamesPath == "" {
 			return errors.New("missing games path")
 		}
 
-		cfg := config.Global{
-			FileName:   globalBase.ConfigFile,
-			GamesPath:  globalBootstrap.GamesPath,
-			GamesStore: filepath.Join(globalBootstrap.GamesPath, "games.json"),
-			UsersStore: filepath.Join(globalBootstrap.GamesPath, "users.json"),
+		// validate users path
+		globalBootstrap.UsersPath = strings.TrimSpace(globalBootstrap.UsersPath)
+		if globalBootstrap.UsersPath == "" {
+			return errors.New("missing users path")
+		}
+
+		cfgBase := config.Global{
+			Path:       filepath.Clean(globalBase.ConfigFile),
+			GamesPath:  filepath.Clean(globalBootstrap.GamesPath),
+			GamesStore: filepath.Clean(filepath.Join(globalBootstrap.GamesPath, "games.json")),
+			UsersPath:  filepath.Clean(globalBootstrap.UsersPath),
+			UsersStore: filepath.Clean(filepath.Join(globalBootstrap.UsersPath, "users.json")),
 		}
 
 		log.Printf("intended config store %q\n", globalBase.ConfigFile)
@@ -64,37 +76,38 @@ This includes the configuration file, games path, and starting data.`,
 		} else {
 			log.Printf("creating config store %q\n", globalBase.ConfigFile)
 		}
-		if err := cfg.Write(); err != nil {
+		if err := cfgBase.Write(); err != nil {
 			log.Fatal(err)
 		}
 		log.Printf("created config store %q\n", globalBase.ConfigFile)
 
 		cfgGames := config.Games{
-			FileName: cfg.GamesStore,
-			Games:    []config.Game{},
+			GamesPath: cfgBase.GamesPath,
+			Games:     []config.GamesIndex{},
 		}
-		if err := cfgGames.Write(); err != nil {
+		if err := cfgGames.Create(cfgBase.GamesPath, true); err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("created games store %q\n", cfgGames.FileName)
+		log.Printf("created games store %q\n", cfgGames.Path)
 
 		cfgUsers := config.Users{
-			FileName: cfg.UsersStore,
-			Users:    []config.User{},
+			Users: []config.User{},
 		}
-		if err := cfgUsers.Write(); err != nil {
+		if err := cfgUsers.Create(cfgBase.UsersPath, true); err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("created users store %q\n", cfgUsers.FileName)
+		log.Printf("created users store %q\n", cfgUsers.Path)
 
 		return nil
 	},
 }
 
 func init() {
-	cmdBootstrap.Flags().StringVar(&globalBootstrap.GamesPath, "games-path", "", "path to create new game data")
+	cmdBootstrap.Flags().StringVar(&globalBootstrap.GamesPath, "games-path", "", "path to create new games data")
 	_ = cmdBootstrap.MarkFlagRequired("games-path")
 	cmdBootstrap.Flags().BoolVar(&globalBootstrap.Force, "force", false, "force overwrite of existing configuration")
+	cmdBootstrap.Flags().StringVar(&globalBootstrap.UsersPath, "users-path", "", "path to create new users data")
+	_ = cmdBootstrap.MarkFlagRequired("users-path")
 
 	cmdBase.AddCommand(cmdBootstrap)
 }

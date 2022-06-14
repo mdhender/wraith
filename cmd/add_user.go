@@ -42,58 +42,58 @@ var cmdAddUser = &cobra.Command{
 			return errors.New("missing config file name")
 		}
 
+		// validate the new user's handle
 		globalAddUser.Handle = strings.TrimSpace(globalAddUser.Handle)
 		if globalAddUser.Handle == "" {
 			return errors.New("missing user handle")
 		}
-		// validate handle
 		for _, r := range globalAddUser.Handle {
 			if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_') {
 				return errors.New("invalid rune in user handle")
 			}
 		}
 
+		// validate the new user's id or supply default value if missing
 		globalAddUser.Id = strings.TrimSpace(globalAddUser.Id)
 		if globalAddUser.Id == "" {
 			globalAddUser.Id = uuid.New().String()
 		}
 
 		// load the base configuration to find the users store
-		globalCfg, err := config.LoadGlobal(globalBase.ConfigFile)
+		cfgBase, err := config.LoadGlobal(globalBase.ConfigFile)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded %q\n", globalCfg.FileName)
+		log.Printf("loaded %q\n", cfgBase.Path)
 
 		// load the users store
-		usersCfg, err := config.LoadUsers(globalCfg.UsersStore)
+		cfgUsers, err := config.LoadUsers(cfgBase.UsersStore)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded %q\n", usersCfg.FileName)
+		log.Printf("loaded users store %q\n", cfgUsers.Path)
 
-		// create the user to add
-		user := config.User{
-			Id:     globalAddUser.Id,
-			Handle: globalAddUser.Handle,
-		}
-
-		// error on duplicate handle or id
-		for _, u := range usersCfg.Users {
-			if u.Handle == user.Handle {
-				log.Fatalf("duplicate handle %q", user.Handle)
-			} else if u.Id == user.Id {
-				log.Fatalf("duplicate id %q", user.Id)
+		// check for duplicate handle or id
+		for _, u := range cfgUsers.Users {
+			if strings.ToLower(u.Handle) == strings.ToLower(globalAddUser.Handle) {
+				log.Fatalf("duplicate handle %q", globalAddUser.Handle)
+			} else if strings.ToLower(u.Id) == strings.ToLower(globalAddUser.Id) {
+				log.Fatalf("duplicate id %q", globalAddUser.Id)
 			}
 		}
 
-		usersCfg.Users = append(usersCfg.Users, user)
+		// add the new user to the users store
+		cfgUsers.Users = append(cfgUsers.Users, config.User{
+			Id:     globalAddUser.Id,
+			Handle: globalAddUser.Handle,
+		})
 
-		if err := usersCfg.Write(); err != nil {
+		log.Printf("updating users store %q\n", cfgUsers.Path)
+		if err := cfgUsers.Write(); err != nil {
 			log.Fatal(err)
 		}
 
-		log.Printf("updated %q\n", usersCfg.FileName)
+		log.Printf("updated users store %q\n", cfgUsers.Path)
 		return nil
 	},
 }
