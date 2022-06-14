@@ -95,8 +95,8 @@ var cmdCreateGame = &cobra.Command{
 			}
 			log.Printf("created game folder %q\n", gameFolder)
 		}
-		for _, dir := range []string{"colonies", "nations", "ships", "turns"} {
-			folder := filepath.Clean(filepath.Join(gameFolder, dir))
+		for _, dir := range []string{"nation", "nations", "turns"} {
+			folder := filepath.Join(gameFolder, dir)
 			if _, err = os.Stat(folder); err != nil {
 				log.Printf("creating game %s folder %q\n", dir, folder)
 				if err = os.MkdirAll(folder, 0700); err != nil {
@@ -120,6 +120,13 @@ var cmdCreateGame = &cobra.Command{
 			log.Fatal(err)
 		}
 		log.Printf("created nations store %q\n", cfgNations.Store)
+
+		// create the turns store
+		cfgTurns, err := config.CreateTurns(cfgGame.Store, false)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("created turns store %q\n", cfgTurns.Store)
 
 		// and update the games store
 		cfgGames.Index = append(cfgGames.Index, config.GamesIndex{
