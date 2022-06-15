@@ -21,6 +21,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/mdhender/wraith/engine"
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
@@ -71,17 +72,17 @@ var cmdAddNation = &cobra.Command{
 		log.Printf("loaded %q\n", cfgBase.Self)
 
 		// load the games store
-		cfgGames, err := config.LoadGames(cfgBase.Store)
+		cfgGames, err := engine.LoadGames(cfgBase.Store)
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Printf("loaded games store %q\n", cfgGames.Store)
 
 		// find the game in the store
-		var cfgGame *config.Game
+		var cfgGame *engine.Game
 		for _, g := range cfgGames.Index {
 			if strings.ToLower(g.Name) == strings.ToLower(globalAddNation.Game) {
-				cfgGame, err = config.LoadGame(g.Store)
+				cfgGame, err = engine.LoadGame(g.Store)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -94,7 +95,7 @@ var cmdAddNation = &cobra.Command{
 		log.Printf("loaded game store %q\n", cfgGame.Store)
 
 		// use the game store to load the nations store
-		cfgNations, err := config.LoadNations(cfgGame.Store)
+		cfgNations, err := engine.LoadNations(cfgGame.Store)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -127,12 +128,12 @@ var cmdAddNation = &cobra.Command{
 			}
 		}
 
-		cfgNation, err := config.CreateNation(id, globalAddNation.Name, globalAddNation.LongName, nationFolder, false)
+		cfgNation, err := engine.CreateNation(id, globalAddNation.Name, globalAddNation.LongName, nationFolder, false)
 		if err != nil {
 			log.Fatal(err)
 		}
 		// add the new nation to the nations store
-		nationIndex := config.NationsIndex{
+		nationIndex := engine.NationsIndex{
 			Store: cfgNation.Store,
 			Id:    cfgNation.Id,
 			Name:  globalAddNation.Name,

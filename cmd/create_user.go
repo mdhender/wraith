@@ -21,6 +21,7 @@ package cmd
 import (
 	"errors"
 	"github.com/google/uuid"
+	"github.com/mdhender/wraith/engine"
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
@@ -67,7 +68,7 @@ var cmdCreateUser = &cobra.Command{
 		log.Printf("loaded %q\n", cfgBase.Self)
 
 		// load the users store
-		cfgUsers, err := config.LoadUsers(cfgBase.Store)
+		cfgUsers, err := engine.LoadUsers(cfgBase.Store)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -83,7 +84,7 @@ var cmdCreateUser = &cobra.Command{
 		}
 
 		// add the new user to the users store
-		cfgUsers.Index = append(cfgUsers.Index, config.UsersIndex{
+		cfgUsers.Index = append(cfgUsers.Index, engine.UsersIndex{
 			Id:     globalCreateUser.Id,
 			Handle: globalCreateUser.Handle,
 		})

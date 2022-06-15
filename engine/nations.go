@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-package config
+package engine
 
 import (
 	"encoding/json"
@@ -26,45 +26,47 @@ import (
 	"path/filepath"
 )
 
-// Turns configuration
-type Turns struct {
-	Store string       `json:"store"` // path to store data
-	Index []TurnsIndex `json:"index"`
+// Nations configuration
+type Nations struct {
+	Store string         `json:"store"` // path to store data
+	Index []NationsIndex `json:"index"`
 }
 
-type TurnsIndex struct {
-	Id int `json:"id"` // unique turn number
+type NationsIndex struct {
+	Id    int    `json:"id"`    // unique identifier for nation
+	Name  string `json:"name"`  // name of nation
+	Store string `json:"store"` // path to the species game data
 }
 
-// CreateTurns creates a new store.
+// CreateNations creates a new store.
 // Assumes that the path to store the data already exists.
 // It returns any errors.
-func CreateTurns(path string, overwrite bool) (*Turns, error) {
-	s := &Turns{
-		Store: filepath.Clean(filepath.Join(path, "turns")),
-		Index: []TurnsIndex{},
+func CreateNations(path string, overwrite bool) (*Nations, error) {
+	s := &Nations{
+		Store: filepath.Clean(filepath.Join(path, "nations")),
+		Index: []NationsIndex{},
 	}
 	if _, err := os.Stat(filepath.Join(s.Store, "store.json")); err == nil {
 		if !overwrite {
-			return nil, errors.New("turns store exists")
+			return nil, errors.New("nations store exists")
 		}
 	}
 	return s, s.Write()
 }
 
-// LoadTurns loads an existing store.
+// LoadNations loads an existing store.
 // It returns any errors.
-func LoadTurns(path string) (*Turns, error) {
-	s := &Turns{
-		Store: filepath.Clean(filepath.Join(path, "turns")),
-		Index: []TurnsIndex{},
+func LoadNations(path string) (*Nations, error) {
+	s := &Nations{
+		Store: filepath.Clean(filepath.Join(path, "nations")),
+		Index: []NationsIndex{},
 	}
 	return s, s.Read()
 }
 
 // Read loads a store from a JSON file.
 // It returns any errors.
-func (s *Turns) Read() error {
+func (s *Nations) Read() error {
 	b, err := ioutil.ReadFile(filepath.Join(s.Store, "store.json"))
 	if err != nil {
 		return err
@@ -74,9 +76,9 @@ func (s *Turns) Read() error {
 
 // Write writes a store to a JSON file.
 // It returns any errors.
-func (s *Turns) Write() error {
+func (s *Nations) Write() error {
 	if s.Store == "" {
-		return errors.New("missing turns store path")
+		return errors.New("missing nations store path")
 	}
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {

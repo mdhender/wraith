@@ -20,6 +20,7 @@ package cmd
 
 import (
 	"errors"
+	"github.com/mdhender/wraith/engine"
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
@@ -73,7 +74,7 @@ var cmdCreateGame = &cobra.Command{
 		log.Printf("loaded %q\n", cfgBase.Self)
 
 		// load the games store
-		cfgGames, err := config.LoadGames(cfgBase.Store)
+		cfgGames, err := engine.LoadGames(cfgBase.Store)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -107,28 +108,28 @@ var cmdCreateGame = &cobra.Command{
 		}
 
 		// create the game store
-		cfgGame, err := config.CreateGame(strings.ToUpper(globalCreateGame.Name), globalCreateGame.Description, gameFolder, false)
+		cfgGame, err := engine.CreateGame(strings.ToUpper(globalCreateGame.Name), globalCreateGame.Description, gameFolder, false)
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Printf("created game store %q\n", cfgGame.Store)
 
 		// create the nations store
-		cfgNations, err := config.CreateNations(cfgGame.Store, false)
+		cfgNations, err := engine.CreateNations(cfgGame.Store, false)
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Printf("created nations store %q\n", cfgNations.Store)
 
 		// create the turns store
-		cfgTurns, err := config.CreateTurns(cfgGame.Store, false)
+		cfgTurns, err := engine.CreateTurns(cfgGame.Store, false)
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Printf("created turns store %q\n", cfgTurns.Store)
 
 		// and update the games store
-		cfgGames.Index = append(cfgGames.Index, config.GamesIndex{
+		cfgGames.Index = append(cfgGames.Index, engine.GamesIndex{
 			Name:  cfgGame.Name,
 			Store: cfgGame.Store,
 		})

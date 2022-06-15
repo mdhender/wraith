@@ -45,11 +45,14 @@ var cmdReport = &cobra.Command{
 			return errors.New("missing game name")
 		}
 
-		e, err := engine.LoadGame(globalBase.ConfigFile, globalReport.Game)
+		e, err := engine.New(globalBase.ConfigFile)
 		if err != nil {
 			log.Fatal(err)
 		}
-
+		err = e.LoadGame(globalReport.Game)
+		if err != nil {
+			log.Fatal(err)
+		}
 		err = e.Report(1)
 		if err != nil {
 			log.Fatal(err)

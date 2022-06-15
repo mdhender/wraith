@@ -34,7 +34,7 @@ import (
 func (e *Engine) Report(spId int) error {
 	// load the setup store
 	var s Store
-	b, err := os.ReadFile(filepath.Clean(filepath.Join(e.config.game.Store, fmt.Sprintf("%d", spId), "setup.json")))
+	b, err := os.ReadFile(filepath.Clean(filepath.Join(e.stores.game.Store, fmt.Sprintf("%d", spId), "setup.json")))
 	if err != nil {
 		return err
 	}
@@ -43,14 +43,14 @@ func (e *Engine) Report(spId int) error {
 	}
 
 	// run the report for just the one nation
-	for _, n := range e.config.nations.Index {
+	for _, n := range e.stores.nations.Index {
 		if n.Id != spId {
 			continue
 		}
-		log.Printf("reporting for %q %q (%q)\n", n.Id, n.Name, n.Store)
+		log.Printf("reporting for %d %q (%q)\n", n.Id, n.Name, n.Store)
 
 		reportFile := filepath.Clean(filepath.Join(n.Store, "report.txt"))
-		log.Printf("reporting for %q %q (%q)\n", n.Id, n.Name, reportFile)
+		log.Printf("reporting for %d %q (%q)\n", n.Id, n.Name, reportFile)
 
 		w, err := os.OpenFile(reportFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 		if err != nil {

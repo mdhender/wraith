@@ -16,60 +16,56 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-package config
+package engine
 
 import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 )
 
-// Game configuration
-type Game struct {
-	Store        string         `json:"store"` // path to store data
-	Name         string         `json:"name"`
-	Description  string         `json:"description"`
-	NationsIndex []NationsIndex `json:"nations-index"`
-	TurnsIndex   []TurnsIndex   `json:"turns-index"`
+// Games configuration
+type Games struct {
+	Store string       `json:"store"` // default path to store data
+	Index []GamesIndex `json:"index"`
 }
 
-// CreateGame creates a new store.
+type GamesIndex struct {
+	Name  string `json:"name"`  // name of game
+	Store string `json:"store"` // path to the game store file
+}
+
+// CreateGames creates a new store.
 // Assumes that the path to store the data already exists.
 // It returns any errors.
-func CreateGame(name, descr, path string, overwrite bool) (*Game, error) {
-	s := &Game{
-		Store:        filepath.Clean(path),
-		Name:         name,
-		Description:  descr,
-		NationsIndex: []NationsIndex{},
-		TurnsIndex:   []TurnsIndex{},
+func CreateGames(path string, overwrite bool) (*Games, error) {
+	s := &Games{
+		Store: filepath.Clean(filepath.Join(path, "games")),
+		Index: []GamesIndex{},
 	}
 	if _, err := os.Stat(filepath.Join(s.Store, "store.json")); err == nil {
-		log.Printf("game store exists %q %v\n", filepath.Join(s.Store, "store.json"), overwrite)
 		if !overwrite {
-			return nil, errors.New("game store exists")
+			return nil, errors.New("games store exists")
 		}
 	}
 	return s, s.Write()
 }
 
-// LoadGame loads an existing store.
+// LoadGames loads an existing store.
 // It returns any errors.
-func LoadGame(path string) (*Game, error) {
-	s := &Game{
-		Store:        filepath.Clean(path),
-		NationsIndex: []NationsIndex{},
-		TurnsIndex:   []TurnsIndex{},
+func LoadGames(path string) (*Games, error) {
+	s := &Games{
+		Store: filepath.Clean(filepath.Join(path, "games")),
+		Index: []GamesIndex{},
 	}
 	return s, s.Read()
 }
 
 // Read loads a store from a JSON file.
 // It returns any errors.
-func (s *Game) Read() error {
+func (s *Games) Read() error {
 	b, err := ioutil.ReadFile(filepath.Join(s.Store, "store.json"))
 	if err != nil {
 		return err
@@ -79,9 +75,9 @@ func (s *Game) Read() error {
 
 // Write writes a store to a JSON file.
 // It returns any errors.
-func (s *Game) Write() error {
+func (s *Games) Write() error {
 	if s.Store == "" {
-		return errors.New("missing game store path")
+		return errors.New("missing games store path")
 	}
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {

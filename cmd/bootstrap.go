@@ -20,6 +20,7 @@ package cmd
 
 import (
 	"errors"
+	"github.com/mdhender/wraith/engine"
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
@@ -86,7 +87,7 @@ This includes the configuration file and starting data.`,
 			}
 			log.Printf("created users folder %q\n", usersFolder)
 		}
-		cfgUsers, err := config.CreateUsers(cfgBase.Store, globalBootstrap.Force)
+		cfgUsers, err := engine.CreateUsers(cfgBase.Store, globalBootstrap.Force)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -101,7 +102,7 @@ This includes the configuration file and starting data.`,
 			}
 			log.Printf("created games folder %q\n", gamesFolder)
 		}
-		cfgGames, err := config.CreateGames(cfgBase.Store, globalBootstrap.Force)
+		cfgGames, err := engine.CreateGames(cfgBase.Store, globalBootstrap.Force)
 		if err != nil {
 			log.Fatal(err)
 		}

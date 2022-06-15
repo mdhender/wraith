@@ -28,58 +28,70 @@ import (
 
 type Engine struct {
 	config struct {
-		base    *config.Global
-		games   *config.Games
-		game    *config.Game
-		nations *config.Nations
+		base *config.Global
+	}
+	stores struct {
+		games   *Games
+		game    *Game
+		nations *Nations
 	}
 	s *Store
 }
 
-func LoadGame(baseStore string, game string) (e *Engine, err error) {
+// New returns an initialized engine with the base configuration
+// and the games store loaded.
+func New(baseConfigFile string) (e *Engine, err error) {
+	if baseConfigFile == "" {
+		return nil, errors.New("missing base config")
+	}
+
 	e = &Engine{}
 
-	if baseStore == "" {
-		return nil, errors.New("missing base config")
-	} else if game == "" {
-		return nil, errors.New("missing game name")
-	}
-
-	// load the base configuration to find the games store
-	e.config.base, err = config.LoadGlobal(baseStore)
+	// load the base configuration and the games store
+	e.config.base, err = config.LoadGlobal(baseConfigFile)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("loaded %q\n", e.config.base.Self)
+	log.Printf("loaded base config %q\n", e.config.base.Self)
 
-	// load the games store to find the game store
-	e.config.games, err = config.LoadGames(filepath.Join(e.config.base.Store, "games"))
+	e.stores.games, err = LoadGames(filepath.Join(e.config.base.Store, "games"))
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("loaded games store %q\n", e.config.games.Store)
+	log.Printf("loaded games store %q\n", e.stores.games.Store)
+
+	return e, nil
+}
+
+func (e *Engine) LoadGame(game string) (err error) {
+	// free up any game already in memory
+	e.stores.game, e.stores.nations = nil, nil
+
+	if game == "" {
+		return errors.New("missing game name")
+	}
 
 	// find the game in the store
-	for _, g := range e.config.games.Index {
+	for _, g := range e.stores.games.Index {
 		if strings.ToLower(g.Name) == strings.ToLower(game) {
-			e.config.game, err = config.LoadGame(g.Store)
+			e.stores.game, err = LoadGame(g.Store)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			break
 		}
 	}
-	if e.config.game == nil {
+	if e.stores.game == nil {
 		log.Fatalf("unable to find game %q\n", game)
 	}
-	log.Printf("loaded game store %q\n", e.config.game.Store)
+	log.Printf("loaded game store %q\n", e.stores.game.Store)
 
 	// use the game store to load the nations store
-	e.config.nations, err = config.LoadNations(e.config.game.Store)
+	e.stores.nations, err = LoadNations(e.stores.game.Store)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	log.Printf("loaded nations store %q\n", e.config.nations.Store)
+	log.Printf("loaded nations store %q\n", e.stores.nations.Store)
 
-	return e, nil
+	return nil
 }
