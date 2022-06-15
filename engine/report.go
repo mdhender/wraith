@@ -47,9 +47,9 @@ func (e *Engine) Report(spId int) error {
 		if n.Id != spId {
 			continue
 		}
-		log.Printf("reporting for %q %q (%q)\n", n.Id, n.Name, n.Path)
+		log.Printf("reporting for %q %q (%q)\n", n.Id, n.Name, n.Store)
 
-		reportFile := filepath.Clean(filepath.Join(n.Path, "report.txt"))
+		reportFile := filepath.Clean(filepath.Join(n.Store, "report.txt"))
 		log.Printf("reporting for %q %q (%q)\n", n.Id, n.Name, reportFile)
 
 		w, err := os.OpenFile(reportFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)

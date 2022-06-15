@@ -18,9 +18,20 @@
 
 package config
 
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
+)
+
 // Nation configuration
 type Nation struct {
-	Id          string
+	Store       string `json:"store"` // path to store data
+	Id          int    `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Speciality  string `json:"speciality"`
@@ -37,4 +48,55 @@ type Nation struct {
 			Orbit int `json:"orbit"`
 		} `json:"location"`
 	} `json:"homeworld"`
+}
+
+// CreateNation creates a new store.
+// Assumes that the path to store the data already exists.
+// It returns any errors.
+func CreateNation(id int, name, descr, path string, overwrite bool) (*Nation, error) {
+	s := &Nation{
+		Store:       filepath.Clean(filepath.Join(path, fmt.Sprintf("%d", id))),
+		Id:          id,
+		Name:        name,
+		Description: descr,
+	}
+	if _, err := os.Stat(filepath.Join(s.Store, "store.json")); err == nil {
+		log.Printf("nation store exists %q %v\n", filepath.Join(s.Store, "store.json"), overwrite)
+		if !overwrite {
+			return nil, errors.New("nation store exists")
+		}
+	}
+	return s, s.Write()
+}
+
+// LoadNation loads an existing store.
+// It returns any errors.
+func LoadNation(path string) (*Nation, error) {
+	s := &Nation{
+		Store: filepath.Clean(path),
+	}
+	return s, s.Read()
+}
+
+// Read loads a store from a JSON file.
+// It returns any errors.
+func (s *Nation) Read() error {
+	b, err := ioutil.ReadFile(filepath.Join(s.Store, "store.json"))
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, s)
+}
+
+// Write writes a store to a JSON file.
+// It returns any errors.
+func (s *Nation) Write() error {
+	if s.Store == "" {
+		return errors.New("missing nation store path")
+	}
+	b, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filepath.Join(s.Store, "store.json"), b, 0600)
 }

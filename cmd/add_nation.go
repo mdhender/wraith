@@ -24,6 +24,7 @@ import (
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 	"unicode"
@@ -69,7 +70,7 @@ var cmdAddNation = &cobra.Command{
 		}
 		log.Printf("loaded %q\n", cfgBase.Self)
 
-		// load the games store to find the game store
+		// load the games store
 		cfgGames, err := config.LoadGames(cfgBase.Store)
 		if err != nil {
 			log.Fatal(err)
@@ -97,25 +98,44 @@ var cmdAddNation = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded nations store %q\n", cfgNations.Store)
-
-		// generate an id for the new nation
-		id := len(cfgNations.Index) + 1
+		log.Printf("loaded game %q nations store %q\n", cfgGame.Name, cfgNations.Store)
 
 		// check for duplicates in the nations store
 		for _, n := range cfgNations.Index {
 			if strings.ToLower(n.Name) == strings.ToLower(globalAddNation.Name) {
 				log.Fatalf("error: duplicate nation name %q\n", globalAddNation.Name)
-			} else if n.Id == id {
-				log.Fatalf("error: duplicate nation id %q\n", id)
 			}
 		}
 
+		// generate an id for the new nation
+		id := len(cfgNations.Index) + 1
+		for _, n := range cfgNations.Index {
+			if n.Id >= id {
+				id = n.Id + 1
+			}
+		}
+
+		nationFolder := filepath.Join(cfgGame.Store, "nation")
+		for _, dir := range []string{fmt.Sprintf("%d", id)} {
+			folder := filepath.Join(nationFolder, dir)
+			if _, err = os.Stat(folder); err != nil {
+				log.Printf("creating game %s nation %d folder %q\n", cfgGame.Name, id, folder)
+				if err = os.MkdirAll(folder, 0700); err != nil {
+					log.Fatal(err)
+				}
+				log.Printf("created game %s nation %d folder %q\n", cfgGame.Name, id, folder)
+			}
+		}
+
+		cfgNation, err := config.CreateNation(id, globalAddNation.Name, globalAddNation.LongName, nationFolder, false)
+		if err != nil {
+			log.Fatal(err)
+		}
 		// add the new nation to the nations store
 		nationIndex := config.NationsIndex{
-			Id:   id,
-			Name: globalAddNation.Name,
-			Path: filepath.Clean(filepath.Join(cfgGame.Store, fmt.Sprintf("%d", id))),
+			Store: cfgNation.Store,
+			Id:    cfgNation.Id,
+			Name:  globalAddNation.Name,
 		}
 		cfgNations.Index = append(cfgNations.Index, nationIndex)
 

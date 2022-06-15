@@ -33,9 +33,9 @@ type Nations struct {
 }
 
 type NationsIndex struct {
-	Id   int    `json:"id"`   // unique identifier for nation
-	Name string `json:"name"` // name of nation
-	Path string `json:"path"` // path to the species game data
+	Id    int    `json:"id"`    // unique identifier for nation
+	Name  string `json:"name"`  // name of nation
+	Store string `json:"store"` // path to the species game data
 }
 
 // CreateNations creates a new store.

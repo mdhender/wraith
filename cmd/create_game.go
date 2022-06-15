@@ -104,7 +104,6 @@ var cmdCreateGame = &cobra.Command{
 				}
 				log.Printf("created game %s folder %q\n", dir, folder)
 			}
-
 		}
 
 		// create the game store
