@@ -23,7 +23,6 @@ import (
 	"github.com/mdhender/wraith/storage/config"
 	"log"
 	"path/filepath"
-	"strings"
 )
 
 type Engine struct {
@@ -86,6 +85,19 @@ func (e *Engine) RootDir(stores ...string) string {
 	return filepath.Join(append([]string{e.config.base.Store}, stores...)...)
 }
 
+func CreateGame(string, string, string, bool) (*Game, error) {
+	panic("!")
+}
+func CreateNations(string, bool) (*Nation, error) {
+	panic("!")
+}
+func LoadGames(string) (*Games, error) {
+	panic("!")
+}
+func LoadNations(string) (*Nations, error) {
+	panic("!")
+}
+
 func (e *Engine) LoadGame(game string) (err error) {
 	// free up any game already in memory
 	e.stores.game, e.stores.nations, e.stores.turns = nil, nil, nil
@@ -94,26 +106,26 @@ func (e *Engine) LoadGame(game string) (err error) {
 		return errors.New("missing game name")
 	}
 
-	// find the game in the store
-	for _, g := range e.stores.games.Index {
-		if strings.ToLower(g.Name) == strings.ToLower(game) {
-			e.stores.game, err = LoadGame(g.Store)
-			if err != nil {
-				return err
-			}
-			break
-		}
-	}
+	//// find the game in the store
+	//for _, g := range e.stores.games.Index {
+	//	if strings.ToLower(g.Name) == strings.ToLower(game) {
+	//		e.stores.game, err = LoadGame(g.Store)
+	//		if err != nil {
+	//			return err
+	//		}
+	//		break
+	//	}
+	//}
 	if e.stores.game == nil {
 		log.Fatalf("unable to find game %q\n", game)
 	}
 	log.Printf("loaded game store %q\n", e.stores.game.Store)
 
-	// use the game store to load the nations store
-	e.stores.nations, err = LoadNations(e.stores.game.Store)
-	if err != nil {
-		return err
-	}
+	//// use the game store to load the nations store
+	//e.stores.nations, err = LoadNations(e.stores.game.Store)
+	//if err != nil {
+	//	return err
+	//}
 	log.Printf("loaded nations store %q\n", e.stores.nations.Store)
 
 	return nil

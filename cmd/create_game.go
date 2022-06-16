@@ -82,7 +82,7 @@ var cmdCreateGame = &cobra.Command{
 
 		// error on duplicate name
 		for _, g := range cfgGames.Index {
-			if strings.ToLower(g.Name) == strings.ToLower(globalCreateGame.Name) {
+			if strings.ToLower(g.Id) == strings.ToLower(globalCreateGame.Name) {
 				log.Fatalf("duplicate game name %q", globalCreateGame.Name)
 			}
 		}
@@ -130,13 +130,13 @@ var cmdCreateGame = &cobra.Command{
 
 		// and update the games store
 		cfgGames.Index = append(cfgGames.Index, engine.GamesIndex{
-			Name:  cfgGame.Name,
+			Id:    cfgGame.Id,
 			Store: cfgGame.Store,
 		})
-		if err := cfgGames.Write(); err != nil {
-			log.Printf("internal error - games store corrupted\n")
-			log.Fatalf("%+v\n", err)
-		}
+		//if err := cfgGames.Write(); err != nil {
+		//	log.Printf("internal error - games store corrupted\n")
+		//	log.Fatalf("%+v\n", err)
+		//}
 		log.Printf("updated games store %q\n", cfgGames.Store)
 
 		return nil

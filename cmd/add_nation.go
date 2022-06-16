@@ -80,15 +80,15 @@ var cmdAddNation = &cobra.Command{
 
 		// find the game in the store
 		var cfgGame *engine.Game
-		for _, g := range cfgGames.Index {
-			if strings.ToLower(g.Name) == strings.ToLower(globalAddNation.Game) {
-				cfgGame, err = engine.LoadGame(g.Store)
-				if err != nil {
-					log.Fatal(err)
-				}
-				break
-			}
-		}
+		//for _, g := range cfgGames.Index {
+		//	if strings.ToLower(g.Name) == strings.ToLower(globalAddNation.Game) {
+		//		cfgGame, err = engine.LoadGame(g.Store)
+		//		if err != nil {
+		//			log.Fatal(err)
+		//		}
+		//		break
+		//	}
+		//}
 		if cfgGame == nil {
 			log.Fatalf("unable to find game %q\n", globalAddNation.Game)
 		}
@@ -99,7 +99,7 @@ var cmdAddNation = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded game %q nations store %q\n", cfgGame.Name, cfgNations.Store)
+		log.Printf("loaded game %q nations store %q\n", cfgGame.Id, cfgNations.Store)
 
 		// check for duplicates in the nations store
 		for _, n := range cfgNations.Index {
@@ -120,11 +120,11 @@ var cmdAddNation = &cobra.Command{
 		for _, dir := range []string{fmt.Sprintf("%d", id)} {
 			folder := filepath.Join(nationFolder, dir)
 			if _, err = os.Stat(folder); err != nil {
-				log.Printf("creating game %s nation %d folder %q\n", cfgGame.Name, id, folder)
+				log.Printf("creating game %s nation %d folder %q\n", cfgGame.Id, id, folder)
 				if err = os.MkdirAll(folder, 0700); err != nil {
 					log.Fatal(err)
 				}
-				log.Printf("created game %s nation %d folder %q\n", cfgGame.Name, id, folder)
+				log.Printf("created game %s nation %d folder %q\n", cfgGame.Id, id, folder)
 			}
 		}
 
@@ -141,9 +141,9 @@ var cmdAddNation = &cobra.Command{
 		cfgNations.Index = append(cfgNations.Index, nationIndex)
 
 		log.Printf("updating nations store %q\n", cfgNations.Store)
-		if err := cfgNations.Write(); err != nil {
-			return err
-		}
+		//if err := cfgNations.Write(); err != nil {
+		//	return err
+		//}
 
 		log.Printf("updated nations store %q\n", cfgNations.Store)
 

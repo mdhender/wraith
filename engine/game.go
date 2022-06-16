@@ -102,9 +102,9 @@ func (e *Engine) AddGame(id, descr string) error {
 	if err := e.WriteNations(); err != nil {
 		return err
 	}
-	if err := e.WriteTurns(); err != nil {
-		return err
-	}
+	//if err := e.WriteTurns(); err != nil {
+	//	return err
+	//}
 
 	panic("!")
 }
