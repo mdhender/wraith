@@ -20,9 +20,7 @@ package engine
 
 import (
 	"encoding/json"
-	"errors"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 )
 
@@ -33,55 +31,26 @@ type Games struct {
 }
 
 type GamesIndex struct {
-	Name  string `json:"name"`  // name of game
+	Id    string `json:"id"`    // unique identifier for game
 	Store string `json:"store"` // path to the game store file
 }
 
-// CreateGames creates a new store.
-// Assumes that the path to store the data already exists.
+// ReadGames loads a store from a JSON file.
 // It returns any errors.
-func CreateGames(path string, overwrite bool) (*Games, error) {
-	s := &Games{
-		Store: filepath.Clean(filepath.Join(path, "games")),
-		Index: []GamesIndex{},
-	}
-	if _, err := os.Stat(filepath.Join(s.Store, "store.json")); err == nil {
-		if !overwrite {
-			return nil, errors.New("games store exists")
-		}
-	}
-	return s, s.Write()
-}
-
-// LoadGames loads an existing store.
-// It returns any errors.
-func LoadGames(path string) (*Games, error) {
-	s := &Games{
-		Store: filepath.Clean(filepath.Join(path, "games")),
-		Index: []GamesIndex{},
-	}
-	return s, s.Read()
-}
-
-// Read loads a store from a JSON file.
-// It returns any errors.
-func (s *Games) Read() error {
-	b, err := ioutil.ReadFile(filepath.Join(s.Store, "store.json"))
+func (e *Engine) ReadGames() error {
+	b, err := ioutil.ReadFile(filepath.Join(e.stores.games.Store, "store.json"))
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(b, s)
+	return json.Unmarshal(b, e.stores.games)
 }
 
-// Write writes a store to a JSON file.
+// WriteGames writes a store to a JSON file.
 // It returns any errors.
-func (s *Games) Write() error {
-	if s.Store == "" {
-		return errors.New("missing games store path")
-	}
-	b, err := json.MarshalIndent(s, "", "  ")
+func (e *Engine) WriteGames() error {
+	b, err := json.MarshalIndent(e.stores.games, "", "  ")
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filepath.Join(s.Store, "store.json"), b, 0600)
+	return ioutil.WriteFile(filepath.Join(e.stores.games.Store, "store.json"), b, 0600)
 }

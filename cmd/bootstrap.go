@@ -21,10 +21,8 @@ package cmd
 import (
 	"errors"
 	"github.com/mdhender/wraith/engine"
-	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -54,59 +52,11 @@ This includes the configuration file and starting data.`,
 		}
 		globalBootstrap.Store = filepath.Clean(globalBootstrap.Store)
 
-		log.Printf("intended config file %q\n", globalBase.ConfigFile)
-		if _, err := os.Stat(globalBase.ConfigFile); err == nil {
-			if !globalBootstrap.Force {
-				log.Fatal("cowardly refusing to overwrite existing configuration file")
-			}
-			log.Printf("overwriting config file %q\n", globalBase.ConfigFile)
-		} else {
-			log.Printf("creating config file %q\n", globalBase.ConfigFile)
-		}
-		cfgBase, err := config.CreateGlobal(globalBase.ConfigFile, globalBootstrap.Store, globalBootstrap.Force)
+		_, err := engine.Bootstrap(globalBase.ConfigFile, globalBootstrap.Store, globalBootstrap.Force)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("created config file %q\n", cfgBase.Self)
-
-		// create the data store folder
-		if _, err := os.Stat(cfgBase.Store); err != nil {
-			log.Printf("creating data folder %q\n", cfgBase.Store)
-			if err = os.MkdirAll(cfgBase.Store, 0700); err != nil {
-				log.Fatal(err)
-			}
-			log.Printf("created data folder %q\n", cfgBase.Store)
-		}
-
-		// create the default users store
-		usersFolder := filepath.Join(cfgBase.Store, "users")
-		if _, err := os.Stat(usersFolder); err != nil {
-			log.Printf("creating users folder %q\n", usersFolder)
-			if err = os.MkdirAll(usersFolder, 0700); err != nil {
-				log.Fatal(err)
-			}
-			log.Printf("created users folder %q\n", usersFolder)
-		}
-		cfgUsers, err := engine.CreateUsers(cfgBase.Store, globalBootstrap.Force)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("created users store %q\n", cfgUsers.Store)
-
-		// create the default games store
-		gamesFolder := filepath.Join(cfgBase.Store, "games")
-		if _, err := os.Stat(gamesFolder); err != nil {
-			log.Printf("creating games folder %q\n", gamesFolder)
-			if err = os.MkdirAll(gamesFolder, 0700); err != nil {
-				log.Fatal(err)
-			}
-			log.Printf("created games folder %q\n", gamesFolder)
-		}
-		cfgGames, err := engine.CreateGames(cfgBase.Store, globalBootstrap.Force)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("created games store %q\n", cfgGames.Store)
+		log.Printf("bootstrapped new engine\n")
 
 		return nil
 	},

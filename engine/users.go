@@ -22,8 +22,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"os"
 	"path/filepath"
+	"strings"
+	"unicode"
 )
 
 // Users configuration
@@ -33,55 +34,65 @@ type Users struct {
 }
 
 type UsersIndex struct {
-	Id     string `json:"id"`
+	Id     int    `json:"id"`
 	Handle string `json:"handle"`
 }
 
-// CreateUsers creates a new store.
-// Assumes that the path to store the data already exists.
-// It returns any errors.
-func CreateUsers(path string, overwrite bool) (*Users, error) {
-	s := &Users{
-		Store: filepath.Clean(filepath.Join(path, "users")),
-		Index: []UsersIndex{},
+// AddUser adds a new user to the store
+func (e *Engine) AddUser(handle string) error {
+	handle = strings.TrimSpace(handle)
+	if handle == "" {
+		return errors.New("missing handle")
 	}
-	if _, err := os.Stat(filepath.Join(s.Store, "store.json")); err == nil {
-		if !overwrite {
-			return nil, errors.New("users store exists")
+
+	// check for invalid runes in the handle
+	for _, r := range handle {
+		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_') {
+			return errors.New("invalid rune in user handle")
 		}
 	}
-	return s, s.Write()
-}
 
-// LoadUsers loads an existing store.
-// It returns any errors.
-func LoadUsers(path string) (*Users, error) {
-	s := &Users{
-		Store: filepath.Clean(filepath.Join(path, "users")),
-		Index: []UsersIndex{},
+	// check for duplicate handle
+	for _, u := range e.stores.users.Index {
+		if strings.ToLower(u.Handle) == strings.ToLower(handle) {
+			return errors.New("duplicate handle")
+		}
 	}
-	return s, s.Read()
+
+	// generate an id for the user
+	id := len(e.stores.users.Index)
+	for _, u := range e.stores.users.Index {
+		if u.Id > id {
+			id = u.Id
+		}
+	}
+	id = id + 1
+
+	// add the new user to the users store
+	e.stores.users.Index = append(e.stores.users.Index, UsersIndex{
+		Id:     id,
+		Handle: handle,
+	})
+
+	return e.WriteUsers()
 }
 
-// Read loads a store from a JSON file.
+// ReadUsers loads a store from a JSON file.
 // It returns any errors.
-func (s *Users) Read() error {
-	b, err := ioutil.ReadFile(filepath.Join(s.Store, "store.json"))
+func (e *Engine) ReadUsers() error {
+	b, err := ioutil.ReadFile(filepath.Join(e.stores.users.Store, "store.json"))
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(b, s)
+	return json.Unmarshal(b, e.stores.users)
 }
 
-// Write writes a store to a JSON file.
+// WriteUsers writes a store to a JSON file.
 // It returns any errors.
-func (s *Users) Write() error {
-	if s.Store == "" {
-		return errors.New("missing users store path")
-	}
-	b, err := json.MarshalIndent(s, "", "  ")
+func (e *Engine) WriteUsers() error {
+	b, err := json.MarshalIndent(e.stores.users, "", "  ")
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filepath.Join(s.Store, "store.json"), b, 0600)
+	return ioutil.WriteFile(filepath.Join(e.stores.users.Store, "store.json"), b, 0600)
 }

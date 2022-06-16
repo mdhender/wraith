@@ -20,17 +20,13 @@ package cmd
 
 import (
 	"errors"
-	"github.com/google/uuid"
 	"github.com/mdhender/wraith/engine"
-	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
 	"strings"
-	"unicode"
 )
 
 var globalCreateUser struct {
-	Id     string
 	Handle string
 }
 
@@ -46,55 +42,20 @@ var cmdCreateUser = &cobra.Command{
 		// validate the new user's handle
 		globalCreateUser.Handle = strings.TrimSpace(globalCreateUser.Handle)
 		if globalCreateUser.Handle == "" {
-			return errors.New("missing user handle")
-		}
-		for _, r := range globalCreateUser.Handle {
-			if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_') {
-				return errors.New("invalid rune in user handle")
-			}
+			return errors.New("missing handle")
 		}
 
-		// validate the new user's id or supply default value if missing
-		globalCreateUser.Id = strings.TrimSpace(globalCreateUser.Id)
-		if globalCreateUser.Id == "" {
-			globalCreateUser.Id = uuid.New().String()
-		}
-
-		// load the base configuration to find the users store
-		cfgBase, err := config.LoadGlobal(globalBase.ConfigFile)
+		// load the engine
+		e, err := engine.New(globalBase.ConfigFile)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded %q\n", cfgBase.Self)
 
-		// load the users store
-		cfgUsers, err := engine.LoadUsers(cfgBase.Store)
+		err = e.AddUser(globalCreateUser.Handle)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded users store %q\n", cfgUsers.Store)
 
-		// check for duplicate handle or id
-		for _, u := range cfgUsers.Index {
-			if strings.ToLower(u.Handle) == strings.ToLower(globalCreateUser.Handle) {
-				log.Fatalf("duplicate handle %q", globalCreateUser.Handle)
-			} else if strings.ToLower(u.Id) == strings.ToLower(globalCreateUser.Id) {
-				log.Fatalf("duplicate id %q", globalCreateUser.Id)
-			}
-		}
-
-		// add the new user to the users store
-		cfgUsers.Index = append(cfgUsers.Index, engine.UsersIndex{
-			Id:     globalCreateUser.Id,
-			Handle: globalCreateUser.Handle,
-		})
-
-		log.Printf("updating users store %q\n", cfgUsers.Store)
-		if err := cfgUsers.Write(); err != nil {
-			log.Fatal(err)
-		}
-
-		log.Printf("updated users store %q\n", cfgUsers.Store)
 		return nil
 	},
 }
@@ -102,7 +63,6 @@ var cmdCreateUser = &cobra.Command{
 func init() {
 	cmdCreateUser.Flags().StringVar(&globalCreateUser.Handle, "handle", "", "screen name of the new user")
 	_ = cmdCreateUser.MarkFlagRequired("handle")
-	cmdCreateUser.Flags().StringVar(&globalCreateUser.Id, "id", "", "identifier for the new user (do not use)")
 
 	cmdCreate.AddCommand(cmdCreateUser)
 }

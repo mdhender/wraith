@@ -20,9 +20,7 @@ package engine
 
 import (
 	"encoding/json"
-	"errors"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 )
 
@@ -38,51 +36,22 @@ type NationsIndex struct {
 	Store string `json:"store"` // path to the species game data
 }
 
-// CreateNations creates a new store.
-// Assumes that the path to store the data already exists.
+// ReadNations loads a store from a JSON file.
 // It returns any errors.
-func CreateNations(path string, overwrite bool) (*Nations, error) {
-	s := &Nations{
-		Store: filepath.Clean(filepath.Join(path, "nations")),
-		Index: []NationsIndex{},
-	}
-	if _, err := os.Stat(filepath.Join(s.Store, "store.json")); err == nil {
-		if !overwrite {
-			return nil, errors.New("nations store exists")
-		}
-	}
-	return s, s.Write()
-}
-
-// LoadNations loads an existing store.
-// It returns any errors.
-func LoadNations(path string) (*Nations, error) {
-	s := &Nations{
-		Store: filepath.Clean(filepath.Join(path, "nations")),
-		Index: []NationsIndex{},
-	}
-	return s, s.Read()
-}
-
-// Read loads a store from a JSON file.
-// It returns any errors.
-func (s *Nations) Read() error {
-	b, err := ioutil.ReadFile(filepath.Join(s.Store, "store.json"))
+func (e *Engine) ReadNations() error {
+	b, err := ioutil.ReadFile(filepath.Join(e.stores.nations.Store, "store.json"))
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(b, s)
+	return json.Unmarshal(b, e.stores.nations)
 }
 
-// Write writes a store to a JSON file.
+// WriteNations writes a store to a JSON file.
 // It returns any errors.
-func (s *Nations) Write() error {
-	if s.Store == "" {
-		return errors.New("missing nations store path")
-	}
-	b, err := json.MarshalIndent(s, "", "  ")
+func (e *Engine) WriteNations() error {
+	b, err := json.MarshalIndent(e.stores.nations, "", "  ")
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filepath.Join(s.Store, "store.json"), b, 0600)
+	return ioutil.WriteFile(filepath.Join(e.stores.nations.Store, "store.json"), b, 0600)
 }

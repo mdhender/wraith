@@ -34,6 +34,8 @@ type Engine struct {
 		games   *Games
 		game    *Game
 		nations *Nations
+		turns   *Turns
+		users   *Users
 	}
 	s *Store
 }
@@ -47,25 +49,46 @@ func New(baseConfigFile string) (e *Engine, err error) {
 
 	e = &Engine{}
 
-	// load the base configuration and the games store
+	// load the base configuration
 	e.config.base, err = config.LoadGlobal(baseConfigFile)
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("loaded base config %q\n", e.config.base.Self)
 
-	e.stores.games, err = LoadGames(filepath.Join(e.config.base.Store, "games"))
-	if err != nil {
-		return nil, err
+	// load the users store
+	e.stores.users = &Users{
+		Store: e.RootDir("users"),
+		Index: []UsersIndex{},
+	}
+	if err = e.ReadUsers(); err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("loaded users store %q\n", e.stores.users.Store)
+
+	// load the games store
+	e.stores.games = &Games{
+		Store: e.RootDir("games"),
+		Index: []GamesIndex{},
+	}
+	if err = e.ReadGames(); err != nil {
+		log.Fatal(err)
 	}
 	log.Printf("loaded games store %q\n", e.stores.games.Store)
 
 	return e, nil
 }
 
+func (e *Engine) RootDir(stores ...string) string {
+	if len(stores) == 0 {
+		return e.config.base.Store
+	}
+	return filepath.Join(append([]string{e.config.base.Store}, stores...)...)
+}
+
 func (e *Engine) LoadGame(game string) (err error) {
 	// free up any game already in memory
-	e.stores.game, e.stores.nations = nil, nil
+	e.stores.game, e.stores.nations, e.stores.turns = nil, nil, nil
 
 	if game == "" {
 		return errors.New("missing game name")
