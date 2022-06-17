@@ -80,9 +80,9 @@ func New(baseConfigFile string) (e *Engine, err error) {
 
 func (e *Engine) RootDir(stores ...string) string {
 	if len(stores) == 0 {
-		return e.config.base.Store
+		return "D:\\wraith\\testdata"
 	}
-	return filepath.Join(append([]string{e.config.base.Store}, stores...)...)
+	return filepath.Join(append([]string{"D:\\wraith\\testdata"}, stores...)...)
 }
 
 func CreateGame(string, string, string, bool) (*Game, error) {
@@ -129,4 +129,8 @@ func (e *Engine) LoadGame(game string) (err error) {
 	log.Printf("loaded nations store %q\n", e.stores.nations.Store)
 
 	return nil
+}
+
+func (e *Engine) Version() string {
+	return "0.1.0"
 }

@@ -19,10 +19,9 @@
 package main
 
 import (
-	"fmt"
 	"github.com/mdhender/wraith/internal/seeder"
-	"github.com/mdhender/wraith/internal/storage/json"
-	"github.com/mdhender/wraith/internal/storage/words"
+	//"github.com/mdhender/wraith/internal/storage/json"
+	//"github.com/mdhender/wraith/internal/storage/words"
 	"log"
 	"math/rand"
 	"time"
@@ -50,39 +49,39 @@ func main() {
 }
 
 func run() error {
-	psg, err := words.New(" ")
-	if err != nil {
-		return err
-	}
-	s, err := json.NewAccountsDriver("accounts.json")
-	if err != nil {
-		return err
-	}
-	v := s.Read(func(a json.Account) bool {
-		return a.Handle == "sysop"
-	})
-	if len(v) == 0 {
-		if err := s.Create(json.Account{
-			Id:     "",
-			Handle: "sysop",
-			Salt:   []byte("salt"),
-			Secret: []byte(psg.Generate(5)),
-			Roles:  []string{"sysop"},
-			Games:  nil,
-		}); err != nil {
-			log.Fatalln(err)
-		}
-	} else {
-		fmt.Printf("sysop: found %+v\n", v)
-	}
-	for _, a := range s.ReadAll() {
-		fmt.Printf("readall: found %+v\n", a)
-		fmt.Printf("readall: salt %q secret %q\n", string(a.Salt), string(a.Secret))
-	}
-	for _, a := range s.ReadAll() {
-		if a.Handle != "sysop" {
-			_ = s.DeleteById(a.Id)
-		}
-	}
+	//psg, err := words.New(" ")
+	//if err != nil {
+	//	return err
+	//}
+	//s, err := json.NewAccountsDriver("accounts.json")
+	//if err != nil {
+	//	return err
+	//}
+	//v := s.Read(func(a json.Account) bool {
+	//	return a.Handle == "sysop"
+	//})
+	//if len(v) == 0 {
+	//	if err := s.Create(json.Account{
+	//		Id:     "",
+	//		Handle: "sysop",
+	//		Salt:   []byte("salt"),
+	//		Secret: []byte(psg.Generate(5)),
+	//		Roles:  []string{"sysop"},
+	//		Games:  nil,
+	//	}); err != nil {
+	//		log.Fatalln(err)
+	//	}
+	//} else {
+	//	fmt.Printf("sysop: found %+v\n", v)
+	//}
+	//for _, a := range s.ReadAll() {
+	//	fmt.Printf("readall: found %+v\n", a)
+	//	fmt.Printf("readall: salt %q secret %q\n", string(a.Salt), string(a.Secret))
+	//}
+	//for _, a := range s.ReadAll() {
+	//	if a.Handle != "sysop" {
+	//		_ = s.DeleteById(a.Id)
+	//	}
+	//}
 	return nil
 }

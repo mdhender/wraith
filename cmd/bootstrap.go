@@ -20,18 +20,22 @@ package cmd
 
 import (
 	"errors"
-	"github.com/mdhender/wraith/engine"
+	"github.com/mdhender/wraith/models"
+	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
 	"path/filepath"
-	"strings"
 )
 
 var globalBootstrap struct {
 	// overwrite any existing configuration only if set.
 	Force bool
-	// path to store data.
-	Store string
+
+	// database configuration
+	User       string
+	Password   string
+	Schema     string
+	SchemaFile string
 }
 
 var cmdBootstrap = &cobra.Command{
@@ -45,26 +49,45 @@ This includes the configuration file and starting data.`,
 		}
 		globalBase.ConfigFile = filepath.Clean(globalBase.ConfigFile)
 
-		// validate data path
-		globalBootstrap.Store = strings.TrimSpace(globalBootstrap.Store)
-		if globalBootstrap.Store == "" {
-			return errors.New("missing data path")
+		if globalBootstrap.User == "" {
+			return errors.New("missing database user")
 		}
-		globalBootstrap.Store = filepath.Clean(globalBootstrap.Store)
+		if globalBootstrap.Password == "" {
+			return errors.New("missing database password")
+		}
+		if globalBootstrap.Schema == "" {
+			return errors.New("missing database schema name")
+		}
+		if globalBootstrap.SchemaFile == "" {
+			return errors.New("missing schema generation file name")
+		}
 
-		_, err := engine.Bootstrap(globalBase.ConfigFile, globalBootstrap.Store, globalBootstrap.Force)
+		cfg, err := config.CreateGlobal(globalBase.ConfigFile, globalBootstrap.User, globalBootstrap.Password, globalBootstrap.Schema, globalBootstrap.SchemaFile, globalBootstrap.Force)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("bootstrapped new engine\n")
+		log.Printf("created %q\n", globalBase.ConfigFile)
+
+		s, err := models.Bootstrap(cfg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer s.Close()
+		log.Printf("bootstrapped models version %s\n", s.Version())
 
 		return nil
 	},
 }
 
 func init() {
-	cmdBootstrap.Flags().StringVar(&globalBootstrap.Store, "store", "", "path to store data files")
-	_ = cmdBootstrap.MarkFlagRequired("store")
+	cmdBootstrap.Flags().StringVar(&globalBootstrap.User, "user", "", "database user name")
+	_ = cmdBootstrap.MarkFlagRequired("user")
+	cmdBootstrap.Flags().StringVar(&globalBootstrap.Password, "password", "", "database password for user")
+	_ = cmdBootstrap.MarkFlagRequired("password")
+	cmdBootstrap.Flags().StringVar(&globalBootstrap.Schema, "schema", "", "schema name in database")
+	_ = cmdBootstrap.MarkFlagRequired("schema")
+	cmdBootstrap.Flags().StringVar(&globalBootstrap.SchemaFile, "schema-file", "", "path to schema generation file")
+	_ = cmdBootstrap.MarkFlagRequired("schema-file")
 	cmdBootstrap.Flags().BoolVar(&globalBootstrap.Force, "force", false, "force overwrite of existing configuration")
 
 	cmdBase.AddCommand(cmdBootstrap)

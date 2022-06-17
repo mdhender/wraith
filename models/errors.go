@@ -16,24 +16,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-package main
+package models
 
-import (
-	//"github.com/mdhender/wraith/internal/otohttp"
-	//"github.com/mdhender/wraith/internal/services/greeter"
-	//"github.com/mdhender/wraith/internal/services/identity"
-	"log"
-	"net/http"
-)
+import "errors"
 
-func main() {
-	//otoServer, _ := otohttp.NewServer()
-	//
-	//identity.RegisterIdentityService(otoServer, identity.Service{})
-	//greeter.RegisterGreeterService(otoServer, greeter.Service{})
-	//
-	//http.Handle("/oto/", otoServer)
-	//
-	log.Println("server listening on :8080")
-	log.Fatalln(http.ListenAndServe(":8080", nil))
-}
+var ErrMissingField = errors.New("missing field")
+var ErrNoConnection = errors.New("no connection")

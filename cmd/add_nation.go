@@ -72,7 +72,7 @@ var cmdAddNation = &cobra.Command{
 		log.Printf("loaded %q\n", cfgBase.Self)
 
 		// load the games store
-		cfgGames, err := engine.LoadGames(cfgBase.Store)
+		cfgGames, err := engine.LoadGames("D:\\wraith\\testdata")
 		if err != nil {
 			log.Fatal(err)
 		}

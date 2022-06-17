@@ -1,0 +1,83 @@
+// https://dbdiagram.io/d
+// https://dbdiagram.io/d/62aa6d739921fe2a9616366a
+
+Table users {
+  id int [pk, increment]
+  handle varchar
+  email varchar
+}
+
+Table units {
+  code varchar [pk]
+  name varchar
+}
+
+Table games {
+  id int [pk, increment]
+  name varchar
+  short_name varchar
+  turn_no int
+}
+
+Table nations {
+  id int [pk, increment]
+  game_id int [ref: > games.id]
+  name varchar
+}
+
+Table players {
+  id int [pk, increment]
+  user_id int [ref: > users.id]
+  game_id int [ref: > games.id]
+  nation_id int [ref: > nations.id]
+}
+
+Table systems {
+  id int [pk, increment]
+  game_id int [ref: > games.id]
+  x int
+  y int
+  z int
+}
+
+Table stars {
+  id int [pk, increment]
+  game_id int [ref: > games.id]
+  system_id int [ref: > systems.id]
+  kind varchar
+}
+
+Table orbits {
+  id int [pk, increment]
+  game_id int [ref: > games.id]
+  system_id int [ref: > systems.id]
+  star_id int [ref: > stars.id]
+  orbit_no int
+}
+
+Table planets {
+  id int [pk, increment]
+  game_id int [ref: > games.id]
+  system_id int [ref: > systems.id]
+  star_id int [ref: > stars.id]
+  orbit_id int [ref: > orbits.id]
+  orbit_no int
+}
+
+Table colonies {
+  id int [pk, increment]
+  game_id int [ref: > games.id]
+  system_id int [ref: > systems.id]
+  star_id int [ref: > stars.id]
+  orbit_id int [ref: > orbits.id]
+  controlled_by int [ref: > nations.id]
+  location int [ref: > planets.id]
+}
+
+Table inventory {
+  colony_id int [ref: > colonies.id]
+  unit varchar [ref: > units.code]
+  tech_level int
+  qty_operational int
+  qty_stowed int
+}

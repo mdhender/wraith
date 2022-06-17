@@ -16,24 +16,41 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-package main
+package models
 
 import (
-	//"github.com/mdhender/wraith/internal/otohttp"
-	//"github.com/mdhender/wraith/internal/services/greeter"
-	//"github.com/mdhender/wraith/internal/services/identity"
+	"fmt"
+	"github.com/mdhender/wraith/storage/config"
 	"log"
-	"net/http"
+	"os"
 )
 
-func main() {
-	//otoServer, _ := otohttp.NewServer()
-	//
-	//identity.RegisterIdentityService(otoServer, identity.Service{})
-	//greeter.RegisterGreeterService(otoServer, greeter.Service{})
-	//
-	//http.Handle("/oto/", otoServer)
-	//
-	log.Println("server listening on :8080")
-	log.Fatalln(http.ListenAndServe(":8080", nil))
+// Bootstrap creates a new store.
+func Bootstrap(cfg *config.Global) (*Store, error) {
+	s, err := Open(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	// load and run the schema generation script
+	b, err := os.ReadFile(cfg.SchemaFile)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("loaded schema file %q\n", cfg.SchemaFile)
+	if _, err = s.db.Exec(string(b)); err != nil {
+		return nil, err
+	}
+	log.Printf("executed schema file %q\n", cfg.SchemaFile)
+
+	// create the default users required by the engine
+	stmtUsers := fmt.Sprintf("insert into users(email, handle, hashed_secret) VALUES (?, ?, ?)")
+	for _, user := range []string{"sysop", "batch"} {
+		if _, err = s.db.Exec(stmtUsers, user, user, "*login-not-allowed*"); err != nil {
+			return nil, err
+		}
+		log.Printf("created user %q\n", user)
+	}
+
+	return s, nil
 }

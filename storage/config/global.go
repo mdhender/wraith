@@ -28,18 +28,27 @@ import (
 
 // Global configuration
 type Global struct {
-	Self  string `json:"self"` // path to this file
-	Store string `json:"data"` // path to data store
+	Self       string `json:"self"` // path to this file
+	User       string `json:"user"`
+	Password   string `json:"password"`
+	Schema     string `json:"schema"`
+	SchemaFile string `json:"schema-file"`
 }
 
 // CreateGlobal creates a new store.
 // Assumes that the path to store the data already exists.
 // It returns any errors.
-func CreateGlobal(filename, store string, overwrite bool) (*Global, error) {
-	s := &Global{Self: filepath.Clean(filename), Store: filepath.Clean(store)}
+func CreateGlobal(filename, user, password, schema, schemaFile string, overwrite bool) (*Global, error) {
+	s := &Global{
+		Self:       filepath.Clean(filename),
+		User:       user,
+		Password:   password,
+		Schema:     schema,
+		SchemaFile: schemaFile,
+	}
 	if _, err := os.Stat(s.Self); err == nil {
 		if !overwrite {
-			return nil, errors.New("global store exists")
+			return nil, errors.New("configuration file exists")
 		}
 	}
 	return s, s.Write()

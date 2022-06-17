@@ -20,14 +20,18 @@ package cmd
 
 import (
 	"errors"
-	"github.com/mdhender/wraith/engine"
+	"github.com/mdhender/wraith/models"
+	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"strings"
 )
 
 var globalCreateUser struct {
+	Email  string
 	Handle string
+	Secret string
 }
 
 var cmdCreateUser = &cobra.Command{
@@ -39,30 +43,60 @@ var cmdCreateUser = &cobra.Command{
 			return errors.New("missing config file name")
 		}
 
-		// validate the new user's handle
-		globalCreateUser.Handle = strings.TrimSpace(globalCreateUser.Handle)
+		// validate the new user's information
+		globalCreateUser.Email = strings.ToLower(strings.TrimSpace(globalCreateUser.Email))
+		if globalCreateUser.Email == "" {
+			return errors.New("missing email")
+		}
+		globalCreateUser.Handle = strings.ToLower(strings.TrimSpace(globalCreateUser.Handle))
 		if globalCreateUser.Handle == "" {
 			return errors.New("missing handle")
 		}
+		if globalCreateUser.Secret == "" {
+			return errors.New("missing secret")
+		} else if len(globalCreateUser.Secret) < 8 {
+			return errors.New("secret too short")
+		} else {
+			hashedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(globalCreateUser.Secret), bcrypt.MinCost)
+			if err != nil {
+				log.Fatal(err)
+			}
+			globalCreateUser.Secret = string(hashedPasswordBytes)
+		}
 
-		// load the engine
-		e, err := engine.New(globalBase.ConfigFile)
+		cfg, err := config.LoadGlobal(globalBase.ConfigFile)
 		if err != nil {
 			log.Fatal(err)
 		}
+		log.Printf("loaded %q\n", cfg.Self)
 
-		err = e.AddUser(globalCreateUser.Handle)
+		s, err := models.Open(cfg)
 		if err != nil {
 			log.Fatal(err)
 		}
+		defer s.Close()
+
+		u, err := s.CreateUser(models.User{
+			Email:        globalCreateUser.Email,
+			Handle:       globalCreateUser.Handle,
+			HashedSecret: globalCreateUser.Secret,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("user %v\n", u)
 
 		return nil
 	},
 }
 
 func init() {
+	cmdCreateUser.Flags().StringVar(&globalCreateUser.Email, "email", "", "e-mail account for the new user")
+	_ = cmdCreateUser.MarkFlagRequired("email")
 	cmdCreateUser.Flags().StringVar(&globalCreateUser.Handle, "handle", "", "screen name of the new user")
 	_ = cmdCreateUser.MarkFlagRequired("handle")
+	cmdCreateUser.Flags().StringVar(&globalCreateUser.Secret, "secret", "", "secret password for the new user")
+	_ = cmdCreateUser.MarkFlagRequired("secret")
 
 	cmdCreate.AddCommand(cmdCreateUser)
 }

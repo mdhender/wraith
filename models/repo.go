@@ -16,24 +16,47 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-package main
+package models
 
 import (
-	//"github.com/mdhender/wraith/internal/otohttp"
-	//"github.com/mdhender/wraith/internal/services/greeter"
-	//"github.com/mdhender/wraith/internal/services/identity"
+	"database/sql"
+	"fmt"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/mdhender/wraith/storage/config"
 	"log"
-	"net/http"
+	"time"
 )
 
-func main() {
-	//otoServer, _ := otohttp.NewServer()
-	//
-	//identity.RegisterIdentityService(otoServer, identity.Service{})
-	//greeter.RegisterGreeterService(otoServer, greeter.Service{})
-	//
-	//http.Handle("/oto/", otoServer)
-	//
-	log.Println("server listening on :8080")
-	log.Fatalln(http.ListenAndServe(":8080", nil))
+type Store struct {
+	db      *sql.DB
+	version string
+}
+
+func Open(cfg *config.Global) (*Store, error) {
+	dsn := fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s?multiStatements=true", cfg.User, cfg.Password, cfg.Schema)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, err
+	} else if err := db.Ping(); err != nil {
+		return nil, err
+	}
+	db.SetConnMaxLifetime(time.Minute * 3)
+	maxConns := 10
+	db.SetMaxOpenConns(maxConns)
+	db.SetMaxIdleConns(maxConns)
+	return &Store{db: db, version: "0.1.0"}, nil
+}
+
+func (s *Store) Close() {
+	if s.db == nil {
+		return
+	}
+	if err := s.db.Close(); err != nil {
+		log.Printf("%+v\n", err)
+	}
+	s.db = nil
+}
+
+func (s *Store) Version() string {
+	return s.version
 }

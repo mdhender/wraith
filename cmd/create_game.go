@@ -74,7 +74,7 @@ var cmdCreateGame = &cobra.Command{
 		log.Printf("loaded %q\n", cfgBase.Self)
 
 		// load the games store
-		cfgGames, err := engine.LoadGames(cfgBase.Store)
+		cfgGames, err := engine.LoadGames("D:\\wraith\\testdata")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -88,7 +88,7 @@ var cmdCreateGame = &cobra.Command{
 		}
 
 		// create the folders for the new game store
-		gameFolder := filepath.Clean(filepath.Join(cfgBase.Store, "game", globalCreateGame.Name))
+		gameFolder := filepath.Clean(filepath.Join("D:\\wraith\\testdata", "game", globalCreateGame.Name))
 		if _, err = os.Stat(gameFolder); err != nil {
 			log.Printf("creating game folder %q\n", gameFolder)
 			if err = os.MkdirAll(gameFolder, 0700); err != nil {
