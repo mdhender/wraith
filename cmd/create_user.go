@@ -44,11 +44,11 @@ var cmdCreateUser = &cobra.Command{
 		}
 
 		// validate the new user's information
-		globalCreateUser.Email = strings.ToLower(strings.TrimSpace(globalCreateUser.Email))
+		globalCreateUser.Email = strings.TrimSpace(globalCreateUser.Email)
 		if globalCreateUser.Email == "" {
 			return errors.New("missing email")
 		}
-		globalCreateUser.Handle = strings.ToLower(strings.TrimSpace(globalCreateUser.Handle))
+		globalCreateUser.Handle = strings.TrimSpace(globalCreateUser.Handle)
 		if globalCreateUser.Handle == "" {
 			return errors.New("missing handle")
 		}

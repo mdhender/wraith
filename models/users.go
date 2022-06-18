@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"log"
 	"strings"
+	"unicode"
 )
 
 // User data
@@ -41,9 +42,16 @@ func (s *Store) CreateUser(u User) (User, error) {
 
 	if u.Email = strings.ToLower(strings.TrimSpace(u.Email)); u.Email == "" {
 		return User{}, errors.Wrap(ErrMissingField, "email")
-	} else if u.Handle = strings.ToLower(strings.TrimSpace(u.Handle)); u.Handle == "" {
+	}
+	if u.Handle = strings.ToLower(strings.TrimSpace(u.Handle)); u.Handle == "" {
 		return User{}, errors.Wrap(ErrMissingField, "handle")
-	} else if u.HashedSecret == "" {
+	}
+	for _, r := range u.Handle { // check for invalid runes in the field
+		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_') {
+			return User{}, errors.Wrap(ErrInvalidField, "handle: invalid rune")
+		}
+	}
+	if u.HashedSecret == "" {
 		return User{}, errors.Wrap(ErrMissingField, "secret")
 	}
 
@@ -88,7 +96,7 @@ func (s *Store) SelectUserByEmail(email string) (User, error) {
 	}(stmt)
 
 	var u User
-	err = stmt.QueryRow(email).Scan(&u.Id, &u.Email, &u.Handle, &u.HashedSecret)
+	err = stmt.QueryRow(strings.ToLower(email)).Scan(&u.Id, &u.Email, &u.Handle, &u.HashedSecret)
 	if err != nil {
 		return User{}, err
 	}
@@ -101,7 +109,6 @@ func (s *Store) SelectUserByHandle(handle string) (User, error) {
 	if s.db == nil {
 		return User{}, ErrNoConnection
 	}
-	handle = strings.ToLower(handle)
 
 	stmt, err := s.db.Prepare("select id, email, handle, hashed_secret from users where handle = ?")
 	if err != nil {
@@ -114,7 +121,7 @@ func (s *Store) SelectUserByHandle(handle string) (User, error) {
 	}(stmt)
 
 	var u User
-	err = stmt.QueryRow(handle).Scan(&u.Id, &u.Email, &u.Handle, &u.HashedSecret)
+	err = stmt.QueryRow(strings.ToLower(handle)).Scan(&u.Id, &u.Email, &u.Handle, &u.HashedSecret)
 	if err != nil {
 		return User{}, err
 	}

@@ -20,19 +20,17 @@ package cmd
 
 import (
 	"errors"
-	"github.com/mdhender/wraith/engine"
+	"github.com/mdhender/wraith/models"
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
-	"os"
-	"path/filepath"
 	"strings"
-	"unicode"
 )
 
 var globalCreateGame struct {
-	Name        string
-	Description string
+	Name       string
+	ShortName  string
+	TurnNumber int
 }
 
 var cmdCreateGame = &cobra.Command{
@@ -44,110 +42,50 @@ var cmdCreateGame = &cobra.Command{
 			return errors.New("missing config file name")
 		}
 
-		// validate the new game name
+		// validate the new game information
+		globalCreateGame.ShortName = strings.ToUpper(strings.TrimSpace(globalCreateGame.ShortName))
+		if globalCreateGame.ShortName == "" {
+			return errors.New("missing short name")
+		}
 		globalCreateGame.Name = strings.TrimSpace(globalCreateGame.Name)
 		if globalCreateGame.Name == "" {
-			return errors.New("missing config game name")
+			globalCreateGame.Name = globalCreateGame.ShortName
 		}
-		for _, r := range globalCreateGame.Name {
-			if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-') {
-				return errors.New("invalid rune in game name")
-			}
+		if globalCreateGame.TurnNumber < 0 {
+			return errors.New("invalid turn number")
 		}
 
-		// validate the new game description
-		globalCreateGame.Description = strings.TrimSpace(globalCreateGame.Description)
-		if globalCreateGame.Description == "" {
-			globalCreateGame.Description = globalCreateGame.Name
-		}
-		for _, r := range globalCreateGame.Description {
-			if r == '\'' || r == '"' || r == '`' || r == '&' || r == '<' || r == '>' || unicode.IsControl(r) {
-				return errors.New("invalid rune in game long name")
-			}
-		}
-
-		// load the base configuration to find the games store
-		cfgBase, err := config.LoadGlobal(globalBase.ConfigFile)
+		cfg, err := config.LoadGlobal(globalBase.ConfigFile)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded %q\n", cfgBase.Self)
+		log.Printf("loaded %q\n", cfg.Self)
 
-		// load the games store
-		cfgGames, err := engine.LoadGames("D:\\wraith\\testdata")
+		s, err := models.Open(cfg)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded games store %q\n", cfgGames.Store)
+		defer s.Close()
 
-		// error on duplicate name
-		for _, g := range cfgGames.Index {
-			if strings.ToLower(g.Id) == strings.ToLower(globalCreateGame.Name) {
-				log.Fatalf("duplicate game name %q", globalCreateGame.Name)
-			}
-		}
-
-		// create the folders for the new game store
-		gameFolder := filepath.Clean(filepath.Join("D:\\wraith\\testdata", "game", globalCreateGame.Name))
-		if _, err = os.Stat(gameFolder); err != nil {
-			log.Printf("creating game folder %q\n", gameFolder)
-			if err = os.MkdirAll(gameFolder, 0700); err != nil {
-				log.Fatal(err)
-			}
-			log.Printf("created game folder %q\n", gameFolder)
-		}
-		for _, dir := range []string{"nation", "nations", "turns"} {
-			folder := filepath.Join(gameFolder, dir)
-			if _, err = os.Stat(folder); err != nil {
-				log.Printf("creating game %s folder %q\n", dir, folder)
-				if err = os.MkdirAll(folder, 0700); err != nil {
-					log.Fatal(err)
-				}
-				log.Printf("created game %s folder %q\n", dir, folder)
-			}
-		}
-
-		// create the game store
-		cfgGame, err := engine.CreateGame(strings.ToUpper(globalCreateGame.Name), globalCreateGame.Description, gameFolder, false)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("created game store %q\n", cfgGame.Store)
-
-		// create the nations store
-		cfgNations, err := engine.CreateNations(cfgGame.Store, false)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("created nations store %q\n", cfgNations.Store)
-
-		// create the turns store
-		cfgTurns, err := engine.CreateTurns(cfgGame.Store, false)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("created turns store %q\n", cfgTurns.Store)
-
-		// and update the games store
-		cfgGames.Index = append(cfgGames.Index, engine.GamesIndex{
-			Id:    cfgGame.Id,
-			Store: cfgGame.Store,
+		g, err := s.CreateGame(models.Game{
+			Id:         globalCreateGame.ShortName,
+			Name:       globalCreateGame.Name,
+			TurnNumber: globalCreateGame.TurnNumber,
 		})
-		//if err := cfgGames.Write(); err != nil {
-		//	log.Printf("internal error - games store corrupted\n")
-		//	log.Fatalf("%+v\n", err)
-		//}
-		log.Printf("updated games store %q\n", cfgGames.Store)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("game %v\n", g)
 
 		return nil
 	},
 }
 
 func init() {
-	cmdCreateGame.Flags().StringVar(&globalCreateGame.Name, "name", "", "name of new game (eg PT-1)")
-	_ = cmdCreateGame.MarkFlagRequired("name")
-	cmdCreateGame.Flags().StringVar(&globalCreateGame.Description, "descr", "", "descriptive name of new game")
-	_ = cmdCreateGame.MarkFlagRequired("descr")
+	cmdCreateGame.Flags().StringVar(&globalCreateGame.ShortName, "short-name", "", "report code for new game (eg PT-1)")
+	_ = cmdCreateGame.MarkFlagRequired("short-name")
+	cmdCreateGame.Flags().StringVar(&globalCreateGame.Name, "name", "", "descriptive name of new game")
+	cmdCreateGame.Flags().IntVar(&globalCreateGame.TurnNumber, "turn-no", 0, "initial turn number for game")
 
 	cmdCreate.AddCommand(cmdCreateGame)
 }

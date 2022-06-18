@@ -16,179 +16,112 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-DROP TABLE IF EXISTS `inventory`;
-DROP TABLE IF EXISTS `colonies`;
-DROP TABLE IF EXISTS `planets`;
-DROP TABLE IF EXISTS `orbits`;
-DROP TABLE IF EXISTS `stars`;
-DROP TABLE IF EXISTS `systems`;
-DROP TABLE IF EXISTS `players`;
-DROP TABLE IF EXISTS `nations`;
-DROP TABLE IF EXISTS `games`;
-DROP TABLE IF EXISTS `users`;
-DROP TABLE IF EXISTS `units`;
-
-CREATE TABLE `users`
+DROP TABLE IF EXISTS users;
+CREATE TABLE users
 (
-    `id`            int PRIMARY KEY AUTO_INCREMENT,
-    `email`         varchar(255),
-    `handle`        varchar(255),
-    `hashed_secret` varchar(255)
+    id            int PRIMARY KEY AUTO_INCREMENT,
+    email         varchar(255) UNIQUE,
+    handle        varchar(255) UNIQUE,
+    hashed_secret varchar(255)
 );
 
-ALTER TABLE `users`
-    ADD UNIQUE (`email`);
+# CREATE TRIGGER ins_users BEFORE INSERT ON users
+#     FOR EACH ROW
+# BEGIN
+#     SET NEW.handle_lower = lower(NEW.handle);
+#     SET NEW.email = lower(NEW.email);
+# END;
 
-ALTER TABLE `users`
-    ADD UNIQUE (`handle`);
-
-CREATE TABLE `games`
+DROP TABLE IF EXISTS games;
+CREATE TABLE games
 (
-    `id`         int PRIMARY KEY AUTO_INCREMENT,
-    `name`       varchar(255),
-    `short_name` varchar(8),
-    `turn_no`    int
+    id      varchar(8) PRIMARY KEY,
+    name    varchar(255),
+    turn_no int
 );
 
-CREATE TABLE `nations`
+DROP TABLE IF EXISTS systems;
+CREATE TABLE systems
 (
-    `id`      int PRIMARY KEY AUTO_INCREMENT,
-    `game_id` int,
-    `name`    varchar(255)
+    game_id varchar(8),
+    id      int PRIMARY KEY AUTO_INCREMENT,
+    x       int,
+    y       int,
+    z       int
 );
 
-CREATE TABLE `players`
+DROP TABLE IF EXISTS stars;
+CREATE TABLE stars
 (
-    `id`        int PRIMARY KEY AUTO_INCREMENT,
-    `user_id`   int,
-    `game_id`   int,
-    `nation_id` int
+    game_id   varchar(8),
+    system_id int,
+    id        int PRIMARY KEY AUTO_INCREMENT,
+    kind      varchar(255)
 );
 
-CREATE TABLE `systems`
+DROP TABLE IF EXISTS orbits;
+CREATE TABLE orbits
 (
-    `id`      int PRIMARY KEY AUTO_INCREMENT,
-    `game_id` int,
-    `x`       int,
-    `y`       int,
-    `z`       int
+    id        int PRIMARY KEY AUTO_INCREMENT,
+    game_id   int,
+    system_id int,
+    star_id   int,
+    orbit_no  int
 );
 
-CREATE TABLE `stars`
+DROP TABLE IF EXISTS planets;
+CREATE TABLE planets
 (
-    `id`        int PRIMARY KEY AUTO_INCREMENT,
-    `game_id`   int,
-    `system_id` int,
-    `kind`      varchar(255)
+    id        int PRIMARY KEY AUTO_INCREMENT,
+    game_id   int,
+    system_id int,
+    star_id   int,
+    orbit_id  int,
+    orbit_no  int
 );
 
-CREATE TABLE `orbits`
+DROP TABLE IF EXISTS nations;
+CREATE TABLE nations
 (
-    `id`        int PRIMARY KEY AUTO_INCREMENT,
-    `game_id`   int,
-    `system_id` int,
-    `star_id`   int,
-    `orbit_no`  int
+    game_id varchar(8),
+    id      int PRIMARY KEY AUTO_INCREMENT,
+    name    varchar(255)
 );
 
-CREATE TABLE `planets`
+DROP TABLE IF EXISTS players;
+CREATE TABLE players
 (
-    `id`        int PRIMARY KEY AUTO_INCREMENT,
-    `game_id`   int,
-    `system_id` int,
-    `star_id`   int,
-    `orbit_id`  int,
-    `orbit_no`  int
+    id        int PRIMARY KEY AUTO_INCREMENT,
+    user_id   int,
+    game_id   int,
+    nation_id int
 );
 
-CREATE TABLE `colonies`
+DROP TABLE IF EXISTS colonies;
+CREATE TABLE colonies
 (
-    `id`            int PRIMARY KEY AUTO_INCREMENT,
-    `game_id`       int,
-    `system_id`     int,
-    `star_id`       int,
-    `orbit_id`      int,
-    `controlled_by` int,
-    `location`      int
+    id            int PRIMARY KEY AUTO_INCREMENT,
+    game_id       int,
+    system_id     int,
+    star_id       int,
+    orbit_id      int,
+    controlled_by int,
+    location      int
 );
 
-CREATE TABLE `inventory`
+DROP TABLE IF EXISTS inventory;
+CREATE TABLE inventory
 (
-    `colony_id`       int,
-    `unit`            varchar(255),
-    `tech_level`      int,
-    `qty_operational` int,
-    `qty_stowed`      int
+    colony_id       int,
+    unit            varchar(255),
+    tech_level      int,
+    qty_operational int,
+    qty_stowed      int
 );
 
-CREATE TABLE `units`
+DROP TABLE IF EXISTS units;
+CREATE TABLE units
 (
-    `code` varchar(255) PRIMARY KEY,
-    `name` varchar(255)
+    code varchar(255) PRIMARY KEY,
+    name varchar(255)
 );
-
-ALTER TABLE `nations`
-    ADD FOREIGN KEY (`game_id`) REFERENCES `games` (`id`);
-
-ALTER TABLE `players`
-    ADD FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
-
-ALTER TABLE `players`
-    ADD FOREIGN KEY (`game_id`) REFERENCES `games` (`id`);
-
-ALTER TABLE `players`
-    ADD FOREIGN KEY (`nation_id`) REFERENCES `nations` (`id`);
-
-ALTER TABLE `systems`
-    ADD FOREIGN KEY (`game_id`) REFERENCES `games` (`id`);
-
-ALTER TABLE `stars`
-    ADD FOREIGN KEY (`game_id`) REFERENCES `games` (`id`);
-
-ALTER TABLE `stars`
-    ADD FOREIGN KEY (`system_id`) REFERENCES `systems` (`id`);
-
-ALTER TABLE `orbits`
-    ADD FOREIGN KEY (`game_id`) REFERENCES `games` (`id`);
-
-ALTER TABLE `orbits`
-    ADD FOREIGN KEY (`system_id`) REFERENCES `systems` (`id`);
-
-ALTER TABLE `orbits`
-    ADD FOREIGN KEY (`star_id`) REFERENCES `stars` (`id`);
-
-ALTER TABLE `planets`
-    ADD FOREIGN KEY (`game_id`) REFERENCES `games` (`id`);
-
-ALTER TABLE `planets`
-    ADD FOREIGN KEY (`system_id`) REFERENCES `systems` (`id`);
-
-ALTER TABLE `planets`
-    ADD FOREIGN KEY (`star_id`) REFERENCES `stars` (`id`);
-
-ALTER TABLE `planets`
-    ADD FOREIGN KEY (`orbit_id`) REFERENCES `orbits` (`id`);
-
-ALTER TABLE `colonies`
-    ADD FOREIGN KEY (`game_id`) REFERENCES `games` (`id`);
-
-ALTER TABLE `colonies`
-    ADD FOREIGN KEY (`system_id`) REFERENCES `systems` (`id`);
-
-ALTER TABLE `colonies`
-    ADD FOREIGN KEY (`star_id`) REFERENCES `stars` (`id`);
-
-ALTER TABLE `colonies`
-    ADD FOREIGN KEY (`orbit_id`) REFERENCES `orbits` (`id`);
-
-ALTER TABLE `colonies`
-    ADD FOREIGN KEY (`controlled_by`) REFERENCES `nations` (`id`);
-
-ALTER TABLE `colonies`
-    ADD FOREIGN KEY (`location`) REFERENCES `planets` (`id`);
-
-ALTER TABLE `inventory`
-    ADD FOREIGN KEY (`colony_id`) REFERENCES `colonies` (`id`);
-
-ALTER TABLE `inventory`
-    ADD FOREIGN KEY (`unit`) REFERENCES `units` (`code`);

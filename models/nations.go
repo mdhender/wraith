@@ -18,8 +18,22 @@
 
 package models
 
-import "errors"
-
-var ErrInvalidField = errors.New("invalid field")
-var ErrMissingField = errors.New("missing field")
-var ErrNoConnection = errors.New("no connection")
+type Nations struct {
+	Id          int
+	Name        string
+	Description string
+	Speciality  string
+	Government  struct {
+		Kind string
+		Name string
+	}
+	HomeWorld struct {
+		Name     string
+		Location struct {
+			X     int
+			Y     int
+			Z     int
+			Orbit int
+		}
+	}
+}
