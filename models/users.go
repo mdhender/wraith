@@ -21,6 +21,7 @@ package models
 import (
 	"database/sql"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"strings"
 	"time"
@@ -53,13 +54,13 @@ func (s *Store) CreateUser(u User) (User, error) {
 		return User{}, errors.Wrap(ErrMissingField, "handle")
 	}
 	for _, r := range u.Handle { // check for invalid runes in the field
-		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_') {
+		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' || r == '.') {
 			return User{}, errors.Wrap(ErrInvalidField, "handle: invalid rune")
 		}
 	}
 
-	// check for duplicate email
-	stmtDup, err := s.db.Prepare("select ifnull(count(id), 0) from user where email = ?")
+	// check for duplicate email or handle
+	stmtDup, err := s.db.Prepare("select ifnull(count(id), 0) from user where email = ? or handle = ?")
 	if err != nil {
 		return User{}, err
 	}
@@ -69,12 +70,12 @@ func (s *Store) CreateUser(u User) (User, error) {
 		}
 	}(stmtDup)
 	var count int
-	err = stmtDup.QueryRow(u.Email).Scan(&count)
+	err = stmtDup.QueryRow(u.Email, u.Handle).Scan(&count)
 	if err != nil {
 		return User{}, err
 	}
 	if count != 0 {
-		return User{}, errors.Wrap(ErrDuplicateKey, "email")
+		return User{}, ErrDuplicateKey
 	}
 
 	// get sequence and add effective dates
@@ -89,7 +90,7 @@ func (s *Store) CreateUser(u User) (User, error) {
 			log.Printf("%+v\n", err)
 		}
 	}(stmt)
-	_, err = stmt.Exec(u.Id, s.timeToDate(u.EffDt), s.timeToDate(u.EndDt), u.Email, u.Handle)
+	_, err = stmt.Exec(u.Id, u.EffDt, u.EndDt, u.Email, u.Handle)
 	if err != nil {
 		return User{}, errors.Wrap(err, "exec insert new user")
 	}
@@ -109,6 +110,30 @@ func (s *Store) CreateUser(u User) (User, error) {
 	}
 
 	return u, nil
+}
+
+func (s *Store) UpdateUserSecret(id int, secret string) error {
+	if s.db == nil {
+		return ErrNoConnection
+	}
+	stmtSecret, err := s.db.Prepare("update user_secret set hashed_secret = ? where id = ?")
+	if err != nil {
+		return errors.Wrap(err, "prepare update user secret")
+	}
+	defer func(stmt *sql.Stmt) {
+		if err := stmt.Close(); err != nil {
+			log.Printf("%+v\n", err)
+		}
+	}(stmtSecret)
+	hashedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.MinCost)
+	if err != nil {
+		return errors.Wrap(err, "hash update user secret")
+	}
+	_, err = stmtSecret.Exec(string(hashedPasswordBytes), id)
+	if err != nil {
+		return errors.Wrap(err, "exec update user secret")
+	}
+	return nil
 }
 
 func (s *Store) nextUserId() (id int) {
@@ -143,12 +168,10 @@ func (s *Store) SelectUserByEmail(email string) (User, error) {
 	}(stmt)
 
 	var u User
-	var effDt, endDt string
-	err = stmt.QueryRow(strings.ToLower(email)).Scan(&u.Id, &effDt, &endDt, &u.Email, &u.Handle)
+	err = stmt.QueryRow(strings.ToLower(email)).Scan(&u.Id, &u.EffDt, &u.EndDt, &u.Email, &u.Handle)
 	if err != nil {
 		return User{}, err
 	}
-	u.EffDt, u.EndDt = s.dateToTime(effDt), s.dateToTime(endDt)
 
 	return u, nil
 }
@@ -170,12 +193,10 @@ func (s *Store) SelectUserByHandle(handle string) (User, error) {
 	}(stmt)
 
 	var u User
-	var effDt, endDt string
-	err = stmt.QueryRow(strings.ToLower(handle)).Scan(&u.Id, &effDt, &endDt, &u.Email, &u.Handle)
+	err = stmt.QueryRow(strings.ToLower(handle)).Scan(&u.Id, &u.EffDt, &u.EndDt, &u.Email, &u.Handle)
 	if err != nil {
 		return User{}, err
 	}
-	u.EffDt, u.EndDt = s.dateToTime(effDt), s.dateToTime(endDt)
 
 	return u, nil
 }
@@ -197,12 +218,10 @@ func (s *Store) SelectUserById(id int) (User, error) {
 	}(stmt)
 
 	var u User
-	var effDt, endDt string
 	err = stmt.QueryRow(id).Scan(&u.Id, &u.EffDt, &u.EndDt, &u.Email, &u.Handle)
 	if err != nil {
 		return User{}, err
 	}
-	u.EffDt, u.EndDt = s.dateToTime(effDt), s.dateToTime(endDt)
 
 	return u, nil
 }

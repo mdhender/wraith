@@ -35,7 +35,7 @@ type Store struct {
 }
 
 func Open(cfg *config.Global) (*Store, error) {
-	dsn := fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s?multiStatements=true", cfg.User, cfg.Password, cfg.Schema)
+	dsn := fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s?multiStatements=true&parseTime=true", cfg.User, cfg.Password, cfg.Schema)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
@@ -66,16 +66,4 @@ func (s *Store) Close() {
 
 func (s *Store) Version() string {
 	return s.version
-}
-
-func (s *Store) dateToTime(date string) time.Time {
-	t, err := time.Parse("2006-01-02", date)
-	if err != nil {
-		panic(err)
-	}
-	return t
-}
-
-func (s *Store) timeToDate(t time.Time) string {
-	return t.Format("2006-01-02")
 }

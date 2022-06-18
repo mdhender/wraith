@@ -20,8 +20,8 @@ DROP TABLE IF EXISTS user;
 CREATE TABLE user
 (
     id     int         not null,
-    effdt  varchar(10) not null,
-    enddt  varchar(10) not null,
+    effdt  datetime    not null,
+    enddt  datetime    not null,
     email  varchar(64) not null,
     handle varchar(16) not null
 );
@@ -31,7 +31,7 @@ ALTER TABLE user
 DROP TABLE IF EXISTS user_secret;
 CREATE TABLE user_secret
 (
-    id            int not null,
+    id            int         not null,
     hashed_secret varchar(64) not null
 );
 ALTER TABLE user_secret

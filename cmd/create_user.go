@@ -23,7 +23,6 @@ import (
 	"github.com/mdhender/wraith/models"
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/bcrypt"
 	"log"
 	"strings"
 )
@@ -52,16 +51,8 @@ var cmdCreateUser = &cobra.Command{
 		if globalCreateUser.Handle == "" {
 			return errors.New("missing handle")
 		}
-		if globalCreateUser.Secret == "" {
-			globalCreateUser.Secret = "*login-not-permitted*"
-		} else if len(globalCreateUser.Secret) < 8 {
+		if len(globalCreateUser.Secret) < 8 {
 			return errors.New("secret too short")
-		} else {
-			hashedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(globalCreateUser.Secret), bcrypt.MinCost)
-			if err != nil {
-				log.Fatal(err)
-			}
-			globalCreateUser.Secret = string(hashedPasswordBytes)
 		}
 
 		cfg, err := config.LoadGlobal(globalBase.ConfigFile)
@@ -83,6 +74,12 @@ var cmdCreateUser = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		err = s.UpdateUserSecret(u.Id, globalCreateUser.Secret)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		log.Printf("user %v\n", u)
 
 		return nil
