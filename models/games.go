@@ -23,31 +23,45 @@ import (
 	"github.com/pkg/errors"
 	"log"
 	"strings"
+	"time"
 	"unicode"
 )
 
+type Game struct {
+	Id        int
+	EffDt     time.Time
+	EndDt     time.Time
+	ShortName string
+	Name      string
+}
+
+type GameTurn struct {
+	GameId int
+	TurnNo int
+	EffDt  time.Time
+	EndDt  time.Time
+}
+
 // CreateGame adds a new game to the store if it passes validation
-func (s *Store) CreateGame(g Game) (Game, error) {
+func (s *Store) CreateGame(name, shortName string, startDt time.Time) (Game, error) {
 	if s.db == nil {
 		return Game{}, ErrNoConnection
 	}
 
-	if g.Id = strings.ToUpper(strings.TrimSpace(g.Id)); g.Id == "" {
-		return Game{}, errors.Wrap(ErrMissingField, "id")
+	if shortName = strings.ToUpper(strings.TrimSpace(shortName)); shortName == "" {
+		return Game{}, errors.Wrap(ErrMissingField, "short name")
 	}
-	for _, r := range g.Id { // check for invalid runes in the field
+	for _, r := range shortName { // check for invalid runes in the field
 		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_') {
-			return Game{}, errors.Wrap(ErrInvalidField, "id: invalid rune")
+			return Game{}, errors.Wrap(ErrInvalidField, "short name: invalid rune")
 		}
 	}
-	if g.Name = strings.TrimSpace(g.Name); g.Name == "" {
-		g.Name = g.Id
-	}
-	if g.TurnNumber < 0 {
-		return Game{}, errors.Wrap(ErrInvalidField, "turn number")
+	if name = strings.TrimSpace(name); name == "" {
+		name = shortName
 	}
 
-	stmt, err := s.db.Prepare("insert into games (id, name, turn_no) values(?, ?, ?)")
+	// check for duplicate keys
+	stmtDup, err := s.db.Prepare("select ifnull(count(id), 0) from game where short_name = ?")
 	if err != nil {
 		return Game{}, err
 	}
@@ -55,12 +69,65 @@ func (s *Store) CreateGame(g Game) (Game, error) {
 		if err := stmt.Close(); err != nil {
 			log.Printf("%+v\n", err)
 		}
-	}(stmt)
+	}(stmtDup)
+	var count int
+	err = stmtDup.QueryRow(shortName).Scan(&count)
+	if err != nil {
+		return Game{}, err
+	}
+	if count != 0 {
+		return Game{}, ErrDuplicateKey
+	}
 
-	_, err = stmt.Exec(g.Id, g.Name, g.TurnNumber)
+	g := Game{
+		Id:        s.nextGameId(),
+		EffDt:     startDt,
+		EndDt:     s.endOfTime,
+		ShortName: shortName,
+		Name:      name,
+	}
+
+	createGame, err := s.db.Prepare("insert into game (id, effdt, enddt, short_name, name) values(?, ?, ?, ?, ?)")
+	if err != nil {
+		return Game{}, err
+	}
+	defer func(stmt *sql.Stmt) {
+		if err := stmt.Close(); err != nil {
+			log.Printf("%+v\n", err)
+		}
+	}(createGame)
+	_, err = createGame.Exec(g.Id, g.EffDt, g.EndDt, g.ShortName, g.Name)
+	if err != nil {
+		return Game{}, err
+	}
+
+	createTurn, err := s.db.Prepare("insert into game_turn (game_id, turn_no, effdt, enddt) values(?, ?, ?, ?)")
+	if err != nil {
+		return Game{}, err
+	}
+	defer func(stmt *sql.Stmt) {
+		if err := stmt.Close(); err != nil {
+			log.Printf("%+v\n", err)
+		}
+	}(createTurn)
+	_, err = createTurn.Exec(g.Id, 0, startDt, s.endOfTime)
 	if err != nil {
 		return Game{}, err
 	}
 
 	return g, nil
+}
+
+func (s *Store) nextGameId() (id int) {
+	stmt, err := s.db.Prepare("select ifnull(max(id), 0) from game")
+	if err != nil {
+		return 0
+	}
+	defer func(stmt *sql.Stmt) {
+		if err := stmt.Close(); err != nil {
+			log.Printf("%+v\n", err)
+		}
+	}(stmt)
+	_ = stmt.QueryRow().Scan(&id)
+	return id + 1
 }

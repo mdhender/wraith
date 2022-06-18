@@ -44,13 +44,28 @@ ALTER TABLE user_secret
 #     SET NEW.email = lower(NEW.email);
 # END;
 
-DROP TABLE IF EXISTS games;
-CREATE TABLE games
+DROP TABLE IF EXISTS game;
+CREATE TABLE game
 (
-    id      varchar(8) PRIMARY KEY,
-    name    varchar(255),
-    turn_no int
+    id         int         not null,
+    effdt      datetime    not null,
+    enddt      datetime    not null,
+    short_name varchar(8)  not null,
+    name       varchar(32) not null
 );
+ALTER TABLE game
+    ADD PRIMARY KEY (id, effdt);
+
+DROP TABLE IF EXISTS game_turn;
+CREATE TABLE game_turn
+(
+    game_id int      not null,
+    turn_no int      not null,
+    effdt   datetime not null,
+    enddt   datetime not null
+);
+ALTER TABLE game_turn
+    ADD PRIMARY KEY (game_id, turn_no);
 
 DROP TABLE IF EXISTS systems;
 CREATE TABLE systems

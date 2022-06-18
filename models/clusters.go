@@ -18,13 +18,6 @@
 
 package models
 
-type Game struct {
-	Id         string
-	Name       string
-	TurnNumber int
-	Systems    []*System
-}
-
 type System struct {
 	Game        *Game
 	Coordinates Coordinates

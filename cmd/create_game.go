@@ -25,12 +25,13 @@ import (
 	"github.com/spf13/cobra"
 	"log"
 	"strings"
+	"time"
 )
 
 var globalCreateGame struct {
-	Name       string
-	ShortName  string
-	TurnNumber int
+	ShortName string
+	Name      string
+	StartDt   string
 }
 
 var cmdCreateGame = &cobra.Command{
@@ -51,9 +52,6 @@ var cmdCreateGame = &cobra.Command{
 		if globalCreateGame.Name == "" {
 			globalCreateGame.Name = globalCreateGame.ShortName
 		}
-		if globalCreateGame.TurnNumber < 0 {
-			return errors.New("invalid turn number")
-		}
 
 		cfg, err := config.LoadGlobal(globalBase.ConfigFile)
 		if err != nil {
@@ -67,11 +65,7 @@ var cmdCreateGame = &cobra.Command{
 		}
 		defer s.Close()
 
-		g, err := s.CreateGame(models.Game{
-			Id:         globalCreateGame.ShortName,
-			Name:       globalCreateGame.Name,
-			TurnNumber: globalCreateGame.TurnNumber,
-		})
+		g, err := s.CreateGame(globalCreateGame.Name, globalCreateGame.ShortName, time.Now())
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -85,7 +79,7 @@ func init() {
 	cmdCreateGame.Flags().StringVar(&globalCreateGame.ShortName, "short-name", "", "report code for new game (eg PT-1)")
 	_ = cmdCreateGame.MarkFlagRequired("short-name")
 	cmdCreateGame.Flags().StringVar(&globalCreateGame.Name, "name", "", "descriptive name of new game")
-	cmdCreateGame.Flags().IntVar(&globalCreateGame.TurnNumber, "turn-no", 0, "initial turn number for game")
+	cmdCreateGame.Flags().StringVar(&globalCreateGame.StartDt, "start-date", time.Now().String(), "start date for game")
 
 	cmdCreate.AddCommand(cmdCreateGame)
 }
