@@ -101,7 +101,7 @@ func (s *Store) CreateGame(name, shortName string, startDt time.Time) (Game, err
 		return Game{}, err
 	}
 
-	createTurn, err := s.db.Prepare("insert into game_turn (game_id, turn_no, effdt, enddt) values(?, ?, ?, ?)")
+	createTurn, err := s.db.Prepare("insert into game_turn (game_id, turn_no, effdt, enddt, asofdt) values(?, ?, ?, ?, null)")
 	if err != nil {
 		return Game{}, err
 	}

@@ -62,7 +62,8 @@ CREATE TABLE game_turn
     game_id int      not null,
     turn_no int      not null,
     effdt   datetime not null,
-    enddt   datetime not null
+    enddt   datetime not null,
+    asofdt  datetime
 );
 ALTER TABLE game_turn
     ADD PRIMARY KEY (game_id, turn_no);
