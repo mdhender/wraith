@@ -28,8 +28,10 @@ import (
 )
 
 type Store struct {
-	db      *sql.DB
-	version string
+	db         *sql.DB
+	version    string
+	dateFormat string
+	endOfTime  time.Time
 }
 
 func Open(cfg *config.Global) (*Store, error) {
@@ -44,7 +46,12 @@ func Open(cfg *config.Global) (*Store, error) {
 	maxConns := 10
 	db.SetMaxOpenConns(maxConns)
 	db.SetMaxIdleConns(maxConns)
-	return &Store{db: db, version: "0.1.0"}, nil
+
+	return &Store{
+		db:        db,
+		version:   "0.1.0",
+		endOfTime: time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC),
+	}, nil
 }
 
 func (s *Store) Close() {
@@ -59,4 +66,16 @@ func (s *Store) Close() {
 
 func (s *Store) Version() string {
 	return s.version
+}
+
+func (s *Store) dateToTime(date string) time.Time {
+	t, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
+func (s *Store) timeToDate(t time.Time) string {
+	return t.Format("2006-01-02")
 }

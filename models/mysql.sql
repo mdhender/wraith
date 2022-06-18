@@ -16,14 +16,26 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-DROP TABLE IF EXISTS users;
-CREATE TABLE users
+DROP TABLE IF EXISTS user;
+CREATE TABLE user
 (
-    id            int PRIMARY KEY AUTO_INCREMENT,
-    email         varchar(255) UNIQUE,
-    handle        varchar(255) UNIQUE,
-    hashed_secret varchar(255)
+    id     int         not null,
+    effdt  varchar(10) not null,
+    enddt  varchar(10) not null,
+    email  varchar(64) not null,
+    handle varchar(16) not null
 );
+ALTER TABLE user
+    ADD PRIMARY KEY (id, effdt);
+
+DROP TABLE IF EXISTS user_secret;
+CREATE TABLE user_secret
+(
+    id            int not null,
+    hashed_secret varchar(64) not null
+);
+ALTER TABLE user_secret
+    ADD PRIMARY KEY (id);
 
 # CREATE TRIGGER ins_users BEFORE INSERT ON users
 #     FOR EACH ROW
@@ -122,6 +134,12 @@ CREATE TABLE inventory
 DROP TABLE IF EXISTS units;
 CREATE TABLE units
 (
-    code varchar(255) PRIMARY KEY,
-    name varchar(255)
+    code  varchar(8)  not null,
+    effdt varchar(10) not null,
+    enddt varchar(10) not null,
+    name  varchar(20) not null,
+    descr varchar(64) not null
 );
+
+ALTER TABLE units
+    ADD PRIMARY KEY (code, effdt);

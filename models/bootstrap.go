@@ -19,7 +19,6 @@
 package models
 
 import (
-	"fmt"
 	"github.com/mdhender/wraith/storage/config"
 	"log"
 	"os"
@@ -44,9 +43,9 @@ func Bootstrap(cfg *config.Global) (*Store, error) {
 	log.Printf("executed schema file %q\n", cfg.SchemaFile)
 
 	// create the default users required by the engine
-	stmtUsers := fmt.Sprintf("insert into users(email, handle, hashed_secret) VALUES (?, ?, ?)")
 	for _, user := range []string{"sysop", "batch"} {
-		if _, err = s.db.Exec(stmtUsers, user, user, "*login-not-allowed*"); err != nil {
+		_, err := s.CreateUser(User{Email: user, Handle: user})
+		if err != nil {
 			return nil, err
 		}
 		log.Printf("created user %q\n", user)

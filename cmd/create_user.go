@@ -53,7 +53,7 @@ var cmdCreateUser = &cobra.Command{
 			return errors.New("missing handle")
 		}
 		if globalCreateUser.Secret == "" {
-			return errors.New("missing secret")
+			globalCreateUser.Secret = "*login-not-permitted*"
 		} else if len(globalCreateUser.Secret) < 8 {
 			return errors.New("secret too short")
 		} else {
@@ -77,9 +77,8 @@ var cmdCreateUser = &cobra.Command{
 		defer s.Close()
 
 		u, err := s.CreateUser(models.User{
-			Email:        globalCreateUser.Email,
-			Handle:       globalCreateUser.Handle,
-			HashedSecret: globalCreateUser.Secret,
+			Email:  globalCreateUser.Email,
+			Handle: globalCreateUser.Handle,
 		})
 		if err != nil {
 			log.Fatal(err)

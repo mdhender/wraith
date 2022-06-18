@@ -20,6 +20,7 @@ package models
 
 import "errors"
 
+var ErrDuplicateKey = errors.New("duplicate key")
 var ErrInvalidField = errors.New("invalid field")
 var ErrMissingField = errors.New("missing field")
 var ErrNoConnection = errors.New("no connection")
