@@ -1,0 +1,5 @@
+https://github.com/matryer/way/commit/fd5c9b56a06d52a0d84ae234c82de64bb242bd43
+
+wget https://raw.githubusercontent.com/matryer/way/master/LICENSE
+
+wget https://raw.githubusercontent.com/matryer/way/master/way.go

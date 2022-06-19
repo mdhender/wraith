@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/go-sql-driver/mysql v1.6.0
+	github.com/mdhender/jsonwt v0.0.0-20220513021555-78d2d1aa589f
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.4.0

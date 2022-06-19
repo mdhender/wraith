@@ -25,6 +25,108 @@ import (
 	"path/filepath"
 )
 
+/*
+type System struct {
+	Game        *Game
+	Coordinates Coordinates
+	Stars       []*Star
+}
+
+type Coordinates struct {
+	X int
+	Y int
+	Z int
+}
+
+type Star struct {
+	System   *System
+	Sequence string // A, B, etc
+	Kind     string
+	Orbits   [11]*Planet // each orbit may or may not contain a planet
+}
+
+type Planet struct {
+	Star           *Star
+	OrbitNo        int    // 1..10
+	Kind           string // asteroid belt, gas giant, terrestrial
+	HabitabilityNo int
+	ControlledBy   *Nation
+	Deposits       []*Deposit
+	Colonies       []*Colony
+	Ships          []*Ship
+}
+
+type Deposit struct {
+	Planet           *Planet
+	ControlledBy     *Nation
+	Unit             string  // fuel, gold, metallics, non-metallics
+	QtyInitial       int     // in mass units
+	QtyRemaining     int     // in mass units
+	MiningDifficulty float64 // how hard it is to extract each mass unit
+	YieldPct         float64 // percentage of each mass unit that yields units
+}
+
+type Colony struct {
+	Id            int
+	Location      *Planet
+	Kind          string // surface colony, enclosed colony, orbital colony
+	TechLevel     int
+	BuiltBy       *Nation
+	ControlledBy  *Nation
+	Inventory     []*Inventory
+	MiningGroups  []*MiningGroup
+	FactoryGroups []*FactoryGroup
+}
+
+type Ship struct {
+	Id            int
+	Location      *Planet
+	TechLevel     int
+	BuiltBy       *Nation
+	ControlledBy  *Nation
+	Inventory     []*Inventory
+	FactoryGroups []*FactoryGroup
+}
+
+type FactoryGroup struct {
+	Colony    *Colony
+	Ship      *Ship
+	GroupNo   int
+	Inventory []*Inventory
+	Unit      string
+	TechLevel int
+}
+
+type MiningGroup struct {
+	Colony    *Colony
+	GroupNo   int
+	Deposit   *Deposit
+	Inventory []*Inventory
+}
+
+type Inventory struct {
+	Unit           string
+	TechLevel      int
+	QtyOperational int
+	QtyStowed      int
+	TotalMass      int
+	EnclosedMass   int
+}
+
+type Nation struct {
+	Player   *Player
+	Name     string
+	Colonies []*Colony
+	Ships    []*Ship
+}
+
+type Player struct {
+	Game   *Game
+	User   *User
+	Nation *Nation
+}
+*/
+
 type Engine struct {
 	config struct {
 		base *config.Global

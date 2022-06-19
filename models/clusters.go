@@ -18,20 +18,7 @@
 
 package models
 
-type System struct {
-	Game        *Game
-	Coordinates Coordinates
-	Stars       []*Star
-}
-
-type Coordinates struct {
-	X int
-	Y int
-	Z int
-}
-
 type Star struct {
-	System   *System
 	Sequence string // A, B, etc
 	Kind     string
 	Orbits   [11]*Planet // each orbit may or may not contain a planet

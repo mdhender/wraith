@@ -19,11 +19,13 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/mdhender/wraith/models"
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
+	"os"
 	"strings"
 	"time"
 )
@@ -53,6 +55,21 @@ var cmdCreateGame = &cobra.Command{
 			globalCreateGame.Name = globalCreateGame.ShortName
 		}
 
+		b, err := os.ReadFile("D:\\wraith\\testdata\\systems.json")
+		if err != nil {
+			log.Fatal(err)
+		}
+		var systems []struct {
+			X           int  `json:"x"`
+			Y           int  `json:"y"`
+			Z           int  `json:"z"`
+			Stars       int  `json:"stars"`
+			Singularity bool `json:"singularity,omitempty"`
+		}
+		if err := json.Unmarshal(b, &systems); err != nil {
+			log.Fatal(err)
+		}
+
 		cfg, err := config.LoadGlobal(globalBase.ConfigFile)
 		if err != nil {
 			log.Fatal(err)
@@ -69,7 +86,15 @@ var cmdCreateGame = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("game %v\n", g)
+		log.Printf("game id %d %v\n", g.Id, g)
+
+		for _, system := range systems {
+			s, err := s.AddSystem(g, system.X, system.Y, system.Z)
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Printf("game id %d %v\n", g.Id, s)
+		}
 
 		return nil
 	},

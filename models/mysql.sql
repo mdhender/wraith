@@ -71,41 +71,50 @@ ALTER TABLE game_turn
 DROP TABLE IF EXISTS systems;
 CREATE TABLE systems
 (
-    game_id varchar(8),
+    game_id int not null,
     id      int PRIMARY KEY AUTO_INCREMENT,
     x       int,
     y       int,
     z       int
 );
 
-DROP TABLE IF EXISTS stars;
-CREATE TABLE stars
+DROP TABLE IF EXISTS star;
+CREATE TABLE star
 (
-    game_id   varchar(8),
     system_id int,
     id        int PRIMARY KEY AUTO_INCREMENT,
-    kind      varchar(255)
+    kind      varchar(4)
 );
 
-DROP TABLE IF EXISTS orbits;
-CREATE TABLE orbits
+DROP TABLE IF EXISTS orbit;
+CREATE TABLE orbit
 (
-    id        int PRIMARY KEY AUTO_INCREMENT,
-    game_id   int,
-    system_id int,
-    star_id   int,
-    orbit_no  int
+    star_id  int,
+    id       int PRIMARY KEY AUTO_INCREMENT,
+    orbit_no int,
+    kind     varchar(13)
 );
 
-DROP TABLE IF EXISTS planets;
-CREATE TABLE planets
+DROP TABLE IF EXISTS planet;
+CREATE TABLE planet
 (
-    id        int PRIMARY KEY AUTO_INCREMENT,
-    game_id   int,
-    system_id int,
-    star_id   int,
-    orbit_id  int,
-    orbit_no  int
+    star_id       int,
+    id            int PRIMARY KEY AUTO_INCREMENT,
+    orbit_no      int,
+    kind          varchar(13),
+    controlled_by varchar(1)
+);
+
+DROP TABLE IF EXISTS planet_deposit;
+CREATE TABLE planet_deposit
+(
+    planet_id   int         not null,
+    id          int PRIMARY KEY AUTO_INCREMENT,
+    deposit_no  int         not null,
+    effdt       datetime    not null,
+    enddt       datetime    not null,
+    kind        varchar(14) not null,
+    initial_qty int         not null
 );
 
 DROP TABLE IF EXISTS nations;
