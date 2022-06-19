@@ -16,136 +16,20 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-package main
+package server
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mdhender/wraith/internal/way"
-	"golang.org/x/crypto/bcrypt"
-	"os"
-	"time"
-	"unicode/utf8"
-
-	//"github.com/mdhender/wraith/internal/otohttp"
-	//"github.com/mdhender/wraith/internal/services/greeter"
-	//"github.com/mdhender/wraith/internal/services/identity"
 	"github.com/mdhender/jsonwt"
-	"github.com/mdhender/jsonwt/signers"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
+	"os"
+	"unicode/utf8"
 )
 
-func main() {
-	//otoServer, _ := otohttp.NewServer()
-	//
-	//identity.RegisterIdentityService(otoServer, identity.Service{})
-	//greeter.RegisterGreeterService(otoServer, greeter.Service{})
-	//
-	//http.Handle("/oto/", otoServer)
-	//
-	log.Fatalln(run())
-}
-
-func run() error {
-	s, err := newServer("D:\\wraith\\testdata\\authn.json", "D:\\wraith\\testdata\\jsonwt.json")
-	if err != nil {
-		return err
-	}
-	log.Printf("running on :3030\n")
-	return http.ListenAndServe(":3030", s.router)
-}
-
-type server struct {
-	router *way.Router
-	www    struct {
-		root string
-	}
-	authn struct {
-		source  string
-		Version string `json:"version"`
-		Bcrypt  struct {
-			MinCost int `json:"min_cost"`
-		} `json:"bcrypt"`
-		Users map[string]*user `json:"users"` // key is user handle
-	}
-	jwt struct {
-		source   string
-		Version  string `json:"version"`
-		TTLHours int    `json:"ttl-hours"`
-		Key      struct {
-			Name   string `json:"name"`
-			Secret string `json:"secret"`
-		} `json:"key"`
-		factory *jsonwt.Factory
-		ttl     time.Duration
-	}
-}
-
-type user struct {
-	Id           string `json:"id"`
-	Handle       string `json:"handle"`
-	Secret       string `json:"secret"`
-	HashedSecret string `json:"hashed-secret"`
-}
-
-func newServer(authenticationFilename, jsonwtFilename string) (*server, error) {
-	var s server
-	s.authn.Users = make(map[string]*user)
-
-	s.authn.source = authenticationFilename
-	if b, err := os.ReadFile(s.authn.source); err != nil {
-		return nil, err
-	} else if err = json.Unmarshal(b, &s.authn); err != nil {
-		return nil, err
-	} else {
-		for id, u := range s.authn.Users {
-			if u.Id != id {
-				u.Id = id
-			}
-			if u.Handle == "" {
-				u.Handle = u.Id
-			}
-		}
-	}
-
-	s.jwt.source = jsonwtFilename
-	if b, err := os.ReadFile(s.jwt.source); err != nil {
-		return nil, err
-	} else if err = json.Unmarshal(b, &s.jwt); err != nil {
-		return nil, err
-	} else if hsSigner, err := signers.NewHS256([]byte(s.jwt.Key.Secret)); err != nil {
-		return nil, err
-	} else {
-		s.jwt.factory = jsonwt.NewFactory(s.jwt.Key.Name, hsSigner)
-		s.jwt.ttl = time.Hour * time.Duration(s.jwt.TTLHours)
-	}
-
-	s.router = way.NewRouter()
-	//s.router.HandleFunc("GET", "/ui/add-user", s.handleGetAddUser)
-	//s.router.HandleFunc("POST", "/ui/add-user", s.handlePostAddUser)
-	s.router.HandleFunc("GET", "/ui", s.authenticatedOnly(s.handleGetIndex))
-	s.router.HandleFunc("GET", "/ui/login", s.handleGetLogin)
-	s.router.HandleFunc("POST", "/ui/login", s.handlePostLogin)
-	s.router.HandleFunc("GET", "/ui/logout", s.handleLogout)
-	s.router.HandleFunc("POST", "/ui/logout", s.handleLogout)
-
-	return &s, nil
-}
-
-func (s *server) handleGetIndex(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html")
-	page := fmt.Sprintf(`<body>
-				<h1>Wraith UI</h1>
-			</body>`)
-	_, _ = w.Write([]byte(page))
-}
-
-func (s *server) handleGetLogin(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
@@ -165,7 +49,7 @@ func (s *server) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(page))
 }
 
-func (s *server) handlePostLogin(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
@@ -231,9 +115,4 @@ func (s *server) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 	j.SetCookie(w)
 	http.Redirect(w, r, "/ui", http.StatusSeeOther)
 	return
-}
-
-func (s *server) handleLogout(w http.ResponseWriter, r *http.Request) {
-	jsonwt.DeleteCookie(w)
-	http.Redirect(w, r, "/ui", http.StatusSeeOther)
 }

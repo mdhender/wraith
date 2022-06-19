@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-package main
+package server
 
 import (
 	"encoding/json"
@@ -29,7 +29,7 @@ import (
 	"unicode/utf8"
 )
 
-func (s *server) handleGetAddUser(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleGetAddUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
@@ -49,7 +49,7 @@ func (s *server) handleGetAddUser(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(page))
 }
 
-func (s *server) handlePostAddUser(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handlePostAddUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return

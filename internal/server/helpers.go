@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-package main
+package server
 
 import (
 	"github.com/mdhender/jsonwt"
@@ -24,20 +24,9 @@ import (
 	"net/http"
 )
 
-func (s *server) authenticatedOnly(h http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if !s.currentUser(r).IsAuthenticated {
-			log.Printf("%s %q: not authenticated\n", r.Method, r.URL.Path)
-			http.NotFound(w, r)
-			return
-		}
-		h(w, r)
-	}
-}
-
 // currentUser extracts data for the user making the request.
-// It always returns a user struct, even if the request does not have a valid bearer token.
-func (s *server) currentUser(r *http.Request) (user struct {
+// It always returns a user struct, even if the request does not have a valid token.
+func (s *Server) currentUser(r *http.Request) (user struct {
 	IsAdmin         bool
 	IsAuthenticated bool
 	User            *user
