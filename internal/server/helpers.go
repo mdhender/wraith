@@ -30,6 +30,7 @@ func (s *Server) currentUser(r *http.Request) (user struct {
 	IsAdmin         bool
 	IsAuthenticated bool
 	User            *user
+	Species         string
 }) {
 	log.Printf("server: currentUser: entered\n")
 	c, err := r.Cookie("jsonwt")
@@ -44,11 +45,12 @@ func (s *Server) currentUser(r *http.Request) (user struct {
 	} else if err = s.jwt.factory.Validate(token); err != nil {
 		log.Printf("server: currentUser: validateToken %+v\n", err)
 	} else if token.IsValid() {
-		var claims []string
+		var claims claims
 		if err := token.Claim(&claims); err != nil {
 			log.Printf("server: currentUser: claims %+v\n", err)
 		} else {
-			for _, role := range claims {
+			user.Species = claims.Species
+			for _, role := range claims.Roles {
 				switch role {
 				case "authenticated":
 					user.IsAuthenticated = true

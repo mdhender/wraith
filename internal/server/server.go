@@ -59,11 +59,17 @@ type Server struct {
 	}
 }
 
+type claims struct {
+	Species string   `json:"species"`
+	Roles   []string `json:"roles"`
+}
+
 type user struct {
-	Id           string `json:"id"`
-	Handle       string `json:"handle"`
-	Secret       string `json:"secret"`
-	HashedSecret string `json:"hashed-secret"`
+	Id           string   `json:"id"`
+	Handle       string   `json:"handle"`
+	Roles        []string `json:"roles"`
+	Secret       string   `json:"secret"`
+	HashedSecret string   `json:"hashed-secret"`
 }
 
 func New(opts ...Option) (*Server, error) {

@@ -26,6 +26,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -106,7 +107,16 @@ func (s *Server) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	j, err := s.jwt.factory.Token(s.jwt.ttl, []string{"authenticated"})
+	claims := claims{Roles: []string{"authenticated"}}
+	for _, role := range acct.Roles {
+		if strings.HasPrefix(role, "SP") {
+			claims.Species = role
+		} else {
+			claims.Roles = append(claims.Roles, role)
+		}
+	}
+
+	j, err := s.jwt.factory.Token(s.jwt.ttl, claims)
 	if err != nil {
 		log.Printf("server: %s %q: token: %+v\n", r.Method, r.URL.Path, err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
