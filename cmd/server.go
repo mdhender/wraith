@@ -32,6 +32,7 @@ var globalServer struct {
 	Host      string
 	Port      string
 	AuthnFile string
+	GameFile  string
 	JwtFile   string
 }
 
@@ -51,6 +52,7 @@ var cmdServer = &cobra.Command{
 		log.Printf("loaded %q\n", cfg.Self)
 
 		var options []server.Option
+		options = append(options, server.WithGame(globalServer.GameFile))
 		options = append(options, server.WithHost(globalServer.Host))
 		options = append(options, server.WithPort(globalServer.Port))
 		options = append(options, server.WithAuthenticationData(globalServer.AuthnFile))
@@ -74,6 +76,8 @@ func init() {
 	cmdServer.Flags().StringVar(&globalServer.Port, "port", "8123", "port to listen on")
 	cmdServer.Flags().StringVar(&globalServer.AuthnFile, "authn", "", "authentication data")
 	_ = cmdServer.MarkFlagRequired("authn")
+	cmdServer.Flags().StringVar(&globalServer.GameFile, "game", "", "game data")
+	_ = cmdServer.MarkFlagRequired("game")
 	cmdServer.Flags().StringVar(&globalServer.JwtFile, "jwt", "", "jwt key data")
 	_ = cmdServer.MarkFlagRequired("jwt")
 

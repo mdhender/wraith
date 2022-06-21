@@ -40,11 +40,24 @@ func GenCluster(radius int, rings [][]Coordinates, nations []*Nation) *Cluster {
 		system := GenHomeSystem(systemId)
 		system.Ring, system.X, system.Y, system.Z = r, coords.X, coords.Y, coords.Z
 		cluster.Systems = append(cluster.Systems, system)
+
 		nations[i].HomePlanet.Location.X = coords.X
 		nations[i].HomePlanet.Location.Y = coords.Y
 		nations[i].HomePlanet.Location.Z = coords.Z
 		nations[i].HomePlanet.Location.Star = 0
 		nations[i].HomePlanet.Location.Orbit = 3
+
+		nations[i].Colonies[0].Location.X = coords.X
+		nations[i].Colonies[0].Location.Y = coords.Y
+		nations[i].Colonies[0].Location.Z = coords.Z
+		nations[i].Colonies[0].Location.Star = 0
+		nations[i].Colonies[0].Location.Orbit = 3
+
+		nations[i].Colonies[1].Location.X = coords.X
+		nations[i].Colonies[1].Location.Y = coords.Y
+		nations[i].Colonies[1].Location.Z = coords.Z
+		nations[i].Colonies[1].Location.Star = 0
+		nations[i].Colonies[1].Location.Orbit = 3
 	}
 
 	for r := 0; r < len(rings); r++ {

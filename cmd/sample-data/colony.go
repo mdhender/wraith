@@ -19,11 +19,16 @@
 package main
 
 type Colony struct {
-	Id         int    `json:"colony-id"`
-	Kind       string `json:"kind"`
-	System     string `json:"system"`
-	Orbit      int    `json:"orbit"`
-	TechLevel  int    `json:"tech-level"`
+	Id       int    `json:"colony-id"`
+	Kind     string `json:"kind"`
+	Location struct {
+		X     int `json:"x"`
+		Y     int `json:"y"`
+		Z     int `json:"z"`
+		Star  int `json:"star,omitempty"`
+		Orbit int `json:"orbit"`
+	} `json:"location"`
+	TechLevel  int `json:"tech-level"`
 	Population struct {
 		Professional      Population `json:"professional"`
 		Soldier           Population `json:"soldier"`
@@ -31,6 +36,8 @@ type Colony struct {
 		Unemployed        Population `json:"unemployed"`
 		ConstructionCrews int        `json:"construction-crews,omitempty"`
 		SpyTeams          int        `json:"spy-teams,omitempty"`
+		Births            int        `json:"births,omitempty"`
+		Deaths            int        `json:"deaths,omitempty"`
 	} `json:"population"`
 	Inventory     []*Inventory `json:"inventory,omitempty"`
 	FactoryGroups []*Group     `json:"factory-groups,omitempty"`

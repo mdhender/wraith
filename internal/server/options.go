@@ -45,6 +45,13 @@ func WithAuthenticationData(root string) Option {
 	}
 }
 
+func WithGame(filename string) Option {
+	return func(s *Server) (err error) {
+		s.game.source = filepath.Clean(filename)
+		return nil
+	}
+}
+
 func WithHost(host string) Option {
 	return func(s *Server) (err error) {
 		s.www.host = host
