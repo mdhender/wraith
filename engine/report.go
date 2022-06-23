@@ -20,10 +20,12 @@ package engine
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 	"io"
+	"io/ioutil"
 	"log"
 	"math"
 	"os"
@@ -33,8 +35,8 @@ import (
 
 func (e *Engine) Report(spId int) error {
 	// load the setup store
-	var s Store
-	b, err := os.ReadFile(filepath.Clean(filepath.Join(e.stores.game.Store, fmt.Sprintf("%d", spId), "setup.json")))
+	var s ReportStore
+	b, err := os.ReadFile("setup.json")
 	if err != nil {
 		return err
 	}
@@ -62,14 +64,14 @@ func (e *Engine) Report(spId int) error {
 	return nil
 }
 
-func (s *Store) Report(w io.Writer, spId int) error {
+func (s *ReportStore) Report(w io.Writer, spId int) error {
 	p := message.NewPrinter(language.English)
 
 	rptDate := time.Now().Format("2006/01/02")
 
 	for _, player := range s.Players {
 		_, _ = p.Fprintf(w, "Status Report\n")
-		_, _ = p.Fprintf(w, "Game: %-6s    Turn: %5d    Player: %3d    Date: %s\n", s.Game.Id, s.Game.Turn, spId, rptDate)
+		_, _ = p.Fprintf(w, "ReportGame: %-6s    Turn: %5d    ReportPlayer: %3d    Date: %s\n", s.Game.Id, s.Game.Turn, spId, rptDate)
 
 		_, _ = p.Fprintf(w, "\nSpecies %3d ------------------------------------------------------------------\n", spId)
 		_, _ = p.Fprintf(w, "  Bureaucracy:   %2d    Biology: %2d    Gravitics: %2d    LifeSupport: %2d\n",
@@ -95,7 +97,7 @@ func (s *Store) Report(w io.Writer, spId int) error {
 				name = "NOT NAMED"
 			}
 			colonyId, colonyKind := fmt.Sprintf("C%d", colony.Id), fmt.Sprintf("%s COLONY", kind)
-			_, _ = p.Fprintf(w, "%-6s Tech:%2d  %14s: %-22s  System: %s #%d\n", colonyId, colony.TechLevel, colonyKind, name, colony.System, colony.Orbit)
+			_, _ = p.Fprintf(w, "%-6s Tech:%2d  %14s: %-22s  ReportSystem: %s #%d\n", colonyId, colony.TechLevel, colonyKind, name, colony.System, colony.Orbit)
 
 			_, _ = p.Fprintf(w, "\nConstruction --------------------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "  Engines\n")
@@ -177,7 +179,7 @@ func (s *Store) Report(w io.Writer, spId int) error {
 			_, _ = p.Fprintf(w, "  Total        %13d  %13d  %13d\n", operEMUs+storMUs, operSUs+storSUs, availSUs)
 
 			//_, _ = p.Fprintf(w, "\nFarming --------------------------------------------------------------------------------------------------------\n")
-			//_, _ = p.Fprintf(w, "  Group  Orders       Quantity  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
+			//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
 			//if farm := colony.Units["FRM-1"]; farm != nil {
 			//	group, techLevel := 1, 1
 			//	qty := farm.Qty * 100 / 4
@@ -186,7 +188,7 @@ func (s *Store) Report(w io.Writer, spId int) error {
 			//}
 
 			_, _ = p.Fprintf(w, "\nFarming --------------------------------------------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Group  Orders          Farms  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
+			_, _ = p.Fprintf(w, "  ReportGroup  Orders          Farms  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
 			for _, group := range colony.FarmGroups {
 				for _, unit := range group.Units {
 					fuelPerTurn := int(math.Ceil(float64(unit.Qty) * 0.5))
@@ -197,7 +199,7 @@ func (s *Store) Report(w io.Writer, spId int) error {
 			}
 
 			//_, _ = p.Fprintf(w, "\nMining ---------------------------------------------------------------------------------------------------------\n")
-			//_, _ = p.Fprintf(w, "  Group  Orders        MIN_Qty  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
+			//_, _ = p.Fprintf(w, "  ReportGroup  Orders        MIN_Qty  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
 			//if mine := colony.Units["MIN-1"]; mine != nil {
 			//	techLevel := 1
 			//	var no, qty int
@@ -216,7 +218,7 @@ func (s *Store) Report(w io.Writer, spId int) error {
 			//}
 
 			_, _ = p.Fprintf(w, "\nMining ---------------------------------------------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Group  Orders          Mines  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
+			_, _ = p.Fprintf(w, "  ReportGroup  Orders          Mines  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
 			for _, group := range colony.MiningGroups {
 				for _, unit := range group.Units {
 					fuelPerTurn := int(math.Ceil(float64(unit.Qty) * 0.5))
@@ -228,7 +230,7 @@ func (s *Store) Report(w io.Writer, spId int) error {
 
 			//_, _ = p.Fprintf(w, "\nProduction -----------------------------------------------------------------------------------------------------\n")
 			//_, _ = p.Fprintf(w, "Input ----\n")
-			//_, _ = p.Fprintf(w, "  Group  Orders       Quantity  TL  Ingest/Turn    METS/Unit    NMTS/Unit    METS/Turn    NMTS/Turn   Units/Turn\n")
+			//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL  Ingest/Turn    METS/ReportUnit    NMTS/ReportUnit    METS/Turn    NMTS/Turn   Units/Turn\n")
 			//if fact := colony.Units["FCT-1"]; fact != nil {
 			//	group, techLevel := 1, 1
 			//
@@ -248,7 +250,7 @@ func (s *Store) Report(w io.Writer, spId int) error {
 			//}
 			//
 			//_, _ = p.Fprintf(w, "Output ---\n")
-			//_, _ = p.Fprintf(w, "  Group  Orders       Quantity  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
+			//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
 			//if fact := colony.Units["FCT-1"]; fact != nil {
 			//	group, techLevel := 1, 1
 			//	var pro, usk int
@@ -279,12 +281,12 @@ func (s *Store) Report(w io.Writer, spId int) error {
 
 			_, _ = p.Fprintf(w, "\nProduction -----------------------------------------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "Input ----\n")
-			_, _ = p.Fprintf(w, "  Group  Orders      Factories  TL  Ingest/Turn    METS/Unit    NMTS/Unit    METS/Turn    NMTS/Turn   Units/Turn\n")
+			_, _ = p.Fprintf(w, "  ReportGroup  Orders      Factories  TL  Ingest/Turn    METS/ReportUnit    NMTS/ReportUnit    METS/Turn    NMTS/Turn   Units/Turn\n")
 			for _, group := range colony.FactoryGroups {
 				for _, unit := range group.Units {
-					u := Unit{Name: "factory", TechLevel: unit.TechLevel, Qty: unit.Qty}
+					u := ReportUnit{Name: "factory", TechLevel: unit.TechLevel, Qty: unit.Qty}
 
-					metsUnit, nmetUnit := Unit{Name: group.Name}.RawMaterials()
+					metsUnit, nmetUnit := ReportUnit{Name: group.Name}.RawMaterials()
 
 					// quantity is units per turn
 					qty := int(math.Floor(float64(u.IngestPerTurn()) / (metsUnit + nmetUnit)))
@@ -297,10 +299,10 @@ func (s *Store) Report(w io.Writer, spId int) error {
 			}
 
 			_, _ = p.Fprintf(w, "Output ---\n")
-			_, _ = p.Fprintf(w, "  Group  Orders      Factories  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
+			_, _ = p.Fprintf(w, "  ReportGroup  Orders      Factories  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
 			for _, group := range colony.FactoryGroups {
 				for _, unit := range group.Units {
-					u := Unit{Name: "factory", TechLevel: unit.TechLevel, Qty: unit.Qty}
+					u := ReportUnit{Name: "factory", TechLevel: unit.TechLevel, Qty: unit.Qty}
 
 					proLabor, uskLabor := u.LaborPerTurn()
 
@@ -313,7 +315,7 @@ func (s *Store) Report(w io.Writer, spId int) error {
 			_, _ = p.Fprintf(w, "  No activity.\n")
 		}
 
-		orbits := []Orbit{
+		orbits := []ReportOrbit{
 			{Id: 1, Kind: "terrestrial", HabitabilityNumber: 0},
 			{Id: 2, Kind: "terrestrial", HabitabilityNumber: 0},
 			{Id: 3, Kind: "terrestrial", HabitabilityNumber: 25},
@@ -331,7 +333,7 @@ func (s *Store) Report(w io.Writer, spId int) error {
 			if orbit.Id == 3 {
 				name, controlledBy = "My Homeworld", "SP018"
 			}
-			_, _ = p.Fprintf(w, "  System %s %-3s   %-24s    Controlled By: %s\n", "0/0/0", fmt.Sprintf("#%d", orbit.Id), name, controlledBy)
+			_, _ = p.Fprintf(w, "  ReportSystem %s %-3s   %-24s    Controlled By: %s\n", "0/0/0", fmt.Sprintf("#%d", orbit.Id), name, controlledBy)
 			_, _ = p.Fprintf(w, "    Kind: %-13s    Habitability: %2d\n", orbit.Kind, orbit.HabitabilityNumber)
 		}
 
@@ -349,21 +351,21 @@ func (s *Store) Report(w io.Writer, spId int) error {
 	return nil
 }
 
-type Store struct {
+type ReportStore struct {
 	Game struct {
 		Id   string `json:"id"`
 		Turn int    `json:"turn"`
 	} `json:"game"`
-	Players map[string]*Player `json:"players,omitempty"`
+	Players map[string]*ReportPlayer `json:"players,omitempty"`
 }
 
-type Player struct {
-	Skills   *Skills   `json:"skills,omitempty"`
-	Colonies []*Colony `json:"colonies,omitempty"`
-	Ships    []*Ship   `json:"ships,omitempty"`
+type ReportPlayer struct {
+	Skills   *Skills         `json:"skills,omitempty"`
+	Colonies []*ReportColony `json:"colonies,omitempty"`
+	Ships    []*ReportShip   `json:"ships,omitempty"`
 }
 
-type PopUnit struct {
+type ReportPopUnit struct {
 	Code   string  `json:"code"`
 	Qty    int     `json:"qty,omitempty"`
 	Pay    float64 `json:"pay,omitempty"`
@@ -375,7 +377,7 @@ type PopUnit struct {
 //  SOLDIER           0.250 CONSUMER GOODS
 //  UNSKILLED WORKER  0.125 CONSUMER GOODS
 //  UNEMPLOYABLE      0.000 CONSUMER GOODS
-func (p *PopUnit) TotalPay() int {
+func (p *ReportPopUnit) TotalPay() int {
 	if p == nil {
 		return 0
 	}
@@ -389,12 +391,12 @@ func (p *PopUnit) TotalPay() int {
 	case "UEM":
 		return 0
 	default:
-		panic(fmt.Sprintf("assert(PopUnit.Code != %q)", p.Code))
+		panic(fmt.Sprintf("assert(ReportPopUnit.Code != %q)", p.Code))
 	}
 }
 
 // TotalRation assumes that base ration is 0.25 food units per unit of population
-func (p *PopUnit) TotalRation() int {
+func (p *ReportPopUnit) TotalRation() int {
 	if p == nil {
 		return 0
 	}
@@ -408,11 +410,11 @@ func (p *PopUnit) TotalRation() int {
 	case "UEM":
 		return int(math.Ceil((0.25 * p.Ration) * (float64(p.Qty))))
 	default:
-		panic(fmt.Sprintf("assert(PopUnit.Code != %q)", p.Code))
+		panic(fmt.Sprintf("assert(ReportPopUnit.Code != %q)", p.Code))
 	}
 }
 
-type Unit struct {
+type ReportUnit struct {
 	Name      string `json:"name"`
 	TechLevel int    `json:"tech-level,omitempty"`
 	Qty       int    `json:"qty,omitempty"`
@@ -420,7 +422,7 @@ type Unit struct {
 	code      string
 }
 
-func (u Unit) Code() string {
+func (u ReportUnit) Code() string {
 	if u.code == "" {
 		switch u.Name {
 		case "anti-missile":
@@ -484,7 +486,7 @@ func (u Unit) Code() string {
 	return u.code
 }
 
-func (u Unit) FuelPerTurn() int {
+func (u ReportUnit) FuelPerTurn() int {
 	switch u.Name {
 	case "anti-missile":
 		return 0
@@ -538,7 +540,7 @@ func (u Unit) FuelPerTurn() int {
 	}
 }
 
-func (u Unit) IngestPerTurn() int {
+func (u ReportUnit) IngestPerTurn() int {
 	if u.Name != "factory" {
 		return 0
 	}
@@ -546,7 +548,7 @@ func (u Unit) IngestPerTurn() int {
 	return u.Qty * u.TechLevel * 20 / 4
 }
 
-func (u Unit) LaborPerTurn() (pro, usk int) {
+func (u ReportUnit) LaborPerTurn() (pro, usk int) {
 	if u.Name != "factory" {
 		return 1 * u.Qty, 3 * u.Qty
 	} else if u.Qty >= 50_000 {
@@ -563,7 +565,7 @@ func (u Unit) LaborPerTurn() (pro, usk int) {
 	return 6 * u.Qty, 18 * u.Qty
 }
 
-func (u Unit) EnclosedMassUnits() int {
+func (u ReportUnit) EnclosedMassUnits() int {
 	mus := u.MassUnits()
 	if !u.Hudnut() || !u.Stowed {
 		return mus
@@ -571,7 +573,7 @@ func (u Unit) EnclosedMassUnits() int {
 	return int(math.Ceil(float64(mus) / 2))
 }
 
-func (u Unit) MassUnits() int {
+func (u ReportUnit) MassUnits() int {
 	switch u.Name {
 	case "anti-missile":
 		return 4 * u.TechLevel * u.Qty
@@ -632,7 +634,7 @@ func (u Unit) MassUnits() int {
 	}
 }
 
-func (u Unit) Assembled() string {
+func (u ReportUnit) Assembled() string {
 	if !u.Stowed {
 		return "??"
 	}
@@ -642,7 +644,7 @@ func (u Unit) Assembled() string {
 // Hudnut is borrowed from the Sniglet for the leftover
 // bolts and such from a some-assembly-required project.
 // Returns true if the unit can be disassembled for storage.
-func (u Unit) Hudnut() bool {
+func (u ReportUnit) Hudnut() bool {
 	switch u.Name {
 	case "anti-missile":
 		return false
@@ -703,7 +705,7 @@ func (u Unit) Hudnut() bool {
 	}
 }
 
-func (u Unit) Operational() string {
+func (u ReportUnit) Operational() string {
 	if !u.Stowed {
 		return "yes"
 	}
@@ -716,7 +718,7 @@ func (u Unit) Operational() string {
 	return "yes"
 }
 
-func (u Unit) RawMaterials() (mets, nmts float64) {
+func (u ReportUnit) RawMaterials() (mets, nmts float64) {
 	tl := float64(u.TechLevel)
 	switch u.Name {
 	case "anti-missile":
@@ -823,71 +825,71 @@ func UnitAttributes(name string, techLevel int) (mets, nmts, totalMassUnits, fue
 	panic(fmt.Sprintf("assert(unit.name != %q)", name))
 }
 
-type Group struct {
-	Id        int          `json:"id"`
-	Name      string       `json:"name"`
-	TechLevel int          `json:"tech-level,omitempty"`
-	Units     []*GroupUnit `json:"units,omitempty"`
+type ReportGroup struct {
+	Id        int                `json:"id"`
+	Name      string             `json:"name"`
+	TechLevel int                `json:"tech-level,omitempty"`
+	Units     []*ReportGroupUnit `json:"units,omitempty"`
 	code      string
 }
 
-func (g Group) Code() string {
+func (g ReportGroup) Code() string {
 	if g.code == "" {
-		g.code = Unit{Name: g.Name, TechLevel: g.TechLevel}.Code()
+		g.code = ReportUnit{Name: g.Name, TechLevel: g.TechLevel}.Code()
 	}
 	return g.code
 }
 
-type GroupUnit struct {
+type ReportGroupUnit struct {
 	TechLevel int   `json:"tech-level,omitempty"`
 	Qty       int   `json:"qty,omitempty"`
 	Stages    []int `json:"stages,omitempty"`
 }
 
-type Colony struct {
-	Id            int         `json:"id"`
-	Name          string      `json:"name,omitempty"`
-	System        string      `json:"system"`
-	Orbit         int         `json:"orbit"`
-	Kind          string      `json:"kind"`
-	TechLevel     int         `json:"tech-level"`
-	Population    *Population `json:"population,omitempty"`
-	Operational   []*Unit     `json:"operational,omitempty"`
-	Storage       []*Unit     `json:"storage,omitempty"`
-	FactoryGroups []*Group    `json:"factory-groups"`
-	FarmGroups    []*Group    `json:"farm-groups,omitempty"`
-	MiningGroups  []*Group    `json:"mining-groups,omitempty"`
+type ReportColony struct {
+	Id            int               `json:"id"`
+	Name          string            `json:"name,omitempty"`
+	System        string            `json:"system"`
+	Orbit         int               `json:"orbit"`
+	Kind          string            `json:"kind"`
+	TechLevel     int               `json:"tech-level"`
+	Population    *ReportPopulation `json:"population,omitempty"`
+	Operational   []*ReportUnit     `json:"operational,omitempty"`
+	Storage       []*ReportUnit     `json:"storage,omitempty"`
+	FactoryGroups []*ReportGroup    `json:"factory-groups"`
+	FarmGroups    []*ReportGroup    `json:"farm-groups,omitempty"`
+	MiningGroups  []*ReportGroup    `json:"mining-groups,omitempty"`
 }
 
-type Ship struct {
-	Id          int         `json:"id"`
-	Name        string      `json:"name,omitempty"`
-	TechLevel   int         `json:"tech-level"`
-	Population  *Population `json:"population,omitempty"`
-	Operational []*Unit     `json:"units,omitempty"`
-	Storage     []*Unit     `json:"storage,omitempty"`
-	FarmGroups  []*Group    `json:"farm-groups,omitempty"`
+type ReportShip struct {
+	Id          int               `json:"id"`
+	Name        string            `json:"name,omitempty"`
+	TechLevel   int               `json:"tech-level"`
+	Population  *ReportPopulation `json:"population,omitempty"`
+	Operational []*ReportUnit     `json:"units,omitempty"`
+	Storage     []*ReportUnit     `json:"storage,omitempty"`
+	FarmGroups  []*ReportGroup    `json:"farm-groups,omitempty"`
 }
 
-type Orbit struct {
+type ReportOrbit struct {
 	Id                 int
 	Name               string
 	Kind               string
 	HabitabilityNumber int
 }
 
-type Population struct {
-	PRO    PopUnit `json:"pro,omitempty"`
-	SLD    PopUnit `json:"sld,omitempty"`
-	USK    PopUnit `json:"usk,omitempty"`
-	UEM    PopUnit `json:"uem,omitempty"`
-	CNW    int     `json:"cnw,omitempty"`
-	SPY    int     `json:"spy,omitempty"`
-	Births int     `json:"births,omitempty"`
-	Deaths int     `json:"deaths,omitempty"`
+type ReportPopulation struct {
+	PRO    ReportPopUnit `json:"pro,omitempty"`
+	SLD    ReportPopUnit `json:"sld,omitempty"`
+	USK    ReportPopUnit `json:"usk,omitempty"`
+	UEM    ReportPopUnit `json:"uem,omitempty"`
+	CNW    int           `json:"cnw,omitempty"`
+	SPY    int           `json:"spy,omitempty"`
+	Births int           `json:"births,omitempty"`
+	Deaths int           `json:"deaths,omitempty"`
 }
 
-func (p *Population) TotalPay() int {
+func (p *ReportPopulation) TotalPay() int {
 	if p == nil {
 		return 0
 	}
@@ -895,34 +897,23 @@ func (p *Population) TotalPay() int {
 
 }
 
-func (p *Population) TotalPopulation() int {
+func (p *ReportPopulation) TotalPopulation() int {
 	if p == nil {
 		return 0
 	}
 	return p.PRO.Qty + p.SLD.Qty + p.USK.Qty + p.UEM.Qty
 }
 
-func (p *Population) TotalRation() int {
+func (p *ReportPopulation) TotalRation() int {
 	if p == nil {
 		return 0
 	}
 	return p.PRO.TotalRation() + p.SLD.TotalRation() + p.USK.TotalRation() + p.UEM.TotalRation()
 }
 
-type Skills struct {
-	Biology       int `json:"biology,omitempty"`
-	Bureaucracy   int `json:"bureaucracy,omitempty"`
-	Gravitics     int `json:"gravitics,omitempty"`
-	LifeSupport   int `json:"life-support,omitempty"`
-	Manufacturing int `json:"manufacturing,omitempty"`
-	Military      int `json:"military,omitempty"`
-	Mining        int `json:"mining,omitempty"`
-	Shields       int `json:"shields,omitempty"`
-}
+type ReportCluster []ReportSystem
 
-type Cluster []System
-
-type System struct {
+type ReportSystem struct {
 	X      int    `json:"x"`
 	Y      int    `json:"y"`
 	Z      int    `json:"z"`
@@ -933,4 +924,62 @@ type System struct {
 		PType string `json:"ptype"`
 		Hab   int    `json:"hab"`
 	} `json:"orbits"`
+}
+
+// ReportGame configuration
+type ReportGame struct {
+	Id           string         `json:"id"`
+	Description  string         `json:"description"`
+	NationsIndex []NationsIndex `json:"nations-index"`
+	TurnsIndex   []TurnsIndex   `json:"turns-index"`
+	Turn         int            // current turn in the game
+	Nations      []*ReportNation
+}
+
+// ReportNation configuration
+type ReportNation struct {
+	Store       string `json:"store"` // path to store data
+	Id          int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Speciality  string `json:"speciality"`
+	Government  struct {
+		Kind string `json:"kind"`
+		Name string `json:"name"`
+	} `json:"government"`
+	HomePlanet struct {
+		Name     string `json:"name"`
+		Location struct {
+			X     int `json:"x"`
+			Y     int `json:"y"`
+			Z     int `json:"z"`
+			Orbit int `json:"orbit"`
+		} `json:"location"`
+	} `json:"homeworld"`
+	Skills   Skills
+	Colonies []*XColony
+	Ships    []*XShip
+}
+
+// Read loads a store from a JSON file.
+// It returns any errors.
+func (s *ReportNation) Read() error {
+	b, err := ioutil.ReadFile(filepath.Join(s.Store, "store.json"))
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, s)
+}
+
+// Write writes a store to a JSON file.
+// It returns any errors.
+func (s *ReportNation) Write() error {
+	if s.Store == "" {
+		return errors.New("missing nation store path")
+	}
+	b, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filepath.Join(s.Store, "store.json"), b, 0600)
 }

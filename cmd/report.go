@@ -19,8 +19,10 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"github.com/mdhender/wraith/engine"
+	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
 	"strings"
@@ -45,11 +47,17 @@ var cmdReport = &cobra.Command{
 			return errors.New("missing game name")
 		}
 
-		e, err := engine.New(globalBase.ConfigFile)
+		cfg, err := config.LoadGlobal(globalBase.ConfigFile)
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = e.LoadGame(globalReport.Game)
+		log.Printf("loaded config %q\n", cfg.Self)
+
+		e, err := engine.Open(cfg, context.Background())
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = e.Load(globalReport.Game)
 		if err != nil {
 			log.Fatal(err)
 		}

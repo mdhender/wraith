@@ -19,21 +19,22 @@
 package cmd
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
-	"github.com/mdhender/wraith/models"
+	"github.com/mdhender/wraith/engine"
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
-	"os"
 	"strings"
 	"time"
 )
 
 var globalCreateGame struct {
-	ShortName string
-	Name      string
-	StartDt   string
+	Force           bool
+	ShortName       string
+	Name            string
+	NumberOfNations int
+	StartDate       string
 }
 
 var cmdCreateGame = &cobra.Command{
@@ -54,47 +55,39 @@ var cmdCreateGame = &cobra.Command{
 		if globalCreateGame.Name == "" {
 			globalCreateGame.Name = globalCreateGame.ShortName
 		}
-
-		b, err := os.ReadFile("D:\\wraith\\testdata\\systems.json")
-		if err != nil {
-			log.Fatal(err)
-		}
-		var systems []struct {
-			X           int  `json:"x"`
-			Y           int  `json:"y"`
-			Z           int  `json:"z"`
-			Stars       int  `json:"stars"`
-			Singularity bool `json:"singularity,omitempty"`
-		}
-		if err := json.Unmarshal(b, &systems); err != nil {
-			log.Fatal(err)
+		if !(0 < globalCreateGame.NumberOfNations && globalCreateGame.NumberOfNations < 225) {
+			log.Fatalf("number of nations must be 1..225\n")
 		}
 
 		cfg, err := config.LoadGlobal(globalBase.ConfigFile)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded %q\n", cfg.Self)
+		log.Printf("loaded config %q\n", cfg.Self)
 
-		s, err := models.Open(cfg)
+		e, err := engine.Open(cfg, context.Background())
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer s.Close()
 
-		g, err := s.CreateGame(globalCreateGame.Name, globalCreateGame.ShortName, time.Now())
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("game id %d %v\n", g.Id, g)
-
-		for _, system := range systems {
-			s, err := s.AddSystem(g, system.X, system.Y, system.Z)
+		// don't create if the game already exists
+		if e.LookupGame(globalCreateGame.ShortName) != nil {
+			log.Printf("short name %q already exists\n", globalCreateGame.ShortName)
+			if !globalCreateGame.Force {
+				log.Fatal("unable to create game\n")
+			}
+			err = e.DeleteGame(globalCreateGame.ShortName)
 			if err != nil {
 				log.Fatal(err)
 			}
-			log.Printf("game id %d %v\n", g.Id, s)
+			log.Printf("short name %q purged\n", globalCreateGame.ShortName)
 		}
+
+		err = e.CreateGame(globalCreateGame.ShortName, globalCreateGame.Name, globalCreateGame.Name, 8, 14, time.Now())
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("created game %q\n", globalCreateGame.ShortName)
 
 		return nil
 	},
@@ -104,7 +97,9 @@ func init() {
 	cmdCreateGame.Flags().StringVar(&globalCreateGame.ShortName, "short-name", "", "report code for new game (eg PT-1)")
 	_ = cmdCreateGame.MarkFlagRequired("short-name")
 	cmdCreateGame.Flags().StringVar(&globalCreateGame.Name, "name", "", "descriptive name of new game")
-	cmdCreateGame.Flags().StringVar(&globalCreateGame.StartDt, "start-date", time.Now().String(), "start date for game")
+	cmdCreateGame.Flags().IntVar(&globalCreateGame.NumberOfNations, "nations", 20, "number of nations in game")
+	cmdCreateGame.Flags().StringVar(&globalCreateGame.StartDate, "start-date", "", "start date for game")
+	cmdCreateGame.Flags().BoolVar(&globalCreateGame.Force, "force", false, "delete any existing game")
 
 	cmdCreate.AddCommand(cmdCreateGame)
 }

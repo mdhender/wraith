@@ -18,49 +18,13 @@
 
 package engine
 
-import (
-	"fmt"
-)
-
-// Nation configuration
-type Nation struct {
-	Id          int
-	Name        string
-	Description string
-	Speciality  string
-	Government  struct {
-		Kind string
-		Name string
-	}
-	HomePlanet struct {
-		Name     string
-		Location struct {
-			X     int
-			Y     int
-			Z     int
-			Orbit int
-		}
-	}
-	Skills   Skills
-	Colonies []*XColony
-	Ships    []*XShip
-}
-
-func (e *Engine) createNation(id int) *Nation {
-	n := &Nation{Id: id, Name: fmt.Sprintf("SP%d", id), Speciality: "exploration"}
-	n.Government.Name = fmt.Sprintf("GOV%d", id)
-	n.Government.Kind = "monarchy"
-
-	n.HomePlanet.Name = "Home Planet"
-
-	n.Skills.Biology = 1
-	n.Skills.Bureaucracy = 1
-	n.Skills.Gravitics = 1
-	n.Skills.LifeSupport = 1
-	n.Skills.Manufacturing = 1
-	n.Skills.Military = 1
-	n.Skills.Mining = 1
-	n.Skills.Shields = 1
-
-	return n
+type Skills struct {
+	Biology       int `json:"biology"`
+	Bureaucracy   int `json:"bureaucracy"`
+	Gravitics     int `json:"gravitics"`
+	LifeSupport   int `json:"life-support"`
+	Manufacturing int `json:"manufacturing"`
+	Military      int `json:"military"`
+	Mining        int `json:"mining"`
+	Shields       int `json:"shields"`
 }

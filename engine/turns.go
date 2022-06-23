@@ -26,8 +26,8 @@ import (
 	"path/filepath"
 )
 
-// Turns configuration
-type Turns struct {
+// ReportTurns configuration
+type ReportTurns struct {
 	Store string       `json:"store"` // path to store data
 	Index []TurnsIndex `json:"index"`
 }
@@ -39,8 +39,8 @@ type TurnsIndex struct {
 // CreateTurns creates a new store.
 // Assumes that the path to store the data already exists.
 // It returns any errors.
-func CreateTurns(path string, overwrite bool) (*Turns, error) {
-	s := &Turns{
+func CreateTurns(path string, overwrite bool) (*ReportTurns, error) {
+	s := &ReportTurns{
 		Store: filepath.Clean(filepath.Join(path, "turns")),
 		Index: []TurnsIndex{},
 	}
@@ -54,8 +54,8 @@ func CreateTurns(path string, overwrite bool) (*Turns, error) {
 
 // LoadTurns loads an existing store.
 // It returns any errors.
-func LoadTurns(path string) (*Turns, error) {
-	s := &Turns{
+func LoadTurns(path string) (*ReportTurns, error) {
+	s := &ReportTurns{
 		Store: filepath.Clean(filepath.Join(path, "turns")),
 		Index: []TurnsIndex{},
 	}
@@ -64,7 +64,7 @@ func LoadTurns(path string) (*Turns, error) {
 
 // Read loads a store from a JSON file.
 // It returns any errors.
-func (s *Turns) Read() error {
+func (s *ReportTurns) Read() error {
 	b, err := ioutil.ReadFile(filepath.Join(s.Store, "store.json"))
 	if err != nil {
 		return err
@@ -74,7 +74,7 @@ func (s *Turns) Read() error {
 
 // Write writes a store to a JSON file.
 // It returns any errors.
-func (s *Turns) Write() error {
+func (s *ReportTurns) Write() error {
 	if s.Store == "" {
 		return errors.New("missing turns store path")
 	}

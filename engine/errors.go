@@ -18,49 +18,14 @@
 
 package engine
 
-import (
-	"fmt"
-)
+import "errors"
 
-// Nation configuration
-type Nation struct {
-	Id          int
-	Name        string
-	Description string
-	Speciality  string
-	Government  struct {
-		Kind string
-		Name string
-	}
-	HomePlanet struct {
-		Name     string
-		Location struct {
-			X     int
-			Y     int
-			Z     int
-			Orbit int
-		}
-	}
-	Skills   Skills
-	Colonies []*XColony
-	Ships    []*XShip
-}
+var ErrNoEngine = errors.New("missing engine")
+var ErrNoGame = errors.New("missing game")
+var ErrNoStore = errors.New("missing store")
+var ErrNotImplemented = errors.New("not implemented")
 
-func (e *Engine) createNation(id int) *Nation {
-	n := &Nation{Id: id, Name: fmt.Sprintf("SP%d", id), Speciality: "exploration"}
-	n.Government.Name = fmt.Sprintf("GOV%d", id)
-	n.Government.Kind = "monarchy"
-
-	n.HomePlanet.Name = "Home Planet"
-
-	n.Skills.Biology = 1
-	n.Skills.Bureaucracy = 1
-	n.Skills.Gravitics = 1
-	n.Skills.LifeSupport = 1
-	n.Skills.Manufacturing = 1
-	n.Skills.Military = 1
-	n.Skills.Mining = 1
-	n.Skills.Shields = 1
-
-	return n
-}
+var ErrDuplicateKey = errors.New("duplicate key")
+var ErrInvalidField = errors.New("invalid field")
+var ErrMissingField = errors.New("missing field")
+var ErrNoConnection = errors.New("no connection")

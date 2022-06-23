@@ -16,26 +16,332 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-DROP TABLE IF EXISTS user;
-CREATE TABLE user
-(
-    id     int         not null,
-    effdt  datetime    not null,
-    enddt  datetime    not null,
-    email  varchar(64) not null,
-    handle varchar(16) not null
-);
-ALTER TABLE user
-    ADD PRIMARY KEY (id, effdt);
+drop table if exists units;
 
-DROP TABLE IF EXISTS user_secret;
-CREATE TABLE user_secret
+drop table if exists colony_factory_group_orders;
+drop table if exists colony_factory_group_inventory;
+drop table if exists colony_factory_group;
+
+drop table if exists colony_mining_group_inventory;
+drop table if exists colony_mining_group_deposit;
+drop table if exists colony_mining_group;
+
+drop table if exists colony_inventory;
+drop table if exists colony_hull;
+drop table if exists colony_govt;
+drop table if exists colonies;
+
+drop table if exists deposit_dtl;
+drop table if exists deposits;
+drop table if exists planets;
+
+drop table if exists orbits;
+drop table if exists stars;
+drop table if exists systems;
+
+drop table if exists players;
+
+drop table if exists governments;
+drop table if exists nations;
+
+drop table if exists turns;
+drop table if exists games;
+
+drop table if exists profiles;
+drop table if exists users;
+
+create table users
 (
-    id            int         not null,
-    hashed_secret varchar(64) not null
+    id            int         not null auto_increment,
+    hashed_secret varchar(64) not null,
+    primary key (id)
 );
-ALTER TABLE user_secret
-    ADD PRIMARY KEY (id);
+
+create table profiles
+(
+    user_id int         not null,
+    effdt   datetime    not null,
+    enddt   datetime    not null,
+    handle  varchar(32) not null,
+    email   varchar(64) not null,
+    primary key (user_id, effdt),
+    foreign key (user_id) references users (id)
+        on delete cascade
+);
+
+create table games
+(
+    id         int         not null auto_increment,
+    short_name varchar(8)  not null,
+    name       varchar(32) not null,
+    turn       varchar(6)  not null,
+    descr      varchar(256),
+    primary key (id),
+    unique key (short_name)
+);
+
+create table turns
+(
+    game_id  int        not null,
+    turn     varchar(6) not null,
+    start_dt datetime   not null,
+    end_dt   datetime   not null,
+    primary key (game_id, turn),
+    foreign key (game_id) references games (id)
+        on delete cascade
+);
+
+create table nations
+(
+    id         int          not null auto_increment,
+    game_id    int          not null,
+    nation_no  int          not null,
+    speciality varchar(16)  not null,
+    descr      varchar(256) not null,
+    primary key (id),
+    foreign key (game_id) references games (id)
+        on delete cascade,
+    unique key (game_id, nation_no)
+);
+
+create table players
+(
+    id        int         not null auto_increment,
+    user_id   int         not null,
+    nation_id int         not null,
+    handle    varchar(32) not null,
+    primary key (id),
+    unique key (nation_id, handle),
+    foreign key (user_id) references users (id)
+        on delete cascade,
+    foreign key (nation_id) references nations (id)
+        on delete cascade
+);
+
+create table governments
+(
+    nation_id int         not null,
+    efftn     varchar(6)  not null,
+    endtn     varchar(6)  not null,
+    govt_name varchar(64) not null,
+    govt_kind varchar(64) not null,
+    primary key (nation_id, efftn),
+    foreign key (nation_id) references nations (id)
+        on delete cascade
+);
+
+create table systems
+(
+    id      int not null auto_increment,
+    game_id int not null,
+    x       int,
+    y       int,
+    z       int,
+    primary key (id),
+    unique key (game_id, x, y, z),
+    foreign key (game_id) references games (id)
+        on delete cascade
+);
+
+create table stars
+(
+    id        int        not null auto_increment,
+    system_id int        not null,
+    suffix    varchar(1) not null,
+    kind      varchar(4) not null,
+    primary key (id),
+    unique key (system_id, suffix),
+    foreign key (system_id) references systems (id)
+        on delete cascade
+);
+
+create table orbits
+(
+    id       int         not null auto_increment,
+    star_id  int         not null,
+    orbit_no int         not null,
+    kind     varchar(13) not null,
+    primary key (id),
+    unique key (star_id, orbit_no),
+    foreign key (star_id) references stars (id)
+        on delete cascade
+);
+
+create table planets
+(
+    id              int not null auto_increment,
+    orbit_id        int not null,
+    habitability_no int not null,
+    primary key (id),
+    foreign key (orbit_id) references orbits (id)
+        on delete cascade
+);
+
+create table deposits
+(
+    id          int         not null auto_increment,
+    planet_id   int         not null,
+    deposit_no  int         not null,
+    kind        varchar(14) not null,
+    initial_qty int         not null,
+    yield_pct   int         not null,
+    primary key (id),
+    unique key (planet_id, deposit_no),
+    foreign key (planet_id) references planets (id)
+        on delete cascade
+);
+
+create table deposit_dtl
+(
+    deposit_id    int        not null,
+    efftn         varchar(6) not null,
+    endtn         varchar(6) not null,
+    remaining_qty int        not null,
+    primary key (deposit_id, efftn),
+    foreign key (deposit_id) references deposits (id)
+        on delete cascade
+);
+
+create table colonies
+(
+    id        int         not null auto_increment,
+    colony_no int         not null,
+    planet_id int         not null,
+    kind      varchar(13) not null,
+    primary key (id),
+    foreign key (planet_id) references planets (id)
+        on delete cascade
+);
+
+create table colony_govt
+(
+    colony_id     int        not null,
+    efftn         varchar(6) not null,
+    endtn         varchar(6) not null,
+    controlled_by int,
+    primary key (colony_id, efftn),
+    foreign key (colony_id) references colonies (id)
+        on delete cascade,
+    foreign key (controlled_by) references players (id)
+        on delete set null
+);
+
+
+create table colony_hull
+(
+    colony_id       int        not null,
+    unit_id         int        not null,
+    tech_level      int        not null,
+    efftn           varchar(6) not null,
+    endtn           varchar(6) not null,
+    qty_operational int,
+    primary key (colony_id, unit_id, tech_level, efftn),
+    foreign key (colony_id) references colonies (id)
+        on delete cascade
+);
+
+create table colony_inventory
+(
+    colony_id       int        not null,
+    unit_id         int        not null,
+    tech_level      int        not null,
+    efftn           varchar(6) not null,
+    endtn           varchar(6) not null,
+    qty_operational int,
+    qty_stowed      int,
+    primary key (colony_id, unit_id, tech_level, efftn),
+    foreign key (colony_id) references colonies (id)
+        on delete cascade
+);
+
+create table colony_factory_group
+(
+    id        int        not null auto_increment,
+    colony_id int        not null,
+    group_no  int        not null,
+    efftn     varchar(6) not null,
+    endtn     varchar(6) not null,
+    primary key (id),
+    unique key (colony_id, group_no, efftn),
+    foreign key (colony_id) references colonies (id)
+        on delete cascade
+);
+
+create table colony_factory_group_inventory
+(
+    factory_group_id int        not null,
+    unit_id          int        not null,
+    tech_level       int        not null,
+    efftn            varchar(6) not null,
+    endtn            varchar(6) not null,
+    qty_operational  int,
+    primary key (factory_group_id, unit_id, tech_level, efftn),
+    foreign key (factory_group_id) references colony_factory_group (id)
+        on delete cascade
+);
+
+create table colony_factory_group_orders
+(
+    factory_group_id int        not null,
+    unit_id          int        not null,
+    tech_level       int        not null,
+    efftn            varchar(6) not null,
+    endtn            varchar(6) not null,
+    primary key (factory_group_id, unit_id, tech_level, efftn),
+    foreign key (factory_group_id) references colony_factory_group (id)
+        on delete cascade
+);
+
+create table colony_mining_group
+(
+    id        int        not null auto_increment,
+    colony_id int        not null,
+    group_no  int        not null,
+    efftn     varchar(6) not null,
+    endtn     varchar(6) not null,
+    primary key (id),
+    unique key (colony_id, group_no, efftn),
+    foreign key (colony_id) references colonies (id)
+        on delete cascade
+);
+
+create table colony_mining_group_deposit
+(
+    mining_group_id int        not null,
+    efftn           varchar(6) not null,
+    endtn           varchar(6) not null,
+    deposit_id      int        not null,
+    primary key (mining_group_id, efftn),
+    foreign key (deposit_id) references deposits (id)
+        on delete cascade
+);
+
+
+create table colony_mining_group_inventory
+(
+    mining_group_id int        not null,
+    unit_id         int        not null,
+    tech_level      int        not null,
+    efftn           varchar(6) not null,
+    endtn           varchar(6) not null,
+    qty_operational int,
+    primary key (mining_group_id, unit_id, tech_level, efftn),
+    foreign key (mining_group_id) references colony_mining_group (id)
+        on delete cascade
+);
+
+create table units
+(
+    id    int         not null auto_increment,
+    code  varchar(5)  not null,
+    effdt datetime    not null,
+    enddt datetime    not null,
+    name  varchar(20) not null,
+    descr varchar(64) not null,
+    primary key (id),
+    unique key (code, effdt)
+);
+
 
 # CREATE TRIGGER ins_users BEFORE INSERT ON users
 #     FOR EACH ROW
@@ -44,127 +350,3 @@ ALTER TABLE user_secret
 #     SET NEW.email = lower(NEW.email);
 # END;
 
-DROP TABLE IF EXISTS game;
-CREATE TABLE game
-(
-    id         int         not null,
-    effdt      datetime    not null,
-    enddt      datetime    not null,
-    short_name varchar(8)  not null,
-    name       varchar(32) not null
-);
-ALTER TABLE game
-    ADD PRIMARY KEY (id, effdt);
-
-DROP TABLE IF EXISTS game_turn;
-CREATE TABLE game_turn
-(
-    game_id int      not null,
-    turn_no int      not null,
-    effdt   datetime not null,
-    enddt   datetime not null,
-    asofdt  datetime
-);
-ALTER TABLE game_turn
-    ADD PRIMARY KEY (game_id, turn_no);
-
-DROP TABLE IF EXISTS systems;
-CREATE TABLE systems
-(
-    game_id int not null,
-    id      int PRIMARY KEY AUTO_INCREMENT,
-    x       int,
-    y       int,
-    z       int
-);
-
-DROP TABLE IF EXISTS star;
-CREATE TABLE star
-(
-    system_id int,
-    id        int PRIMARY KEY AUTO_INCREMENT,
-    kind      varchar(4)
-);
-
-DROP TABLE IF EXISTS orbit;
-CREATE TABLE orbit
-(
-    star_id  int,
-    id       int PRIMARY KEY AUTO_INCREMENT,
-    orbit_no int,
-    kind     varchar(13)
-);
-
-DROP TABLE IF EXISTS planet;
-CREATE TABLE planet
-(
-    star_id       int,
-    id            int PRIMARY KEY AUTO_INCREMENT,
-    orbit_no      int,
-    kind          varchar(13),
-    controlled_by varchar(1)
-);
-
-DROP TABLE IF EXISTS planet_deposit;
-CREATE TABLE planet_deposit
-(
-    planet_id   int         not null,
-    id          int PRIMARY KEY AUTO_INCREMENT,
-    deposit_no  int         not null,
-    effdt       datetime    not null,
-    enddt       datetime    not null,
-    kind        varchar(14) not null,
-    initial_qty int         not null
-);
-
-DROP TABLE IF EXISTS nations;
-CREATE TABLE nations
-(
-    game_id varchar(8),
-    id      int PRIMARY KEY AUTO_INCREMENT,
-    name    varchar(255)
-);
-
-DROP TABLE IF EXISTS players;
-CREATE TABLE players
-(
-    id        int PRIMARY KEY AUTO_INCREMENT,
-    user_id   int,
-    game_id   int,
-    nation_id int
-);
-
-DROP TABLE IF EXISTS colonies;
-CREATE TABLE colonies
-(
-    id            int PRIMARY KEY AUTO_INCREMENT,
-    game_id       int,
-    system_id     int,
-    star_id       int,
-    orbit_id      int,
-    controlled_by int,
-    location      int
-);
-
-DROP TABLE IF EXISTS inventory;
-CREATE TABLE inventory
-(
-    colony_id       int,
-    unit            varchar(255),
-    tech_level      int,
-    qty_operational int,
-    qty_stowed      int
-);
-
-DROP TABLE IF EXISTS units;
-CREATE TABLE units
-(
-    code  varchar(8)  not null,
-    effdt varchar(10) not null,
-    enddt varchar(10) not null,
-    name  varchar(20) not null,
-    descr varchar(64) not null
-);
-
-ALTER TABLE units
-    ADD PRIMARY KEY (code, effdt);

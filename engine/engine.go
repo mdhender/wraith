@@ -19,15 +19,15 @@
 package engine
 
 import (
-	"errors"
+	"context"
+	"database/sql"
 	"github.com/mdhender/wraith/storage/config"
-	"log"
 	"path/filepath"
 )
 
 /*
-type System struct {
-	Game        *Game
+type ReportSystem struct {
+	ReportGame        *ReportGame
 	Coordinates Coordinates
 	Stars       []*Star
 }
@@ -39,7 +39,7 @@ type Coordinates struct {
 }
 
 type Star struct {
-	System   *System
+	ReportSystem   *ReportSystem
 	Sequence string // A, B, etc
 	Kind     string
 	Orbits   [11]*Planet // each orbit may or may not contain a planet
@@ -50,62 +50,62 @@ type Planet struct {
 	OrbitNo        int    // 1..10
 	Kind           string // asteroid belt, gas giant, terrestrial
 	HabitabilityNo int
-	ControlledBy   *Nation
+	ControlledBy   *ReportNation
 	Deposits       []*Deposit
-	Colonies       []*Colony
-	Ships          []*Ship
+	Colonies       []*ReportColony
+	Ships          []*ReportShip
 }
 
 type Deposit struct {
 	Planet           *Planet
-	ControlledBy     *Nation
-	Unit             string  // fuel, gold, metallics, non-metallics
+	ControlledBy     *ReportNation
+	ReportUnit             string  // fuel, gold, metallics, non-metallics
 	QtyInitial       int     // in mass units
 	QtyRemaining     int     // in mass units
 	MiningDifficulty float64 // how hard it is to extract each mass unit
 	YieldPct         float64 // percentage of each mass unit that yields units
 }
 
-type Colony struct {
+type ReportColony struct {
 	Id            int
 	Location      *Planet
 	Kind          string // surface colony, enclosed colony, orbital colony
 	TechLevel     int
-	BuiltBy       *Nation
-	ControlledBy  *Nation
+	BuiltBy       *ReportNation
+	ControlledBy  *ReportNation
 	Inventory     []*Inventory
 	MiningGroups  []*MiningGroup
 	FactoryGroups []*FactoryGroup
 }
 
-type Ship struct {
+type ReportShip struct {
 	Id            int
 	Location      *Planet
 	TechLevel     int
-	BuiltBy       *Nation
-	ControlledBy  *Nation
+	BuiltBy       *ReportNation
+	ControlledBy  *ReportNation
 	Inventory     []*Inventory
 	FactoryGroups []*FactoryGroup
 }
 
 type FactoryGroup struct {
-	Colony    *Colony
-	Ship      *Ship
+	ReportColony    *ReportColony
+	ReportShip      *ReportShip
 	GroupNo   int
 	Inventory []*Inventory
-	Unit      string
+	ReportUnit      string
 	TechLevel int
 }
 
 type MiningGroup struct {
-	Colony    *Colony
+	ReportColony    *ReportColony
 	GroupNo   int
 	Deposit   *Deposit
 	Inventory []*Inventory
 }
 
 type Inventory struct {
-	Unit           string
+	ReportUnit           string
 	TechLevel      int
 	QtyOperational int
 	QtyStowed      int
@@ -113,17 +113,17 @@ type Inventory struct {
 	EnclosedMass   int
 }
 
-type Nation struct {
-	Player   *Player
+type ReportNation struct {
+	ReportPlayer   *ReportPlayer
 	Name     string
-	Colonies []*Colony
-	Ships    []*Ship
+	Colonies []*ReportColony
+	Ships    []*ReportShip
 }
 
-type Player struct {
-	Game   *Game
+type ReportPlayer struct {
+	ReportGame   *ReportGame
 	User   *User
-	Nation *Nation
+	ReportNation *ReportNation
 }
 */
 
@@ -133,51 +133,19 @@ type Engine struct {
 	}
 	stores struct {
 		games   *Games
-		game    *Game
+		game    *ReportGame
 		nations *Nations
-		turns   *Turns
+		turns   *ReportTurns
 		users   *Users
 	}
-	s *Store
+	s    *ReportStore
+	ctx  context.Context
+	db   *sql.DB
+	game *Game
 }
 
-// New returns an initialized engine with the base configuration
-// and the games store loaded.
-func New(baseConfigFile string) (e *Engine, err error) {
-	if baseConfigFile == "" {
-		return nil, errors.New("missing base config")
-	}
-
-	e = &Engine{}
-
-	// load the base configuration
-	e.config.base, err = config.LoadGlobal(baseConfigFile)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("loaded base config %q\n", e.config.base.Self)
-
-	// load the users store
-	e.stores.users = &Users{
-		Store: e.RootDir("users"),
-		Index: []UsersIndex{},
-	}
-	if err = e.ReadUsers(); err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("loaded users store %q\n", e.stores.users.Store)
-
-	// load the games store
-	e.stores.games = &Games{
-		Store: e.RootDir("games"),
-		Index: []GamesIndex{},
-	}
-	if err = e.ReadGames(); err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("loaded games store %q\n", e.stores.games.Store)
-
-	return e, nil
+func (e *Engine) Ping() error {
+	return e.db.Ping()
 }
 
 func (e *Engine) RootDir(stores ...string) string {
@@ -187,10 +155,10 @@ func (e *Engine) RootDir(stores ...string) string {
 	return filepath.Join(append([]string{"D:\\wraith\\testdata"}, stores...)...)
 }
 
-func CreateGame(string, string, string, bool) (*Game, error) {
+func CreateGame(string, string, string, bool) (*ReportGame, error) {
 	panic("!")
 }
-func CreateNations(string, bool) (*Nation, error) {
+func CreateNations(string, bool) (*ReportNation, error) {
 	panic("!")
 }
 func LoadGames(string) (*Games, error) {
@@ -200,39 +168,12 @@ func LoadNations(string) (*Nations, error) {
 	panic("!")
 }
 
-func (e *Engine) LoadGame(game string) (err error) {
-	// free up any game already in memory
-	e.stores.game, e.stores.nations, e.stores.turns = nil, nil, nil
-
-	if game == "" {
-		return errors.New("missing game name")
-	}
-
-	//// find the game in the store
-	//for _, g := range e.stores.games.Index {
-	//	if strings.ToLower(g.Name) == strings.ToLower(game) {
-	//		e.stores.game, err = LoadGame(g.Store)
-	//		if err != nil {
-	//			return err
-	//		}
-	//		break
-	//	}
-	//}
-	if e.stores.game == nil {
-		log.Fatalf("unable to find game %q\n", game)
-	}
-	log.Printf("loaded game store %q\n", e.stores.game.Store)
-
-	//// use the game store to load the nations store
-	//e.stores.nations, err = LoadNations(e.stores.game.Store)
-	//if err != nil {
-	//	return err
-	//}
-	log.Printf("loaded nations store %q\n", e.stores.nations.Store)
-
-	return nil
-}
-
 func (e *Engine) Version() string {
 	return "0.1.0"
+}
+
+// reset will free up any game already in memory
+func (e *Engine) reset() {
+	e.game = nil
+	e.stores.game, e.stores.nations, e.stores.turns = nil, nil, nil
 }

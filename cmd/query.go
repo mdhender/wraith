@@ -19,8 +19,9 @@
 package cmd
 
 import (
+	"context"
 	"errors"
-	"github.com/mdhender/wraith/models"
+	"github.com/mdhender/wraith/engine"
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
@@ -43,20 +44,15 @@ var cmdQuery = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded %q\n", cfg.Self)
+		log.Printf("loaded config %q\n", cfg.Self)
 
-		s, err := models.Open(cfg)
+		e, err := engine.Open(cfg, context.Background())
 		if err != nil {
 			log.Fatal(err)
-		}
-		defer s.Close()
-
-		user, err := s.SelectUserById(globalQuery.Id)
-		if err != nil {
+		} else if err = e.Ping(); err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("user %d %v\n", globalQuery.Id, user)
-
+		log.Printf("query: connection seems ok\n")
 		return nil
 	},
 }

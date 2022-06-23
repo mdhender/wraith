@@ -18,49 +18,48 @@
 
 package engine
 
-import (
-	"fmt"
-)
-
-// Nation configuration
-type Nation struct {
-	Id          int
-	Name        string
-	Description string
-	Speciality  string
-	Government  struct {
-		Kind string
-		Name string
+type XColony struct {
+	Id       int
+	Kind     string
+	Location struct {
+		X     int
+		Y     int
+		Z     int
+		Star  int
+		Orbit int
 	}
-	HomePlanet struct {
-		Name     string
-		Location struct {
-			X     int
-			Y     int
-			Z     int
-			Orbit int
-		}
+	TechLevel  int
+	Population struct {
+		Professional      ReportPopulation
+		Soldier           ReportPopulation
+		Unskilled         ReportPopulation
+		Unemployed        ReportPopulation
+		ConstructionCrews int
+		SpyTeams          int
+		Births            int
+		Deaths            int
 	}
-	Skills   Skills
-	Colonies []*XColony
-	Ships    []*XShip
+	Inventory     []*Inventory
+	FactoryGroups []*XGroup
+	FarmGroups    []*XGroup
+	MiningGroups  []*XGroup
 }
 
-func (e *Engine) createNation(id int) *Nation {
-	n := &Nation{Id: id, Name: fmt.Sprintf("SP%d", id), Speciality: "exploration"}
-	n.Government.Name = fmt.Sprintf("GOV%d", id)
-	n.Government.Kind = "monarchy"
+type XPopulation struct {
+	Code   string
+	Qty    int
+	Pay    float64
+	Ration float64
+}
 
-	n.HomePlanet.Name = "Home Planet"
+type XGroup struct {
+	Id    int
+	Name  string
+	Units []*XGroupUnits
+}
 
-	n.Skills.Biology = 1
-	n.Skills.Bureaucracy = 1
-	n.Skills.Gravitics = 1
-	n.Skills.LifeSupport = 1
-	n.Skills.Manufacturing = 1
-	n.Skills.Military = 1
-	n.Skills.Mining = 1
-	n.Skills.Shields = 1
-
-	return n
+type XGroupUnits struct {
+	TechLevel int
+	Qty       int
+	Stages    []int
 }

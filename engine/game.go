@@ -19,123 +19,93 @@
 package engine
 
 import (
-	"encoding/json"
 	"errors"
-	"io/ioutil"
-	"log"
-	"os"
-	"path/filepath"
+	"fmt"
 	"strings"
+	"time"
 	"unicode"
 )
 
 // Game configuration
 type Game struct {
-	Store        string         `json:"store"` // path to store data
-	Id           string         `json:"id"`
-	Description  string         `json:"description"`
-	NationsIndex []NationsIndex `json:"nations-index"`
-	TurnsIndex   []TurnsIndex   `json:"turns-index"`
+	Id      string
+	Name    string
+	Descr   string
+	Turn    int // index to current game turn
+	Turns   []*Turn
+	Nations []*Nation
 }
 
-// AddGame adds a game to the store.
-func (e *Engine) AddGame(id, descr string) error {
-	// free up any game already in memory
-	e.stores.game, e.stores.nations, e.stores.turns = nil, nil, nil
-
-	// validate the id and description
-	id = strings.TrimSpace(id)
-	if descr = strings.TrimSpace(descr); descr == "" {
-		descr = id
-	}
-	if err := validateGameId(id); err != nil {
-		return err
-	}
-	if err := validateGameDescription(descr); err != nil {
-		return err
+// CreateGame creates a new game in the engine.
+// It will replace any game currently in the engine.
+func (e *Engine) CreateGame(shortName, name, descr string, numberOfNations, radius int, startDt time.Time) error {
+	if e == nil {
+		return ErrNoEngine
+	} else if e.db == nil {
+		return ErrNoStore
 	}
 
-	// error on duplicate id
-	for _, g := range e.stores.games.Index {
-		if strings.ToLower(g.Id) == strings.ToLower(id) {
-			return errors.New("duplicate id")
-		}
+	e.reset()
+
+	shortName = strings.ToUpper(strings.TrimSpace(shortName))
+	if shortName == "" {
+		return fmt.Errorf("short name: %w", ErrMissingField)
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = shortName
+	}
+	descr = strings.TrimSpace(descr)
+	if descr == "" {
+		descr = shortName
 	}
 
-	e.stores.game = &Game{
-		Store:        e.RootDir("game", id),
-		Id:           id,
-		Description:  descr,
-		NationsIndex: []NationsIndex{},
-		TurnsIndex:   []TurnsIndex{},
+	// assume two week turns
+	effDt := startDt
+	endDt := effDt.Add(2 * 7 * 24 * time.Hour)
+
+	// delete values
+	err := e.deleteGame(shortName)
+	if err != nil {
+		return fmt.Errorf("createGame: %w", err)
 	}
 
-	e.stores.nations = &Nations{
-		Store: e.RootDir("game", id, "nations"),
-		Index: []NationsIndex{},
+	e.game = &Game{
+		Id:    shortName,
+		Name:  name,
+		Descr: descr,
+		Turn:  0,
+		Turns: []*Turn{
+			{No: 0, EffDt: effDt, EndDt: endDt},
+			{No: 1, EffDt: endDt, EndDt: endDt.Add(2 * 7 * 24 * time.Hour)},
+		},
 	}
 
-	e.stores.turns = &Turns{
-		Store: e.RootDir("game", id, "turns"),
-		Index: []TurnsIndex{},
+	for i := 0; i < numberOfNations; i++ {
+		e.game.Nations = append(e.game.Nations, e.createNation(i+1))
 	}
 
-	// create the folders for the game store
-	for _, folder := range []string{
-		e.stores.game.Store,
-		e.stores.nations.Store,
-		e.stores.turns.Store,
-		filepath.Join(e.stores.game.Store, "nation"),
-	} {
-		if _, err := os.Stat(folder); err != nil {
-			log.Printf("creating folder %q\n", folder)
-			if err = os.MkdirAll(folder, 0700); err != nil {
-				log.Fatal(err)
-			}
-			log.Printf("created folder %q\n", folder)
-		}
-	}
+	return e.saveGame()
+}
 
-	if err := e.WriteGame(); err != nil {
-		return err
-	}
-	if err := e.WriteNations(); err != nil {
-		return err
-	}
-	//if err := e.WriteTurns(); err != nil {
-	//	return err
-	//}
+func (e *Engine) DeleteGame(id string) error {
+	return e.deleteGame(id)
+}
 
-	panic("!")
+func (e *Engine) LookupGame(id string) *Game {
+	return e.lookupGame(id)
 }
 
 // ReadGame loads a store from a JSON file.
 // It returns any errors.
 func (e *Engine) ReadGame(id string) error {
-	// free up any game already in memory
-	e.stores.game, e.stores.nations, e.stores.turns = nil, nil, nil
-
-	// validate the id
-	id = strings.TrimSpace(id)
-	if err := validateGameId(id); err != nil {
-		return err
-	}
-
-	b, err := ioutil.ReadFile(filepath.Join(e.RootDir("game", id), "store.json"))
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(b, e.stores.game)
+	panic("!")
 }
 
 // WriteGame writes a store to a JSON file.
 // It returns any errors.
 func (e *Engine) WriteGame() error {
-	b, err := json.MarshalIndent(e.stores.game, "", "  ")
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(filepath.Join(e.stores.game.Store, "store.json"), b, 0600)
+	panic("!")
 }
 
 // validateGameDescription validates the game description
