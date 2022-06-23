@@ -18,6 +18,8 @@
 
 drop table if exists units;
 
+drop table if exists deposit_dtl;
+
 drop table if exists colony_factory_group_orders;
 drop table if exists colony_factory_group_inventory;
 drop table if exists colony_factory_group;
@@ -26,12 +28,14 @@ drop table if exists colony_mining_group_inventory;
 drop table if exists colony_mining_group_deposit;
 drop table if exists colony_mining_group;
 
+drop table if exists colony_pay;
+drop table if exists colony_population;
+drop table if exists colony_rations;
 drop table if exists colony_inventory;
 drop table if exists colony_hull;
 drop table if exists colony_dtl;
 drop table if exists colonies;
 
-drop table if exists deposit_dtl;
 drop table if exists deposits;
 drop table if exists planets;
 
@@ -39,12 +43,12 @@ drop table if exists orbits;
 drop table if exists stars;
 drop table if exists systems;
 
-drop table if exists player_dtl;
-drop table if exists players;
-
 drop table if exists nation_skills;
 drop table if exists nation_dtl;
 drop table if exists nations;
+
+drop table if exists player_dtl;
+drop table if exists players;
 
 drop table if exists turns;
 drop table if exists games;
@@ -82,6 +86,21 @@ create table games
     unique key (short_name)
 );
 
+create table players
+(
+    id            int not null auto_increment,
+    game_id       int not null,
+    controlled_by int comment 'user controlling the player',
+    subject_of    int comment 'set if player is regent or viceroy',
+    primary key (id),
+    foreign key (game_id) references games (id)
+        on delete cascade,
+    foreign key (controlled_by) references users (id)
+        on delete set null,
+    foreign key (subject_of) references players (id)
+        on delete set null
+);
+
 create table turns
 (
     game_id  int        not null,
@@ -108,14 +127,17 @@ create table nations
 
 create table nation_dtl
 (
-    nation_id int         not null,
-    efftn     varchar(6)  not null,
-    endtn     varchar(6)  not null,
-    govt_name varchar(64) not null,
-    govt_kind varchar(64) not null,
+    nation_id     int         not null,
+    efftn         varchar(6)  not null,
+    endtn         varchar(6)  not null,
+    controlled_by int comment 'player controlling the nation',
+    govt_name     varchar(64) not null,
+    govt_kind     varchar(64) not null,
     primary key (nation_id, efftn),
     foreign key (nation_id) references nations (id)
-        on delete cascade
+        on delete cascade,
+    foreign key (controlled_by) references players (id)
+        on delete set null
 );
 
 create table nation_skills
@@ -124,31 +146,18 @@ create table nation_skills
     efftn                varchar(6) not null,
     endtn                varchar(6) not null,
     tech_level           int        not null,
-    biology              int        not null,
-    bureaucracy          int        not null,
-    gravitics            int        not null,
-    life_support         int        not null,
-    manufacturing        int        not null,
-    military             int        not null,
-    mining               int        not null,
-    shields              int        not null,
     research_points_pool int        not null,
+    biology              int        not null comment 'not used currently',
+    bureaucracy          int        not null comment 'not used currently',
+    gravitics            int        not null comment 'not used currently',
+    life_support         int        not null comment 'not used currently',
+    manufacturing        int        not null comment 'not used currently',
+    military             int        not null comment 'not used currently',
+    mining               int        not null comment 'not used currently',
+    shields              int        not null comment 'not used currently',
     primary key (nation_id),
     unique key (nation_id, efftn),
     foreign key (nation_id) references nations (id)
-        on delete cascade
-);
-
-create table players
-(
-    id            int not null auto_increment,
-    controlled_by int not null comment 'user controlling the player',
-    nation_id     int not null comment 'nation player aligns to',
-    primary key (id),
-    unique key (nation_id, controlled_by),
-    foreign key (nation_id) references nations (id)
-        on delete cascade,
-    foreign key (controlled_by) references users (id)
         on delete cascade
 );
 
@@ -225,20 +234,6 @@ create table deposits
         on delete cascade
 );
 
-create table deposit_dtl
-(
-    deposit_id    int        not null,
-    efftn         varchar(6) not null,
-    endtn         varchar(6) not null,
-    remaining_qty int        not null,
-    controlled_by int comment 'player controlling the deposit',
-    primary key (deposit_id, efftn),
-    foreign key (controlled_by) references players (id)
-        on delete set null,
-    foreign key (deposit_id) references deposits (id)
-        on delete cascade
-);
-
 create table colonies
 (
     id        int         not null auto_increment,
@@ -290,6 +285,51 @@ create table colony_inventory
     foreign key (colony_id) references colonies (id)
         on delete cascade
 ) comment 'cargo of the colony';
+
+create table colony_population
+(
+    colony_id              int        not null,
+    efftn                  varchar(6) not null,
+    endtn                  varchar(6) not null,
+    qty_professional       int        not null,
+    qty_soldier            int        not null,
+    qty_unskilled          int        not null,
+    qty_unemployed         int        not null,
+    qty_construction_crews int        not null,
+    qty_spy_teams          int        not null,
+    primary key (colony_id, efftn),
+    foreign key (colony_id) references colonies (id)
+        on delete cascade
+);
+
+create table colony_rations
+(
+    colony_id              int        not null,
+    efftn                  varchar(6) not null,
+    endtn                  varchar(6) not null,
+    qty_professional       int        not null,
+    qty_soldier            int        not null,
+    qty_unskilled          int        not null,
+    qty_unemployed         int        not null,
+    primary key (colony_id, efftn),
+    foreign key (colony_id) references colonies (id)
+        on delete cascade
+);
+
+create table colony_pay
+(
+    colony_id              int        not null,
+    efftn                  varchar(6) not null,
+    endtn                  varchar(6) not null,
+    qty_professional       int        not null,
+    qty_soldier            int        not null,
+    qty_unskilled          int        not null,
+    qty_unemployed         int        not null,
+    primary key (colony_id, efftn),
+    foreign key (colony_id) references colonies (id)
+        on delete cascade
+);
+
 
 create table colony_factory_group
 (
@@ -365,6 +405,21 @@ create table colony_mining_group_inventory
     foreign key (mining_group_id) references colony_mining_group (id)
         on delete cascade
 );
+
+create table deposit_dtl
+(
+    deposit_id    int        not null,
+    efftn         varchar(6) not null,
+    endtn         varchar(6) not null,
+    remaining_qty int        not null,
+    controlled_by int comment 'colony controlling the deposit',
+    primary key (deposit_id, efftn),
+    foreign key (controlled_by) references colonies (id)
+        on delete set null,
+    foreign key (deposit_id) references deposits (id)
+        on delete cascade
+);
+
 
 create table units
 (
