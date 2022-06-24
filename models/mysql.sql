@@ -53,7 +53,7 @@ drop table if exists players;
 drop table if exists turns;
 drop table if exists games;
 
-drop table if exists profiles;
+drop table if exists user_profile;
 drop table if exists users;
 
 create table users
@@ -63,7 +63,7 @@ create table users
     primary key (id)
 );
 
-create table profiles
+create table user_profile
 (
     user_id int         not null,
     effdt   datetime    not null,
@@ -297,6 +297,7 @@ create table colony_population
     qty_unemployed         int        not null,
     qty_construction_crews int        not null,
     qty_spy_teams          int        not null,
+    rebel_pct              int        not null,
     primary key (colony_id, efftn),
     foreign key (colony_id) references colonies (id)
         on delete cascade
@@ -304,13 +305,13 @@ create table colony_population
 
 create table colony_rations
 (
-    colony_id              int        not null,
-    efftn                  varchar(6) not null,
-    endtn                  varchar(6) not null,
-    qty_professional       int        not null,
-    qty_soldier            int        not null,
-    qty_unskilled          int        not null,
-    qty_unemployed         int        not null,
+    colony_id        int        not null,
+    efftn            varchar(6) not null,
+    endtn            varchar(6) not null,
+    qty_professional int        not null,
+    qty_soldier      int        not null,
+    qty_unskilled    int        not null,
+    qty_unemployed   int        not null,
     primary key (colony_id, efftn),
     foreign key (colony_id) references colonies (id)
         on delete cascade
@@ -318,13 +319,13 @@ create table colony_rations
 
 create table colony_pay
 (
-    colony_id              int        not null,
-    efftn                  varchar(6) not null,
-    endtn                  varchar(6) not null,
-    qty_professional       int        not null,
-    qty_soldier            int        not null,
-    qty_unskilled          int        not null,
-    qty_unemployed         int        not null,
+    colony_id        int        not null,
+    efftn            varchar(6) not null,
+    endtn            varchar(6) not null,
+    qty_professional int        not null,
+    qty_soldier      int        not null,
+    qty_unskilled    int        not null,
+    qty_unemployed   int        not null,
     primary key (colony_id, efftn),
     foreign key (colony_id) references colonies (id)
         on delete cascade
@@ -440,4 +441,20 @@ create table units
 #     SET NEW.handle_lower = lower(NEW.handle);
 #     SET NEW.email = lower(NEW.email);
 # END;
+
+insert into users (hashed_secret)
+values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'sysop', 'sysop'
+from users
+where id = 1;
+
+insert into users (hashed_secret)
+values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'batch', 'batch'
+from users
+where id = 2;
 

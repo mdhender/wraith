@@ -57,17 +57,35 @@ func (e *Engine) createGame() error {
 	return fmt.Errorf("engine.createGame: %w", ErrNotImplemented)
 }
 
-func (e *Engine) deleteGame(id string) error {
-	_, err := e.db.Exec("delete from games where game_id = ?", id)
+func (e *Engine) deleteGame(id int) error {
+	_, err := e.db.Exec("delete from games where id = ?", id)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (e *Engine) lookupGame(id string) *Game {
+func (e *Engine) deleteGameByName(shortName string) error {
+	_, err := e.db.Exec("delete from games where short_name = ?", shortName)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e *Engine) lookupGame(id int) *Game {
 	var g Game
-	row := e.db.QueryRow("select game_id, name, descr, turn_no from games where game_id = ?", id)
+	row := e.db.QueryRow("select id, name, descr, current_turn from games where id = ?", id)
+	err := row.Scan(&g.Id, &g.Name, &g.Descr, &g.Turn)
+	if err != nil {
+		return nil
+	}
+	return &g
+}
+
+func (e *Engine) lookupGameByName(shortName string) *Game {
+	var g Game
+	row := e.db.QueryRow("select id, name, descr, current_turn from games where short_name= ?", shortName)
 	err := row.Scan(&g.Id, &g.Name, &g.Descr, &g.Turn)
 	if err != nil {
 		return nil
@@ -79,29 +97,35 @@ func (e *Engine) saveGame() error {
 	// get a transaction with a deferred rollback in case things fail
 	tx, err := e.db.BeginTx(e.ctx, nil)
 	if err != nil {
-		return fmt.Errorf("engine.saveGame: %w", err)
+		return fmt.Errorf("engine.saveGame: beginTx: %w", err)
 	}
 	defer tx.Rollback()
 
-	_, err = tx.ExecContext(e.ctx, "insert into games (game_id, name, descr, turn_no) values (?, ?, ?, ?)",
-		e.game.Id, e.game.Name, e.game.Descr, e.game.Turn)
+	r, err := tx.ExecContext(e.ctx, "insert into games (short_name, name, descr, current_turn) values (?, ?, ?, ?)",
+		e.game.ShortName, e.game.Name, e.game.Descr, e.game.Turn)
 	if err != nil {
-		return fmt.Errorf("engine.saveGame: %w", err)
+		return fmt.Errorf("engine.saveGame: insert: 107: %w", err)
 	}
+	id, err := r.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("engine.saveGame: fetchId: %w", err)
+	}
+	e.game.Id = int(id)
+	log.Printf("created game %3d %s\n", int(id), e.game.ShortName)
 
 	for _, turn := range e.game.Turns {
-		_, err = tx.ExecContext(e.ctx, "insert into turns (game_id, turn_no, start_dt, end_dt) values (?, ?, ?, ?)",
+		_, err = tx.ExecContext(e.ctx, "insert into turns (game_id, turn, start_dt, end_dt) values (?, ?, ?, ?)",
 			e.game.Id, turn.No, turn.EffDt, turn.EndDt)
 		if err != nil {
-			return fmt.Errorf("engine.saveGame: %w", err)
+			return fmt.Errorf("engine.saveGame: insert: 120: %w", err)
 		}
 	}
 
 	for _, nation := range e.game.Nations {
-		r, err := tx.ExecContext(e.ctx, "insert into nations (game_id, no, from_turn, thru_turn, govt_name, govt_kind, speciality, descr) values (?, ?, ?, ?, ?, ?, ?, ?)",
-			e.game.Id, nation.Id, 0, 9999, nation.Government.Name, nation.Government.Kind, nation.Speciality, nation.Description)
+		r, err := tx.ExecContext(e.ctx, "insert into nations (game_id, nation_no, speciality, descr) values (?, ?, ?, ?)",
+			e.game.Id, nation.Id, nation.Speciality, nation.Description)
 		if err != nil {
-			return fmt.Errorf("engine.saveGame: %w", err)
+			return fmt.Errorf("engine.saveGame: insert: 128: %w", err)
 		}
 		id, err := r.LastInsertId()
 		if err != nil {

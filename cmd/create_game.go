@@ -71,12 +71,12 @@ var cmdCreateGame = &cobra.Command{
 		}
 
 		// don't create if the game already exists
-		if e.LookupGame(globalCreateGame.ShortName) != nil {
+		if e.LookupGameByName(globalCreateGame.ShortName) != nil {
 			log.Printf("short name %q already exists\n", globalCreateGame.ShortName)
 			if !globalCreateGame.Force {
 				log.Fatal("unable to create game\n")
 			}
-			err = e.DeleteGame(globalCreateGame.ShortName)
+			err = e.DeleteGameByName(globalCreateGame.ShortName)
 			if err != nil {
 				log.Fatal(err)
 			}

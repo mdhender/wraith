@@ -28,12 +28,13 @@ import (
 
 // Game configuration
 type Game struct {
-	Id      string
-	Name    string
-	Descr   string
-	Turn    int // index to current game turn
-	Turns   []*Turn
-	Nations []*Nation
+	Id        int
+	ShortName string
+	Name      string
+	Descr     string
+	Turn      int // index to current game turn
+	Turns     []*Turn
+	Nations   []*Nation
 }
 
 // CreateGame creates a new game in the engine.
@@ -60,25 +61,26 @@ func (e *Engine) CreateGame(shortName, name, descr string, numberOfNations, radi
 		descr = shortName
 	}
 
-	// assume two week turns
-	effDt := startDt
-	endDt := effDt.Add(2 * 7 * 24 * time.Hour)
-
 	// delete values
-	err := e.deleteGame(shortName)
+	err := e.deleteGameByName(shortName)
 	if err != nil {
 		return fmt.Errorf("createGame: %w", err)
 	}
 
 	e.game = &Game{
-		Id:    shortName,
-		Name:  name,
-		Descr: descr,
-		Turn:  0,
-		Turns: []*Turn{
-			{No: 0, EffDt: effDt, EndDt: endDt},
-			{No: 1, EffDt: endDt, EndDt: endDt.Add(2 * 7 * 24 * time.Hour)},
-		},
+		ShortName: shortName,
+		Name:      name,
+		Descr:     descr,
+		Turn:      0,
+	}
+
+	// assume two week turns
+	effDt := startDt
+	endDt := effDt.Add(2 * 7 * 24 * time.Hour)
+	for t := 0; t < 10; t++ {
+		e.game.Turns = append(e.game.Turns, &Turn{No: t, EffDt: effDt, EndDt: endDt})
+		effDt = endDt
+		endDt = effDt.Add(2 * 7 * 24 * time.Hour)
 	}
 
 	for i := 0; i < numberOfNations; i++ {
@@ -88,12 +90,12 @@ func (e *Engine) CreateGame(shortName, name, descr string, numberOfNations, radi
 	return e.saveGame()
 }
 
-func (e *Engine) DeleteGame(id string) error {
-	return e.deleteGame(id)
+func (e *Engine) DeleteGameByName(shortName string) error {
+	return e.deleteGameByName(shortName)
 }
 
-func (e *Engine) LookupGame(id string) *Game {
-	return e.lookupGame(id)
+func (e *Engine) LookupGameByName(shortName string) *Game {
+	return e.lookupGameByName(shortName)
 }
 
 // ReadGame loads a store from a JSON file.
