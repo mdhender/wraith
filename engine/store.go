@@ -123,15 +123,27 @@ func (e *Engine) saveGame() error {
 
 	for _, nation := range e.game.Nations {
 		r, err := tx.ExecContext(e.ctx, "insert into nations (game_id, nation_no, speciality, descr) values (?, ?, ?, ?)",
-			e.game.Id, nation.Id, nation.Speciality, nation.Description)
+			e.game.Id, nation.No, nation.Speciality, nation.Description)
 		if err != nil {
-			return fmt.Errorf("engine.saveGame: insert: 128: %w", err)
+			return fmt.Errorf("saveGame: nations: insert: %w", err)
 		}
 		id, err := r.LastInsertId()
 		if err != nil {
-			return fmt.Errorf("engine.saveGame: %w", err)
+			return fmt.Errorf("saveGame: nations: lastInsertId: %w", err)
 		}
-		log.Printf("created nation %3d %8d\n", nation.Id, int(id))
+		nation.Id = int(id)
+		_, err = tx.ExecContext(e.ctx, "insert into nation_dtl (nation_id, efftn, endtn, govt_kind, govt_name) values (?, ?, ?, ?, ?)",
+			nation.Id, "0000/0", "9999/9", nation.Government.Kind, nation.Government.Name)
+		if err != nil {
+			return fmt.Errorf("saveGame: nation_dtl: insert: %w", err)
+		}
+		_, err = tx.ExecContext(e.ctx, "insert into nation_skills (nation_id, efftn, endtn, tech_level, research_points_pool, biology, bureaucracy, gravitics, life_support, manufacturing, military, mining, shields) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			nation.Id, "0000/0", "9999/9", nation.TechLevel, nation.ResearchPool, nation.Skills.Biology, nation.Skills.Bureaucracy, nation.Skills.Gravitics, nation.Skills.LifeSupport, nation.Skills.Manufacturing, nation.Skills.Military, nation.Skills.Mining, nation.Skills.Shields)
+		if err != nil {
+			return fmt.Errorf("saveGame: nation_skills: insert: %w", err)
+		}
+
+		log.Printf("created nation %3d %8d\n", nation.No, nation.Id)
 	}
 
 	return tx.Commit()

@@ -74,13 +74,13 @@ func (e *Engine) CreateGame(shortName, name, descr string, numberOfNations, radi
 		Turn:      0,
 	}
 
-	// assume two week turns
+	turnDuration := 2 * 7 * 24 * time.Hour // assume two week turns
 	effDt := startDt
-	endDt := effDt.Add(2 * 7 * 24 * time.Hour)
+	endDt := effDt.Add(turnDuration)
 	for t := 0; t < 10; t++ {
 		e.game.Turns = append(e.game.Turns, &Turn{No: t, EffDt: effDt, EndDt: endDt})
 		effDt = endDt
-		endDt = effDt.Add(2 * 7 * 24 * time.Hour)
+		endDt = effDt.Add(turnDuration)
 	}
 
 	for i := 0; i < numberOfNations; i++ {

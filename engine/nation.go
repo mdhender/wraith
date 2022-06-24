@@ -25,6 +25,7 @@ import (
 // Nation configuration
 type Nation struct {
 	Id          int
+	No          int
 	Name        string
 	Description string
 	Speciality  string
@@ -41,26 +42,30 @@ type Nation struct {
 			Orbit int
 		}
 	}
-	Skills   Skills
-	Colonies []*XColony
-	Ships    []*XShip
+	TechLevel    int
+	ResearchPool int
+	Skills       Skills
+	Colonies     []*XColony
+	Ships        []*XShip
 }
 
 func (e *Engine) createNation(id int) *Nation {
-	n := &Nation{Id: id, Name: fmt.Sprintf("SP%d", id), Speciality: "exploration"}
-	n.Government.Name = fmt.Sprintf("GOV%d", id)
+	n := &Nation{No: id, Speciality: "exploration"}
+	n.Name = fmt.Sprintf("SP%d", n.No)
+	n.Government.Name = fmt.Sprintf("GOV%d", n.No)
 	n.Government.Kind = "monarchy"
 
 	n.HomePlanet.Name = "Home Planet"
 
-	n.Skills.Biology = 1
-	n.Skills.Bureaucracy = 1
-	n.Skills.Gravitics = 1
-	n.Skills.LifeSupport = 1
-	n.Skills.Manufacturing = 1
-	n.Skills.Military = 1
-	n.Skills.Mining = 1
-	n.Skills.Shields = 1
+	n.TechLevel, n.ResearchPool = 1, 0
+	n.Skills.Biology = n.TechLevel
+	n.Skills.Bureaucracy = n.TechLevel
+	n.Skills.Gravitics = n.TechLevel
+	n.Skills.LifeSupport = n.TechLevel
+	n.Skills.Manufacturing = n.TechLevel
+	n.Skills.Military = n.TechLevel
+	n.Skills.Mining = n.TechLevel
+	n.Skills.Shields = n.TechLevel
 
 	return n
 }
