@@ -442,19 +442,71 @@ create table units
 #     SET NEW.email = lower(NEW.email);
 # END;
 
-insert into users (hashed_secret)
-values ('*login-not-permitted*');
+insert into users (hashed_secret) values ('*login-not-permitted*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'sysop', 'sysop'
-from users
-where id = 1;
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'sysop', 'sysop' from users where id = 1;
 
-insert into users (hashed_secret)
-values ('*login-not-permitted*');
+insert into users (hashed_secret) values ('*login-not-permitted*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'batch', 'batch'
-from users
-where id = 2;
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'batch', 'batch' from users where id = 2;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user01', 'user01' from users where id = 3;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user02', 'user02' from users where id = 4;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user03', 'user03' from users where id = 5;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user04', 'user04' from users where id = 6;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user05', 'user05' from users where id = 7;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user06', 'user06' from users where id = 8;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user07', 'user07' from users where id = 9;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user08', 'user08' from users where id = 10;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user09', 'user09' from users where id = 11;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user10', 'user10' from users where id = 12;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user11', 'user11' from users where id = 13;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user12', 'user12' from users where id = 14;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user13', 'user13' from users where id = 15;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user14', 'user14' from users where id = 16;
+
+insert into users (hashed_secret) values ('*login-not-permitted*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user15', 'user15' from users where id = 17;
 

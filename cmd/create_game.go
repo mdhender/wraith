@@ -34,6 +34,7 @@ var globalCreateGame struct {
 	ShortName       string
 	Name            string
 	NumberOfNations int
+	Radius          int
 	StartDate       string
 }
 
@@ -57,6 +58,10 @@ var cmdCreateGame = &cobra.Command{
 		}
 		if !(0 < globalCreateGame.NumberOfNations && globalCreateGame.NumberOfNations < 225) {
 			log.Fatalf("number of nations must be 1..225\n")
+		}
+
+		if !(2 < globalCreateGame.Radius && globalCreateGame.Radius < 18) {
+			log.Fatalf("radius must be 3..17\n")
 		}
 
 		cfg, err := config.LoadGlobal(globalBase.ConfigFile)
@@ -83,7 +88,11 @@ var cmdCreateGame = &cobra.Command{
 			log.Printf("short name %q purged\n", globalCreateGame.ShortName)
 		}
 
-		err = e.CreateGame(globalCreateGame.ShortName, globalCreateGame.Name, globalCreateGame.Name, 8, 14, time.Now())
+		startDt, err := time.Parse(time.RFC3339, "2022-06-29T23:00:00Z")
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = e.CreateGame(globalCreateGame.ShortName, globalCreateGame.Name, globalCreateGame.Name, globalCreateGame.NumberOfNations, globalCreateGame.Radius, startDt)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -98,6 +107,7 @@ func init() {
 	_ = cmdCreateGame.MarkFlagRequired("short-name")
 	cmdCreateGame.Flags().StringVar(&globalCreateGame.Name, "name", "", "descriptive name of new game")
 	cmdCreateGame.Flags().IntVar(&globalCreateGame.NumberOfNations, "nations", 20, "number of nations in game")
+	cmdCreateGame.Flags().IntVar(&globalCreateGame.Radius, "radius", 8, "radius of cluster")
 	cmdCreateGame.Flags().StringVar(&globalCreateGame.StartDate, "start-date", "", "start date for game")
 	cmdCreateGame.Flags().BoolVar(&globalCreateGame.Force, "force", false, "delete any existing game")
 

@@ -74,7 +74,7 @@ func (e *Engine) CreateGame(shortName, name, descr string, numberOfNations, radi
 		Turn:      0,
 	}
 
-	turnDuration := 2 * 7 * 24 * time.Hour // assume two week turns
+	turnDuration := 2 * 7 * 24 * time.Hour // assume two-week turns
 	effDt := startDt
 	endDt := effDt.Add(turnDuration)
 	for t := 0; t < 10; t++ {
