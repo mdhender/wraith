@@ -20,6 +20,8 @@ drop table if exists resource_dtl;
 
 drop table if exists colony_factory_group_orders;
 drop table if exists colony_factory_group_inventory;
+drop table if exists colony_factory_group_stages;
+drop table if exists colony_factory_group_units;
 drop table if exists colony_factory_group;
 
 drop table if exists colony_mining_group_stages;
@@ -80,9 +82,9 @@ values ('EWP', 'energy-weapon', 'energy-weapon');
 insert into units (id, name, descr)
 values ('FCT', 'factory', 'factory');
 insert into units (id, name, descr)
-values ('FRM', 'farm', 'farm');
-insert into units (id, name, descr)
 values ('FOOD', 'food', 'food');
+insert into units (id, name, descr)
+values ('FRM', 'farm', 'farm');
 insert into units (id, name, descr)
 values ('FUEL', 'fuel', 'fuel');
 insert into units (id, name, descr)
@@ -94,27 +96,27 @@ values ('LSP', 'life-support', 'life-support');
 insert into units (id, name, descr)
 values ('LTSU', 'light-structural', 'light-structural');
 insert into units (id, name, descr)
-values ('MTLS', 'metallics', 'metallics');
+values ('MIN', 'mine', 'mine');
 insert into units (id, name, descr)
 values ('MLR', 'military-robots', 'military-robots');
 insert into units (id, name, descr)
 values ('MLSP', 'military-supplies', 'military-supplies');
 insert into units (id, name, descr)
-values ('MIN', 'mine', 'mine');
-insert into units (id, name, descr)
 values ('MSS', 'missile', 'missile');
 insert into units (id, name, descr)
 values ('MSL', 'missile-launcher', 'missile-launcher');
 insert into units (id, name, descr)
-values ('NMTS', 'non-metallics', 'non-metallics');
+values ('MTLS', 'metallics', 'metallics');
 insert into units (id, name, descr)
-values ('SNR', 'sensor', 'sensor');
+values ('NMTS', 'non-metallics', 'non-metallics');
 insert into units (id, name, descr)
 values ('SDR', 'space-drive', 'space-drive');
 insert into units (id, name, descr)
-values ('STUN', 'structural', 'structural');
+values ('SNR', 'sensor', 'sensor');
 insert into units (id, name, descr)
 values ('SLSU', 'super-light-structural', 'super-light-structural');
+insert into units (id, name, descr)
+values ('STUN', 'structural', 'structural');
 insert into units (id, name, descr)
 values ('TPT', 'transport', 'transport');
 
@@ -386,41 +388,47 @@ create table colony_pay
         on delete cascade
 );
 
-
 create table colony_factory_group
 (
-    id        int        not null auto_increment,
-    colony_id int        not null,
-    group_no  int        not null,
-    efftn     varchar(6) not null,
-    endtn     varchar(6) not null,
+    id         int        not null auto_increment,
+    colony_id  int        not null,
+    group_no   int        not null,
+    efftn      varchar(6) not null,
+    endtn      varchar(6) not null,
+    unit_id    varchar(5) not null comment 'unit being manufactured',
+    tech_level int        not null comment 'tech level of unit being manufactured',
     primary key (id),
     unique key (colony_id, group_no, efftn),
     foreign key (colony_id) references colonies (id)
+        on delete cascade,
+    foreign key (unit_id) references units (id)
         on delete cascade
 );
 
-create table colony_factory_group_inventory
+create table colony_factory_group_units
 (
     factory_group_id int        not null,
+    efftn            varchar(6) not null,
+    endtn            varchar(6) not null,
     unit_id          varchar(5) not null,
     tech_level       int        not null,
-    efftn            varchar(6) not null,
-    endtn            varchar(6) not null,
     qty_operational  int        not null,
-    primary key (factory_group_id, unit_id, tech_level, efftn),
+    primary key (factory_group_id, efftn, unit_id, tech_level),
     foreign key (factory_group_id) references colony_factory_group (id)
+        on delete cascade,
+    foreign key (unit_id) references units (id)
         on delete cascade
 );
 
-create table colony_factory_group_orders
+create table colony_factory_group_stages
 (
     factory_group_id int        not null,
-    efftn            varchar(6) not null,
-    endtn            varchar(6) not null,
-    unit_id          varchar(5) not null comment 'unit being manufactured',
-    tech_level       int        not null comment 'tech level of unit being manufactured',
-    primary key (factory_group_id, efftn),
+    turn             varchar(6) not null,
+    qty_stage_1      int        not null,
+    qty_stage_2      int        not null,
+    qty_stage_3      int        not null,
+    qty_stage_4      int        not null,
+    primary key (factory_group_id, turn),
     foreign key (factory_group_id) references colony_factory_group (id)
         on delete cascade
 );
@@ -451,6 +459,8 @@ create table colony_mining_group_units
     qty_operational int,
     primary key (mining_group_id, efftn),
     foreign key (mining_group_id) references colony_mining_group (id)
+        on delete cascade,
+    foreign key (unit_id) references units (id)
         on delete cascade
 );
 

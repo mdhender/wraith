@@ -281,6 +281,31 @@ func (e *Engine) saveGame() error {
 				}
 			}
 
+			for _, group := range colony.FactoryGroups {
+				r, err := tx.ExecContext(e.ctx, "insert into colony_factory_group (colony_id, group_no, efftn, endtn, unit_id, tech_level) values (?, ?, ?, ?, ?, ?)",
+					colony.Id, group.No, "0000/0", "9999/9", group.BuildCode, group.BuildTechLevel)
+				if err != nil {
+					return fmt.Errorf("saveGame: colony_factory_group: insert: %w", err)
+				}
+				id, err := r.LastInsertId()
+				if err != nil {
+					return fmt.Errorf("saveGame: colony_factory_group: lastInsertId: %w", err)
+				}
+				group.Id = int(id)
+				for _, unit := range group.Units {
+					_, err = tx.ExecContext(e.ctx, "insert into colony_factory_group_units (factory_group_id, efftn, endtn, unit_id, tech_level, qty_operational) values (?, ?, ?, ?, ?, ?)",
+						group.Id, "0000/0", "9999/9", "FCT", unit.TechLevel, unit.Qty)
+					if err != nil {
+						return fmt.Errorf("saveGame: colony_factory_group_Units: insert: %w", err)
+					}
+					_, err = tx.ExecContext(e.ctx, "insert into colony_factory_group_stages (factory_group_id, turn, qty_stage_1, qty_stage_2, qty_stage_3, qty_stage_4) values (?, ?, ?, ?, ?, ?)",
+						group.Id, "0000/0", unit.Stages[0], unit.Stages[1], unit.Stages[2], 0)
+					if err != nil {
+						return fmt.Errorf("saveGame: colony_factory_group_Units: insert: %w", err)
+					}
+				}
+			}
+
 			for _, group := range colony.MiningGroups {
 				r, err := tx.ExecContext(e.ctx, "insert into colony_mining_group (colony_id, group_no, efftn, endtn, resource_id) values (?, ?, ?, ?, ?)",
 					colony.Id, group.No, "0000/0", "9999/9", group.Deposit.Id)
@@ -294,7 +319,7 @@ func (e *Engine) saveGame() error {
 				group.Id = int(id)
 				for _, unit := range group.Units {
 					_, err = tx.ExecContext(e.ctx, "insert into colony_mining_group_units (mining_group_id, efftn, endtn, unit_id, tech_level, qty_operational) values (?, ?, ?, ?, ?, ?)",
-						group.Id, "0000/0", "9999/9", "MINE", unit.TechLevel, unit.Qty)
+						group.Id, "0000/0", "9999/9", "MIN", unit.TechLevel, unit.Qty)
 					if err != nil {
 						return fmt.Errorf("saveGame: colony_mining_group_Units: insert: %w", err)
 					}

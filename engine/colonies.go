@@ -38,7 +38,7 @@ type XColony struct {
 	}
 	Hull          []*Inventory // units used to build colony
 	Inventory     []*Inventory // units stored in colony
-	FactoryGroups []*XGroup
+	FactoryGroups []*FactoryGroup
 	FarmGroups    []*XGroup
 	MiningGroups  []*MiningGroup
 }
@@ -48,6 +48,14 @@ type XPopulation struct {
 	Qty    int
 	Pay    float64
 	Ration float64
+}
+
+type FactoryGroup struct {
+	Id             int // key in database
+	No             int // factory group number
+	BuildCode      string
+	BuildTechLevel int
+	Units          []*XGroupUnits
 }
 
 type MiningGroup struct {
@@ -102,13 +110,25 @@ func (e *Engine) genHomeOpenColony(planet *Planet) *XColony {
 	c.Inventory = append(c.Inventory, &Inventory{Code: "STUN", Name: "structural", StowedQty: 150_000})
 	c.Inventory = append(c.Inventory, &Inventory{Code: "TPT", Name: "transport", TechLevel: 1, OperationalQty: 5_000})
 
+	factoryGroup := &FactoryGroup{
+		No:             1,
+		BuildCode:      "CNGD",
+		BuildTechLevel: 0,
+		Units: []*XGroupUnits{{
+			TechLevel: 1,
+			Qty:       275_000,
+			Stages:    []int{2_291_666, 2_291_666, 2_291_666},
+		}},
+	}
+	c.FactoryGroups = append(c.FactoryGroups, factoryGroup)
+
 	miningGroup := &MiningGroup{No: 1, Deposit: planet.Resources[0], Units: []*XGroupUnits{{TechLevel: 1, Qty: 1_000, Stages: []int{1_000, 1_000, 1_000}}}}
 	c.MiningGroups = append(c.MiningGroups, miningGroup)
 	miningGroup = &MiningGroup{No: 2, Deposit: planet.Resources[1], Units: []*XGroupUnits{{TechLevel: 1, Qty: 50_000, Stages: []int{1_250_000, 1_250_000, 1_250_000}}}}
 	c.MiningGroups = append(c.MiningGroups, miningGroup)
 	miningGroup = &MiningGroup{No: 3, Deposit: planet.Resources[2], Units: []*XGroupUnits{{TechLevel: 1, Qty: 100_000, Stages: []int{2_500_000, 2_500_000, 2_500_000}}}}
 	c.MiningGroups = append(c.MiningGroups, miningGroup)
-	miningGroup = &MiningGroup{No: 4, Deposit: planet.Resources[4], Units: []*XGroupUnits{{TechLevel: 1, Qty: 100_000, Stages: []int{2_500_000, 2_500_000, 2_500_000}}}}
+	miningGroup = &MiningGroup{No: 4, Deposit: planet.Resources[3], Units: []*XGroupUnits{{TechLevel: 1, Qty: 100_000, Stages: []int{2_500_000, 2_500_000, 2_500_000}}}}
 	c.MiningGroups = append(c.MiningGroups, miningGroup)
 
 	return c
@@ -123,6 +143,18 @@ func (e *Engine) genHomeOrbitalColony(planet *Planet) *XColony {
 	c.Population.Unemployed = XPopulation{Code: "UEM", Qty: 500, Pay: 1.0, Ration: 1.0}
 	c.Population.ConstructionCrews = 100
 	c.Population.SpyTeams = 0
+
+	factoryGroup := &FactoryGroup{
+		No:             1,
+		BuildCode:      "LTSU",
+		BuildTechLevel: 0,
+		Units: []*XGroupUnits{{
+			TechLevel: 1,
+			Qty:       5_000,
+			Stages:    []int{500_000, 500_000, 500_000},
+		}},
+	}
+	c.FactoryGroups = append(c.FactoryGroups, factoryGroup)
 
 	// create hull
 	c.Hull = append(c.Hull, &Inventory{Code: "STUN", Name: "structural", OperationalQty: 45_000_000})
