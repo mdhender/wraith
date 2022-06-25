@@ -18,48 +18,11 @@
 
 package engine
 
-type XColony struct {
-	Id       int
-	Kind     string
-	Location struct {
-		X     int
-		Y     int
-		Z     int
-		Star  int
-		Orbit int
-	}
-	TechLevel  int
-	Population struct {
-		Professional      ReportPopulation
-		Soldier           ReportPopulation
-		Unskilled         ReportPopulation
-		Unemployed        ReportPopulation
-		ConstructionCrews int
-		SpyTeams          int
-		Births            int
-		Deaths            int
-	}
-	Inventory     []*Inventory
-	FactoryGroups []*XGroup
-	FarmGroups    []*XGroup
-	MiningGroups  []*XGroup
-}
-
-type XPopulation struct {
-	Code   string
-	Qty    int
-	Pay    float64
-	Ration float64
-}
-
-type XGroup struct {
-	Id    int
-	Name  string
-	Units []*XGroupUnits
-}
-
-type XGroupUnits struct {
-	TechLevel int
-	Qty       int
-	Stages    []int
+type NaturalResource struct {
+	Id                int // key in database
+	No                int
+	Kind              string
+	YieldPct          float64
+	InitialQuantity   int
+	QuantityRemaining int
 }

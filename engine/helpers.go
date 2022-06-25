@@ -23,13 +23,6 @@ import (
 	"math/rand"
 )
 
-// Coordinates are the x,y,z coordinates of a system
-type Coordinates struct {
-	X int
-	Y int
-	Z int
-}
-
 // mkrings creates the rings used to generate systems.
 // it limits the number of systems in each ring based on the systemsPerRing value.
 // it removes the first three rings before returning the results.
@@ -73,6 +66,8 @@ func mkrings(radius, systemsPerRing int) [][]Coordinates {
 		}
 	}
 
-	// return only the non-empty rings
-	return rings[3:]
+	return rings
+
+	//// return only the non-empty rings
+	//return rings[3:]
 }

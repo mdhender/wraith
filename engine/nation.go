@@ -24,7 +24,7 @@ import (
 
 // Nation configuration
 type Nation struct {
-	Id          int
+	Id          int // this is the PK in the database
 	No          int
 	Name        string
 	Description string
@@ -35,12 +35,7 @@ type Nation struct {
 	}
 	HomePlanet struct {
 		Name     string
-		Location struct {
-			X     int
-			Y     int
-			Z     int
-			Orbit int
-		}
+		Location *Planet
 	}
 	TechLevel    int
 	ResearchPool int
@@ -49,13 +44,14 @@ type Nation struct {
 	Ships        []*XShip
 }
 
-func (e *Engine) createNation(id int) *Nation {
+func (e *Engine) createNation(id int, planet *Planet) *Nation {
 	n := &Nation{No: id, Speciality: "exploration"}
 	n.Name = fmt.Sprintf("SP%d", n.No)
 	n.Government.Name = fmt.Sprintf("GOV%d", n.No)
 	n.Government.Kind = "monarchy"
 
-	n.HomePlanet.Name = "Home Planet"
+	n.HomePlanet.Location = planet
+	n.HomePlanet.Name = "Not Named"
 
 	n.TechLevel, n.ResearchPool = 1, 0
 	n.Skills.Biology = n.TechLevel
@@ -66,6 +62,11 @@ func (e *Engine) createNation(id int) *Nation {
 	n.Skills.Military = n.TechLevel
 	n.Skills.Mining = n.TechLevel
 	n.Skills.Shields = n.TechLevel
+
+	colony := e.genHomeOpenColony(planet)
+	n.Colonies = append(n.Colonies, colony)
+	colony = e.genHomeOrbitalColony(planet)
+	n.Colonies = append(n.Colonies, colony)
 
 	return n
 }

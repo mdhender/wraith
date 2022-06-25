@@ -16,16 +16,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-drop table if exists units;
-
-drop table if exists deposit_dtl;
+drop table if exists resource_dtl;
 
 drop table if exists colony_factory_group_orders;
 drop table if exists colony_factory_group_inventory;
 drop table if exists colony_factory_group;
 
-drop table if exists colony_mining_group_inventory;
-drop table if exists colony_mining_group_deposit;
+drop table if exists colony_mining_group_stages;
+drop table if exists colony_mining_group_units;
 drop table if exists colony_mining_group;
 
 drop table if exists colony_pay;
@@ -36,10 +34,9 @@ drop table if exists colony_hull;
 drop table if exists colony_dtl;
 drop table if exists colonies;
 
-drop table if exists deposits;
+drop table if exists resources;
 drop table if exists planets;
 
-drop table if exists orbits;
 drop table if exists stars;
 drop table if exists systems;
 
@@ -55,6 +52,71 @@ drop table if exists games;
 
 drop table if exists user_profile;
 drop table if exists users;
+
+drop table if exists units;
+
+create table units
+(
+    id    varchar(5)  not null,
+    name  varchar(25) not null,
+    descr varchar(64) not null,
+    primary key (id)
+);
+
+insert into units (id, name, descr)
+values ('ANM', 'anti-missile', 'anti-missile');
+insert into units (id, name, descr)
+values ('ASC', 'assault-craft', 'assault-craft');
+insert into units (id, name, descr)
+values ('ASW', 'assault-weapon', 'assault-weapon');
+insert into units (id, name, descr)
+values ('AUT', 'automation', 'automation');
+insert into units (id, name, descr)
+values ('CNGD', 'consumer-goods', 'consumer-goods');
+insert into units (id, name, descr)
+values ('ESH', 'energy-shield', 'energy-shield');
+insert into units (id, name, descr)
+values ('EWP', 'energy-weapon', 'energy-weapon');
+insert into units (id, name, descr)
+values ('FCT', 'factory', 'factory');
+insert into units (id, name, descr)
+values ('FRM', 'farm', 'farm');
+insert into units (id, name, descr)
+values ('FOOD', 'food', 'food');
+insert into units (id, name, descr)
+values ('FUEL', 'fuel', 'fuel');
+insert into units (id, name, descr)
+values ('GOLD', 'gold', 'gold');
+insert into units (id, name, descr)
+values ('HDR', 'hyper-drive', 'hyper-drive');
+insert into units (id, name, descr)
+values ('LSP', 'life-support', 'life-support');
+insert into units (id, name, descr)
+values ('LTSU', 'light-structural', 'light-structural');
+insert into units (id, name, descr)
+values ('MTLS', 'metallics', 'metallics');
+insert into units (id, name, descr)
+values ('MLR', 'military-robots', 'military-robots');
+insert into units (id, name, descr)
+values ('MLSP', 'military-supplies', 'military-supplies');
+insert into units (id, name, descr)
+values ('MIN', 'mine', 'mine');
+insert into units (id, name, descr)
+values ('MSS', 'missile', 'missile');
+insert into units (id, name, descr)
+values ('MSL', 'missile-launcher', 'missile-launcher');
+insert into units (id, name, descr)
+values ('NMTS', 'non-metallics', 'non-metallics');
+insert into units (id, name, descr)
+values ('SNR', 'sensor', 'sensor');
+insert into units (id, name, descr)
+values ('SDR', 'space-drive', 'space-drive');
+insert into units (id, name, descr)
+values ('STUN', 'structural', 'structural');
+insert into units (id, name, descr)
+values ('SLSU', 'super-light-structural', 'super-light-structural');
+insert into units (id, name, descr)
+values ('TPT', 'transport', 'transport');
 
 create table users
 (
@@ -198,36 +260,27 @@ create table stars
         on delete cascade
 );
 
-create table orbits
+create table planets
 (
-    id       int         not null auto_increment,
-    star_id  int         not null,
-    orbit_no int         not null comment 'range 1..10',
-    kind     varchar(13) not null comment 'kind of planet in this orbit',
+    id              int         not null auto_increment,
+    star_id         int         not null,
+    orbit_no        int         not null comment 'range 1..10',
+    kind            varchar(13) not null comment 'kind of planet',
+    habitability_no int         not null,
+    home_planet     varchar(1)  not null,
     primary key (id),
-    unique key (star_id, orbit_no),
     foreign key (star_id) references stars (id)
         on delete cascade
 );
 
-create table planets
-(
-    id              int not null auto_increment,
-    orbit_id        int not null,
-    habitability_no int not null,
-    primary key (id),
-    foreign key (orbit_id) references orbits (id)
-        on delete cascade
-);
-
-create table deposits
+create table resources
 (
     id          int         not null auto_increment,
     planet_id   int         not null,
     deposit_no  int         not null,
     kind        varchar(14) not null comment 'natural resource produced from deposit',
     qty_initial int         not null,
-    yield_pct   int         not null,
+    yield_pct   float       not null comment 'range 0..1',
     primary key (id),
     unique key (planet_id, deposit_no),
     foreign key (planet_id) references planets (id)
@@ -237,10 +290,12 @@ create table deposits
 create table colonies
 (
     id        int         not null auto_increment,
+    game_id   int         not null,
     colony_no int         not null,
-    planet_id int         not null,
     kind      varchar(13) not null,
+    planet_id int         not null,
     primary key (id),
+    unique key (game_id, colony_no),
     foreign key (planet_id) references planets (id)
         on delete cascade
 );
@@ -262,7 +317,7 @@ create table colony_dtl
 create table colony_hull
 (
     colony_id       int        not null,
-    unit_id         int        not null,
+    unit_id         varchar(5) not null,
     tech_level      int        not null,
     efftn           varchar(6) not null,
     endtn           varchar(6) not null,
@@ -275,7 +330,7 @@ create table colony_hull
 create table colony_inventory
 (
     colony_id       int        not null,
-    unit_id         int        not null,
+    unit_id         varchar(5) not null,
     tech_level      int        not null,
     efftn           varchar(6) not null,
     endtn           varchar(6) not null,
@@ -297,7 +352,7 @@ create table colony_population
     qty_unemployed         int        not null,
     qty_construction_crews int        not null,
     qty_spy_teams          int        not null,
-    rebel_pct              int        not null,
+    rebel_pct              float      not null,
     primary key (colony_id, efftn),
     foreign key (colony_id) references colonies (id)
         on delete cascade
@@ -308,10 +363,10 @@ create table colony_rations
     colony_id        int        not null,
     efftn            varchar(6) not null,
     endtn            varchar(6) not null,
-    qty_professional int        not null,
-    qty_soldier      int        not null,
-    qty_unskilled    int        not null,
-    qty_unemployed   int        not null,
+    professional_pct float      not null,
+    soldier_pct      float      not null,
+    unskilled_pct    float      not null,
+    unemployed_pct   float      not null,
     primary key (colony_id, efftn),
     foreign key (colony_id) references colonies (id)
         on delete cascade
@@ -322,10 +377,10 @@ create table colony_pay
     colony_id        int        not null,
     efftn            varchar(6) not null,
     endtn            varchar(6) not null,
-    qty_professional int        not null,
-    qty_soldier      int        not null,
-    qty_unskilled    int        not null,
-    qty_unemployed   int        not null,
+    professional_pct float      not null,
+    soldier_pct      float      not null,
+    unskilled_pct    float      not null,
+    unemployed_pct   float      not null,
     primary key (colony_id, efftn),
     foreign key (colony_id) references colonies (id)
         on delete cascade
@@ -348,7 +403,7 @@ create table colony_factory_group
 create table colony_factory_group_inventory
 (
     factory_group_id int        not null,
-    unit_id          int        not null,
+    unit_id          varchar(5) not null,
     tech_level       int        not null,
     efftn            varchar(6) not null,
     endtn            varchar(6) not null,
@@ -363,7 +418,7 @@ create table colony_factory_group_orders
     factory_group_id int        not null,
     efftn            varchar(6) not null,
     endtn            varchar(6) not null,
-    unit_id          int        not null comment 'unit being manufactured',
+    unit_id          varchar(5) not null comment 'unit being manufactured',
     tech_level       int        not null comment 'tech level of unit being manufactured',
     primary key (factory_group_id, efftn),
     foreign key (factory_group_id) references colony_factory_group (id)
@@ -372,66 +427,58 @@ create table colony_factory_group_orders
 
 create table colony_mining_group
 (
-    id        int        not null auto_increment,
-    colony_id int        not null,
-    group_no  int        not null,
-    efftn     varchar(6) not null,
-    endtn     varchar(6) not null,
+    id          int        not null auto_increment,
+    colony_id   int        not null,
+    group_no    int        not null,
+    efftn       varchar(6) not null,
+    endtn       varchar(6) not null,
+    resource_id int        not null,
     primary key (id),
     unique key (colony_id, group_no, efftn),
     foreign key (colony_id) references colonies (id)
+        on delete cascade,
+    foreign key (resource_id) references resources (id)
         on delete cascade
 );
 
-create table colony_mining_group_deposit
+create table colony_mining_group_units
 (
     mining_group_id int        not null,
     efftn           varchar(6) not null,
     endtn           varchar(6) not null,
-    deposit_id      int        not null,
-    primary key (mining_group_id, efftn),
-    foreign key (deposit_id) references deposits (id)
-        on delete cascade
-);
-
-create table colony_mining_group_inventory
-(
-    mining_group_id int        not null,
-    unit_id         int        not null,
+    unit_id         varchar(5) not null,
     tech_level      int        not null,
-    efftn           varchar(6) not null,
-    endtn           varchar(6) not null,
     qty_operational int,
-    primary key (mining_group_id, unit_id, tech_level, efftn),
+    primary key (mining_group_id, efftn),
     foreign key (mining_group_id) references colony_mining_group (id)
         on delete cascade
 );
 
-create table deposit_dtl
+create table colony_mining_group_stages
 (
-    deposit_id    int        not null,
-    efftn         varchar(6) not null,
-    endtn         varchar(6) not null,
-    remaining_qty int        not null,
-    controlled_by int comment 'colony controlling the deposit',
-    primary key (deposit_id, efftn),
-    foreign key (controlled_by) references colonies (id)
-        on delete set null,
-    foreign key (deposit_id) references deposits (id)
+    mining_group_id int        not null,
+    turn            varchar(6) not null,
+    qty_stage_1     int        not null,
+    qty_stage_2     int        not null,
+    qty_stage_3     int        not null,
+    qty_stage_4     int        not null,
+    primary key (mining_group_id, turn),
+    foreign key (mining_group_id) references colony_mining_group (id)
         on delete cascade
 );
 
-
-create table units
+create table resource_dtl
 (
-    id    int         not null auto_increment,
-    code  varchar(5)  not null,
-    effdt datetime    not null,
-    enddt datetime    not null,
-    name  varchar(20) not null,
-    descr varchar(64) not null,
-    primary key (id),
-    unique key (code, effdt)
+    resource_id   int        not null,
+    efftn         varchar(6) not null,
+    endtn         varchar(6) not null,
+    remaining_qty int        not null,
+    controlled_by int comment 'colony controlling the resource deposit',
+    primary key (resource_id, efftn),
+    foreign key (controlled_by) references colonies (id)
+        on delete set null,
+    foreign key (resource_id) references resources (id)
+        on delete cascade
 );
 
 
@@ -442,71 +489,147 @@ create table units
 #     SET NEW.email = lower(NEW.email);
 # END;
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*nobody*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'sysop', 'sysop' from users where id = 1;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'nobody', 'nobody'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*sysop*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'batch', 'batch' from users where id = 2;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'sysop', 'sysop'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*batch*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user01', 'user01' from users where id = 3;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'batch', 'batch'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*user01*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user02', 'user02' from users where id = 4;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user01', 'user01'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*user02*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user03', 'user03' from users where id = 5;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user02', 'user02'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*user03*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user04', 'user04' from users where id = 6;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user03', 'user03'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*user04*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user05', 'user05' from users where id = 7;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user04', 'user04'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*user05*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user06', 'user06' from users where id = 8;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user05', 'user05'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*user06*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user07', 'user07' from users where id = 9;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user06', 'user06'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*user07*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user08', 'user08' from users where id = 10;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user07', 'user07'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*user08*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user09', 'user09' from users where id = 11;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user08', 'user08'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*user09*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user10', 'user10' from users where id = 12;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user09', 'user09'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*user10*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user11', 'user11' from users where id = 13;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user10', 'user10'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*user11*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user12', 'user12' from users where id = 14;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user11', 'user11'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*user12*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user13', 'user13' from users where id = 15;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user12', 'user12'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*user13*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user14', 'user14' from users where id = 16;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user13', 'user13'
+from users
+where id = (select max(id) from users);
 
-insert into users (hashed_secret) values ('*login-not-permitted*');
+insert into users (hashed_secret)
+values ('*user14*');
 
-insert into user_profile (user_id, effdt, enddt, handle, email) select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user15', 'user15' from users where id = 17;
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user14', 'user14'
+from users
+where id = (select max(id) from users);
+
+insert into users (hashed_secret)
+values ('*user15*');
+
+insert into user_profile (user_id, effdt, enddt, handle, email)
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user15', 'user15'
+from users
+where id = (select max(id) from users);
 

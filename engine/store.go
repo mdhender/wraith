@@ -121,6 +121,71 @@ func (e *Engine) saveGame() error {
 		}
 	}
 
+	for _, system := range e.game.Systems {
+		r, err := tx.ExecContext(e.ctx, "insert into systems (game_id, x, y, z, qty_stars) values (?, ?, ?, ?, ?)",
+			e.game.Id, system.X, system.Y, system.Z, len(system.Stars))
+		if err != nil {
+			return fmt.Errorf("saveGame: systems: insert: %w", err)
+		}
+		id, err := r.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("saveGame: systems: lastInsertId: %w", err)
+		}
+		system.Id = int(id)
+
+		for _, star := range system.Stars {
+			r, err := tx.ExecContext(e.ctx, "insert into stars (system_id, suffix, kind) values (?, ?, ?)",
+				system.Id, star.Suffix, star.Kind)
+			if err != nil {
+				return fmt.Errorf("saveGame: stars: insert: %w", err)
+			}
+			id, err := r.LastInsertId()
+			if err != nil {
+				return fmt.Errorf("saveGame: stars: lastInsertId: %w", err)
+			}
+			star.Id = int(id)
+
+			for orbit, planet := range star.Orbits {
+				if orbit == 0 {
+					continue
+				}
+				homePlanet := "N"
+				if planet.HomePlanet {
+					homePlanet = "Y"
+				}
+				r, err := tx.ExecContext(e.ctx, "insert into planets (star_id, orbit_no, kind, habitability_no, home_planet) values (?, ?, ?, ?, ?)",
+					star.Id, planet.Orbit, planet.Kind, planet.HabitabilityNumber, homePlanet)
+				if err != nil {
+					return fmt.Errorf("saveGame: planet: insert: %w", err)
+				}
+				id, err := r.LastInsertId()
+				if err != nil {
+					return fmt.Errorf("saveGame: planet: lastInsertId: %w", err)
+				}
+				planet.Id = int(id)
+
+				for n, resource := range planet.Resources {
+					resource.No = n + 1
+					r, err := tx.ExecContext(e.ctx, "insert into resources (planet_id, deposit_no, kind, qty_initial, yield_pct) values (?, ?, ?, ?, ?)",
+						planet.Id, resource.No, resource.Kind, resource.InitialQuantity, resource.YieldPct)
+					if err != nil {
+						log.Printf("failed  system %8d: star %8d: orbit %2d: planet %8d: resource %8d %s\n", system.Id, star.Id, planet.Orbit, planet.Id, resource.Id, resource.Kind)
+						return fmt.Errorf("saveGame: resource: insert: %w", err)
+					}
+					id, err := r.LastInsertId()
+					if err != nil {
+						return fmt.Errorf("saveGame: resource: lastInsertId: %w", err)
+					}
+					resource.Id = int(id)
+					//log.Printf("created system %8d: star %8d: orbit %2d: planet %8d: resource %8d %-13s %9d\n", system.Id, star.Id, planet.Orbit, planet.Id, resource.Id, resource.Kind, resource.InitialQuantity)
+				}
+				//log.Printf("created system %8d: star %8d: orbit %2d: planet %8d\n", system.Id, star.Id, orbit, planet.Id)
+			}
+			//log.Printf("created system %8d: star %8d: suffix %q\n", system.Id, star.Id, star.Suffix)
+		}
+		//log.Printf("created system %8d\n", system.Id)
+	}
+
 	for _, nation := range e.game.Nations {
 		r, err := tx.ExecContext(e.ctx, "insert into nations (game_id, nation_no, speciality, descr) values (?, ?, ?, ?)",
 			e.game.Id, nation.No, nation.Speciality, nation.Description)
@@ -142,8 +207,106 @@ func (e *Engine) saveGame() error {
 		if err != nil {
 			return fmt.Errorf("saveGame: nation_skills: insert: %w", err)
 		}
-
 		log.Printf("created nation %3d %8d\n", nation.No, nation.Id)
+	}
+
+	for _, nation := range e.game.Nations {
+		for _, colony := range nation.Colonies {
+			r, err := tx.ExecContext(e.ctx, "insert into colonies (game_id, colony_no, planet_id, kind) values (?, ?, ?, ?)",
+				e.game.Id, colony.No, colony.Location.Id, colony.Kind)
+			if err != nil {
+				return fmt.Errorf("saveGame: colonies: insert: %w", err)
+			}
+			id, err := r.LastInsertId()
+			if err != nil {
+				return fmt.Errorf("saveGame: colonies: lastInsertId: %w", err)
+			}
+			colony.Id = int(id)
+
+			_, err = tx.ExecContext(e.ctx, "insert into colony_dtl (colony_id, efftn, endtn, name) values (?, ?, ?, ?)",
+				colony.Id, "0000/0", "9999/9", colony.Name)
+			if err != nil {
+				return fmt.Errorf("saveGame: colony_dtl: insert: %w", err)
+			}
+
+			_, err = tx.ExecContext(e.ctx, "insert into colony_population (colony_id, efftn, endtn, qty_professional, qty_soldier, qty_unskilled, qty_unemployed, qty_construction_crews, qty_spy_teams, rebel_pct) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				colony.Id, "0000/0", "9999/9",
+				colony.Population.Professional.Qty,
+				colony.Population.Soldier.Qty,
+				colony.Population.Unskilled.Qty,
+				colony.Population.Unemployed.Qty,
+				colony.Population.ConstructionCrews,
+				colony.Population.SpyTeams,
+				colony.Population.RebelPct,
+			)
+			if err != nil {
+				return fmt.Errorf("saveGame: colony_dtl: insert: %w", err)
+			}
+
+			_, err = tx.ExecContext(e.ctx, "insert into colony_rations (colony_id, efftn, endtn, professional_pct, soldier_pct, unskilled_pct, unemployed_pct) values (?, ?, ?, ?, ?, ?, ?)",
+				colony.Id, "0000/0", "9999/9",
+				colony.Population.Professional.Ration,
+				colony.Population.Soldier.Ration,
+				colony.Population.Unskilled.Ration,
+				colony.Population.Unemployed.Ration,
+			)
+			if err != nil {
+				return fmt.Errorf("saveGame: colony_rations: insert: %w", err)
+			}
+
+			_, err = tx.ExecContext(e.ctx, "insert into colony_pay (colony_id, efftn, endtn, professional_pct, soldier_pct, unskilled_pct, unemployed_pct) values (?, ?, ?, ?, ?, ?, ?)",
+				colony.Id, "0000/0", "9999/9",
+				colony.Population.Professional.Pay,
+				colony.Population.Soldier.Pay,
+				colony.Population.Unskilled.Pay,
+				colony.Population.Unemployed.Pay,
+			)
+			if err != nil {
+				return fmt.Errorf("saveGame: colony_pay: insert: %w", err)
+			}
+
+			for _, inventory := range colony.Hull {
+				_, err = tx.ExecContext(e.ctx, "insert into colony_hull (colony_id, unit_id, tech_level, efftn, endtn, qty_operational) values (?, ?, ?, ?, ?, ?)",
+					colony.Id, inventory.Code, inventory.TechLevel, "0000/0", "9999/9", inventory.OperationalQty)
+				if err != nil {
+					return fmt.Errorf("saveGame: colony_hull: insert: %w", err)
+				}
+			}
+
+			for _, inventory := range colony.Inventory {
+				_, err = tx.ExecContext(e.ctx, "insert into colony_inventory (colony_id, unit_id, tech_level, efftn, endtn, qty_operational, qty_stowed) values (?, ?, ?, ?, ?, ?, ?)",
+					colony.Id, inventory.Code, inventory.TechLevel, "0000/0", "9999/9", inventory.OperationalQty, inventory.StowedQty)
+				if err != nil {
+					return fmt.Errorf("saveGame: colony_inventory: insert: %w", err)
+				}
+			}
+
+			for _, group := range colony.MiningGroups {
+				r, err := tx.ExecContext(e.ctx, "insert into colony_mining_group (colony_id, group_no, efftn, endtn, resource_id) values (?, ?, ?, ?, ?)",
+					colony.Id, group.No, "0000/0", "9999/9", group.Deposit.Id)
+				if err != nil {
+					return fmt.Errorf("saveGame: colony_mining_group: insert: %w", err)
+				}
+				id, err := r.LastInsertId()
+				if err != nil {
+					return fmt.Errorf("saveGame: colony_mining_group: lastInsertId: %w", err)
+				}
+				group.Id = int(id)
+				for _, unit := range group.Units {
+					_, err = tx.ExecContext(e.ctx, "insert into colony_mining_group_units (mining_group_id, efftn, endtn, unit_id, tech_level, qty_operational) values (?, ?, ?, ?, ?, ?)",
+						group.Id, "0000/0", "9999/9", "MINE", unit.TechLevel, unit.Qty)
+					if err != nil {
+						return fmt.Errorf("saveGame: colony_mining_group_Units: insert: %w", err)
+					}
+					_, err = tx.ExecContext(e.ctx, "insert into colony_mining_group_stages (mining_group_id, turn, qty_stage_1, qty_stage_2, qty_stage_3, qty_stage_4) values (?, ?, ?, ?, ?, ?)",
+						group.Id, "0000/0", unit.Stages[0], unit.Stages[1], unit.Stages[2], 0)
+					if err != nil {
+						return fmt.Errorf("saveGame: colony_mining_group_Units: insert: %w", err)
+					}
+				}
+			}
+			log.Printf("created nation %3d: colony %3d %8d\n", nation.No, colony.No, colony.Id)
+		}
 	}
 
 	return tx.Commit()

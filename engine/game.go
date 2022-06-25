@@ -21,6 +21,7 @@ package engine
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 	"unicode"
@@ -35,6 +36,7 @@ type Game struct {
 	Turn      int // index to current game turn
 	Turns     []*Turn
 	Nations   []*Nation
+	Systems   []*System
 }
 
 // CreateGame creates a new game in the engine.
@@ -67,6 +69,17 @@ func (e *Engine) CreateGame(shortName, name, descr string, numberOfNations, radi
 		return fmt.Errorf("createGame: %w", err)
 	}
 
+	systemsPerRing := numberOfNations
+	totalSystems := radius * systemsPerRing
+	log.Printf("createGame: systems per ring %3d estimated systems %6d\n", systemsPerRing, totalSystems)
+	rings := mkrings(radius, systemsPerRing)
+	numPoints := 0
+	for d := 0; d <= radius; d++ {
+		numPoints += len(rings[d])
+		log.Printf("createGame: ring %2d: %5d\n", d, len(rings[d]))
+	}
+	log.Printf("createGame:   total: %5d\n", numPoints)
+
 	e.game = &Game{
 		ShortName: shortName,
 		Name:      name,
@@ -83,8 +96,37 @@ func (e *Engine) CreateGame(shortName, name, descr string, numberOfNations, radi
 		endDt = effDt.Add(turnDuration)
 	}
 
+	systemId, ring, colonyNo := 0, 5, 0
+
+	// generate nations and their home systems
 	for i := 0; i < numberOfNations; i++ {
-		e.game.Nations = append(e.game.Nations, e.createNation(i+1))
+		systemId++
+		coords := rings[ring][0]
+		rings[ring] = rings[ring][1:]
+
+		system := e.genHomeSystem(systemId)
+		system.Ring, system.X, system.Y, system.Z = ring, coords.X, coords.Y, coords.Z
+		e.game.Systems = append(e.game.Systems, system)
+
+		nation := e.createNation(i+1, system.Stars[0].Orbits[3])
+		nation.HomePlanet.Location = system.Stars[0].Orbits[3]
+		colonyNo++
+		nation.Colonies[0].No = colonyNo
+		nation.Colonies[0].Location = nation.HomePlanet.Location
+		colonyNo++
+		nation.Colonies[1].No = colonyNo
+		nation.Colonies[1].Location = nation.HomePlanet.Location
+		e.game.Nations = append(e.game.Nations, nation)
+	}
+
+	// generate the remainder of the systems
+	for ring := 0; ring < len(rings); ring++ {
+		for _, coords := range rings[ring] {
+			systemId++
+			system := e.genSystem(systemId)
+			system.Ring, system.X, system.Y, system.Z = ring, coords.X, coords.Y, coords.Z
+			e.game.Systems = append(e.game.Systems, system)
+		}
 	}
 
 	return e.saveGame()
