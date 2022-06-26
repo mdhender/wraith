@@ -67,20 +67,11 @@ var cmdCreateUser = &cobra.Command{
 		}
 		defer s.Close()
 
-		u, err := s.CreateUser(models.User{
-			Email:  globalCreateUser.Email,
-			Handle: globalCreateUser.Handle,
-		})
+		err = s.CreateUser(globalCreateUser.Handle, globalCreateUser.Email, globalCreateUser.Secret)
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		err = s.UpdateUserSecret(u.Id, globalCreateUser.Secret)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Printf("user %v\n", u)
+		log.Printf("created user %q %q\n", globalCreateUser.Handle, globalCreateUser.Email)
 
 		return nil
 	},

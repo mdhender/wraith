@@ -19,6 +19,7 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
@@ -32,6 +33,7 @@ type Store struct {
 	version    string
 	dateFormat string
 	endOfTime  time.Time
+	ctx        context.Context
 }
 
 func Open(cfg *config.Global) (*Store, error) {
@@ -51,6 +53,7 @@ func Open(cfg *config.Global) (*Store, error) {
 		db:        db,
 		version:   "0.1.0",
 		endOfTime: time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC),
+		ctx:       context.Background(),
 	}, nil
 }
 

@@ -23,7 +23,7 @@ import "math/rand"
 type Star struct {
 	Id       int
 	System   *System // system the star is in
-	Suffix   string
+	Sequence string
 	Kind     string
 	HomeStar bool
 	Orbits   []*Planet

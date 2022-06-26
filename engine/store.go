@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/mdhender/wraith/models"
 	"github.com/mdhender/wraith/storage/config"
 	"golang.org/x/crypto/bcrypt"
 	"log"
@@ -108,19 +109,11 @@ func (e *Engine) createUser(handle, email, secret string) error {
 }
 
 func (e *Engine) deleteGame(id int) error {
-	_, err := e.db.Exec("delete from games where id = ?", id)
-	if err != nil {
-		return err
-	}
-	return nil
+	return e.r.DeleteGame(&models.Game{Id: id})
 }
 
 func (e *Engine) deleteGameByName(shortName string) error {
-	_, err := e.db.Exec("delete from games where short_name = ?", shortName)
-	if err != nil {
-		return err
-	}
-	return nil
+	return e.r.DeleteGame(&models.Game{ShortName: shortName})
 }
 
 func (e *Engine) fetchNations() ([]*Nation, error) {
@@ -253,8 +246,8 @@ func (e *Engine) saveGame() error {
 		system.Id = int(id)
 
 		for _, star := range system.Stars {
-			r, err := tx.ExecContext(e.ctx, "insert into stars (system_id, suffix, kind) values (?, ?, ?)",
-				system.Id, star.Suffix, star.Kind)
+			r, err := tx.ExecContext(e.ctx, "insert into stars (system_id, sequence, kind) values (?, ?, ?)",
+				system.Id, star.Sequence, star.Kind)
 			if err != nil {
 				return fmt.Errorf("saveGame: stars: insert: %w", err)
 			}

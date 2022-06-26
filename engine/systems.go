@@ -50,7 +50,7 @@ func (e *Engine) genSystem(id int) *System {
 	}
 	for i := range system.Stars {
 		star := e.genStar(system)
-		star.Suffix = string("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i])
+		star.Sequence = string("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i])
 		system.Stars[i] = star
 	}
 
@@ -68,7 +68,7 @@ func (e *Engine) genHomeSystem(id int) *System {
 		} else {
 			star = e.genStar(system)
 		}
-		star.Suffix = string("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i])
+		star.Sequence = string("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i])
 		system.Stars[i] = star
 	}
 	return system

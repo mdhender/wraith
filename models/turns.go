@@ -17,3 +17,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 package models
+
+import "fmt"
+
+func (t *Turn) String() string {
+	if t.No == 0 {
+		return "0000/0"
+	}
+	return fmt.Sprintf("%04d/%d", t.No/4+1, t.No%4+1)
+}

@@ -28,38 +28,27 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
-	"os"
 	"path/filepath"
 	"time"
 )
 
 func (e *Engine) Report(spId int) error {
-	// load the setup store
-	var s ReportStore
-	b, err := os.ReadFile("setup.json")
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
-
 	// run the report for just the one nation
-	for _, n := range e.stores.nations.Index {
-		if n.Id != spId {
+	for _, n := range e.game.Nations {
+		if n.No != spId {
 			continue
 		}
-		log.Printf("reporting for %d %q (%q)\n", n.Id, n.Name, n.Store)
+		log.Printf("reporting for %d %q (%d)\n", n.No, n.Name, n.Id)
 
-		reportFile := filepath.Clean(filepath.Join(n.Store, "report.txt"))
-		log.Printf("reporting for %d %q (%q)\n", n.Id, n.Name, reportFile)
-
-		w, err := os.OpenFile(reportFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
-		if err != nil {
-			return err
-		}
-
-		return s.Report(w, spId)
+		//reportFile := filepath.Clean(filepath.Join(n.Store, "report.txt"))
+		//log.Printf("reporting for %d %q (%q)\n", n.Id, n.Name, reportFile)
+		//
+		//w, err := os.OpenFile(reportFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//return s.Report(w, spId)
 	}
 	return nil
 }

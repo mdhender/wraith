@@ -24,14 +24,6 @@ import (
 	"log"
 )
 
-type System struct {
-	GameId int
-	Id     int
-	X      int
-	Y      int
-	Z      int
-}
-
 func (s *Store) AddSystem(g Game, x, y, z int) (System, error) {
 	if s.db == nil {
 		return System{}, ErrNoConnection

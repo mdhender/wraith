@@ -19,115 +19,78 @@
 package models
 
 import (
-	"database/sql"
+	"fmt"
 	"github.com/pkg/errors"
-	"log"
 	"strings"
-	"time"
 	"unicode"
 )
 
-type Game struct {
-	Id        int
-	EffDt     time.Time
-	EndDt     time.Time
-	ShortName string
-	Name      string
-}
-
-type GameTurn struct {
-	GameId int
-	TurnNo int
-	EffDt  time.Time
-	EndDt  time.Time
-}
-
 // CreateGame adds a new game to the store if it passes validation
-func (s *Store) CreateGame(name, shortName string, startDt time.Time) (Game, error) {
+func (s *Store) CreateGame(g *Game) error {
 	if s.db == nil {
-		return Game{}, ErrNoConnection
+		return ErrNoConnection
 	}
 
-	if shortName = strings.ToUpper(strings.TrimSpace(shortName)); shortName == "" {
-		return Game{}, errors.Wrap(ErrMissingField, "short name")
+	g.ShortName = strings.ToUpper(strings.TrimSpace(g.ShortName))
+	if g.ShortName == "" {
+		return errors.Wrap(ErrMissingField, "short name")
 	}
-	for _, r := range shortName { // check for invalid runes in the field
+	for _, r := range g.ShortName { // check for invalid runes in the field
 		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_') {
-			return Game{}, errors.Wrap(ErrInvalidField, "short name: invalid rune")
+			return errors.Wrap(ErrInvalidField, "short name: invalid rune")
 		}
-	}
-	if name = strings.TrimSpace(name); name == "" {
-		name = shortName
 	}
 
 	// check for duplicate keys
-	stmtDup, err := s.db.Prepare("select ifnull(count(id), 0) from game where short_name = ?")
-	if err != nil {
-		return Game{}, err
-	}
-	defer func(stmt *sql.Stmt) {
-		if err := stmt.Close(); err != nil {
-			log.Printf("%+v\n", err)
-		}
-	}(stmtDup)
 	var count int
-	err = stmtDup.QueryRow(shortName).Scan(&count)
+	row := s.db.QueryRow("select ifnull(count(id), 0) from games where short_name = ?", g.ShortName)
+	err := row.Scan(&count)
 	if err != nil {
-		return Game{}, err
-	}
-	if count != 0 {
-		return Game{}, ErrDuplicateKey
+		return fmt.Errorf("createGame: count: %w", err)
+	} else if count != 0 {
+		return ErrDuplicateKey
 	}
 
-	g := Game{
-		Id:        s.nextGameId(),
-		EffDt:     startDt,
-		EndDt:     s.endOfTime,
-		ShortName: shortName,
-		Name:      name,
+	g.Name = strings.TrimSpace(g.Name)
+	if g.Name == "" {
+		g.Name = g.ShortName
+	}
+	g.Description = strings.TrimSpace(g.Description)
+	if g.Description == "" {
+		g.Description = g.Name
 	}
 
-	createGame, err := s.db.Prepare("insert into game (id, effdt, enddt, short_name, name) values(?, ?, ?, ?, ?)")
-	if err != nil {
-		return Game{}, err
-	}
-	defer func(stmt *sql.Stmt) {
-		if err := stmt.Close(); err != nil {
-			log.Printf("%+v\n", err)
-		}
-	}(createGame)
-	_, err = createGame.Exec(g.Id, g.EffDt, g.EndDt, g.ShortName, g.Name)
-	if err != nil {
-		return Game{}, err
-	}
-
-	createTurn, err := s.db.Prepare("insert into game_turn (game_id, turn_no, effdt, enddt, asofdt) values(?, ?, ?, ?, null)")
-	if err != nil {
-		return Game{}, err
-	}
-	defer func(stmt *sql.Stmt) {
-		if err := stmt.Close(); err != nil {
-			log.Printf("%+v\n", err)
-		}
-	}(createTurn)
-	_, err = createTurn.Exec(g.Id, 0, startDt, s.endOfTime)
-	if err != nil {
-		return Game{}, err
-	}
-
-	return g, nil
+	return nil
 }
 
-func (s *Store) nextGameId() (id int) {
-	stmt, err := s.db.Prepare("select ifnull(max(id), 0) from game")
-	if err != nil {
-		return 0
+// DeleteGame removes a game from the store.
+func (s *Store) DeleteGame(g *Game) error {
+	if g.Id != 0 {
+		return s.deleteGame(g.Id)
+	} else if g.ShortName != "" {
+		return s.deleteGameByName(g.ShortName)
 	}
-	defer func(stmt *sql.Stmt) {
-		if err := stmt.Close(); err != nil {
-			log.Printf("%+v\n", err)
-		}
-	}(stmt)
-	_ = stmt.QueryRow().Scan(&id)
-	return id + 1
+	return ErrMissingField
+}
+
+func (s *Store) deleteGame(id int) error {
+	if s.db == nil {
+		return ErrNoConnection
+	}
+	_, err := s.db.Exec("delete from games where id = ?", id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Store) deleteGameByName(shortName string) error {
+	if s.db == nil {
+		return ErrNoConnection
+	}
+	_, err := s.db.Exec("delete from games where short_name = ?", shortName)
+	if err != nil {
+		return err
+	}
+	return nil
 }

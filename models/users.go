@@ -19,210 +19,167 @@
 package models
 
 import (
-	"database/sql"
+	"fmt"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
-	"log"
 	"strings"
 	"time"
 	"unicode"
 )
 
-type User struct {
-	Id     int
-	EffDt  time.Time
-	EndDt  time.Time
-	Email  string
-	Handle string
-}
-
-type UserSecret struct {
-	Id           int
-	HashedSecret string
-}
-
 // CreateUser adds a new user to the store if it passes validation
-func (s *Store) CreateUser(u User) (User, error) {
+func (s *Store) CreateUser(handle, email, secret string) error {
 	if s.db == nil {
-		return User{}, ErrNoConnection
+		return ErrNoConnection
 	}
+	return s.createUser(handle, email, secret)
+}
 
-	if u.Email = strings.ToLower(strings.TrimSpace(u.Email)); u.Email == "" {
-		return User{}, errors.Wrap(ErrMissingField, "email")
+func (s *Store) FetchUser(id int) (*User, error) {
+	if s.db == nil {
+		return nil, ErrNoConnection
 	}
-	if u.Handle = strings.ToLower(strings.TrimSpace(u.Handle)); u.Handle == "" {
-		return User{}, errors.Wrap(ErrMissingField, "handle")
-	}
-	for _, r := range u.Handle { // check for invalid runes in the field
-		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' || r == '.') {
-			return User{}, errors.Wrap(ErrInvalidField, "handle: invalid rune")
-		}
-	}
+	return s.fetchUser(id)
+}
 
-	// check for duplicate email or handle
-	now := time.Now()
-	stmtDup, err := s.db.Prepare("select ifnull(count(user_id), 0) from user_profile where (effdt <= ? and ? < enddt) and (email = ? or handle = ?)")
-	if err != nil {
-		return User{}, err
+// FetchUserByEmail returns the user that matches the email
+func (s *Store) FetchUserByEmail(email string) (*User, error) {
+	if s.db == nil {
+		return nil, ErrNoConnection
 	}
-	defer func(stmt *sql.Stmt) {
-		if err := stmt.Close(); err != nil {
-			log.Printf("%+v\n", err)
-		}
-	}(stmtDup)
-	var count int
-	err = stmtDup.QueryRow(now, now, u.Email, u.Handle).Scan(&count)
-	if err != nil {
-		return User{}, err
-	}
-	if count != 0 {
-		return User{}, ErrDuplicateKey
-	}
+	return s.fetchUserByEmail(email)
+}
 
-	// get sequence and add effective dates
-	u.Id, u.EffDt, u.EndDt = s.nextUserId(), time.Now().UTC(), s.endOfTime
-
-	stmt, err := s.db.Prepare("insert into user (id, effdt, enddt, email, handle) values(?, ?, ?, ?, ?)")
-	if err != nil {
-		return User{}, errors.Wrap(err, "prepare insert new user")
+func (s *Store) FetchUserByHandle(handle string) (*User, error) {
+	if s.db == nil {
+		return nil, ErrNoConnection
 	}
-	defer func(stmt *sql.Stmt) {
-		if err := stmt.Close(); err != nil {
-			log.Printf("%+v\n", err)
-		}
-	}(stmt)
-	_, err = stmt.Exec(u.Id, u.EffDt, u.EndDt, u.Email, u.Handle)
-	if err != nil {
-		return User{}, errors.Wrap(err, "exec insert new user")
-	}
-
-	stmtSecret, err := s.db.Prepare("insert into user_secret (id, hashed_secret) values(?, ?)")
-	if err != nil {
-		return User{}, errors.Wrap(err, "prepare insert new secret")
-	}
-	defer func(stmt *sql.Stmt) {
-		if err := stmt.Close(); err != nil {
-			log.Printf("%+v\n", err)
-		}
-	}(stmtSecret)
-	_, err = stmtSecret.Exec(u.Id, "*login-not-permitted*")
-	if err != nil {
-		return User{}, errors.Wrap(err, "exec insert new secret")
-	}
-
-	return u, nil
+	return s.fetchUserByHandle(handle)
 }
 
 func (s *Store) UpdateUserSecret(id int, secret string) error {
 	if s.db == nil {
 		return ErrNoConnection
 	}
-	stmtSecret, err := s.db.Prepare("update user_secret set hashed_secret = ? where id = ?")
-	if err != nil {
-		return errors.Wrap(err, "prepare update user secret")
+	return s.updateUserSecret(id, secret)
+}
+
+func (s *Store) createUser(handle, email, secret string) error {
+	now := time.Now()
+
+	displayHandle := strings.TrimSpace(handle)
+	if displayHandle == "" {
+		return errors.Wrap(ErrMissingField, "handle")
 	}
-	defer func(stmt *sql.Stmt) {
-		if err := stmt.Close(); err != nil {
-			log.Printf("%+v\n", err)
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
+		return errors.Wrap(ErrMissingField, "email")
+	}
+	handle = strings.ToLower(strings.TrimSpace(handle))
+	if handle == "" {
+		return errors.Wrap(ErrMissingField, "handle")
+	}
+	for _, r := range handle { // check for invalid runes in the field
+		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' || r == '.') {
+			return errors.Wrap(ErrInvalidField, "handle: invalid rune")
 		}
-	}(stmtSecret)
+	}
+
 	hashedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.MinCost)
 	if err != nil {
-		return errors.Wrap(err, "hash update user secret")
+		return fmt.Errorf("createUser: hash secret: %w", err)
 	}
-	_, err = stmtSecret.Exec(string(hashedPasswordBytes), id)
+
+	// get a transaction with a deferred rollback in case things fail
+	tx, err := s.db.BeginTx(s.ctx, nil)
 	if err != nil {
-		return errors.Wrap(err, "exec update user secret")
+		return fmt.Errorf("createUser: beginTx: %w", err)
+	}
+	defer tx.Rollback()
+
+	// check for duplicate handle
+	var matches int
+	row := tx.QueryRow("select ifnull(count(id), 0) from users where handle = ?", handle)
+	err = row.Scan(&matches)
+	if err != nil {
+		return err
+	} else if matches != 0 {
+		return fmt.Errorf("createUser: %w", ErrDuplicateKey)
+	}
+
+	// check for duplicate email or handle
+	row = tx.QueryRow("select ifnull(count(user_id), 0) from user_profile where (effdt <= ? and ? < enddt) and email = ?", now, now, email)
+	err = row.Scan(&matches)
+	if err != nil {
+		return err
+	} else if matches != 0 {
+		return fmt.Errorf("createUser: %w", ErrDuplicateKey)
+	}
+
+	r, err := tx.ExecContext(s.ctx, "insert into users (handle, hashed_secret) values (?, ?)", handle, string(hashedPasswordBytes))
+	if err != nil {
+		return fmt.Errorf("createUser: insert: %w", err)
+	}
+	id, err := r.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("createUser: fetchId: %w", err)
+	}
+	uid := int(id)
+
+	_, err = tx.ExecContext(s.ctx, "insert into user_profile (user_id, effdt, enddt, handle, email) values (?, ?, str_to_date('2099/12/31', '%Y/%m/%d'), ?, ?)", uid, now, displayHandle, email)
+	if err != nil {
+		return fmt.Errorf("createUser: insert: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+func (s *Store) fetchUser(id int) (*User, error) {
+	now := time.Now()
+	u := User{Profiles: []*UserProfile{&UserProfile{}}}
+
+	row := s.db.QueryRow("select id, users.handle, user_profile.handle, user_profile.email from users, user_profile where id = ? and user_profile.user_id = users.id and (effdt <= ? and ? < enddt)", id, now, now)
+	err := row.Scan(&u.Id, &u.Handle, &u.Profiles[0].Handle, &u.Profiles[0].Email)
+	if err != nil {
+		return nil, err
+	}
+
+	return &u, nil
+}
+
+func (s *Store) fetchUserByEmail(email string) (*User, error) {
+	now := time.Now()
+
+	var id int
+	row := s.db.QueryRow("select user_id from user_profile where email = ? and (effdt <= ? and ? < enddt)", strings.ToLower(email), now, now)
+	err := row.Scan(&id)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.fetchUser(id)
+}
+
+func (s *Store) fetchUserByHandle(handle string) (*User, error) {
+	var id int
+
+	row := s.db.QueryRow("select id from users where handle = ?", strings.ToLower(handle))
+	err := row.Scan(&id)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.fetchUser(id)
+}
+
+func (s *Store) updateUserSecret(id int, secret string) error {
+	hashedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.MinCost)
+	if err != nil {
+		return fmt.Errorf("updateUserSecret: hash secret: %w", err)
+	}
+	_, err = s.db.ExecContext(s.ctx, "update users set hashed_secret = ? where id = ?", string(hashedPasswordBytes), id)
+	if err != nil {
+		return fmt.Errorf("updateUserSecret: %w", err)
 	}
 	return nil
-}
-
-func (s *Store) nextUserId() (id int) {
-	stmt, err := s.db.Prepare("select ifnull(max(id), 0) from user")
-	if err != nil {
-		return 0
-	}
-	defer func(stmt *sql.Stmt) {
-		if err := stmt.Close(); err != nil {
-			log.Printf("%+v\n", err)
-		}
-	}(stmt)
-	_ = stmt.QueryRow().Scan(&id)
-	return id + 1
-}
-
-// SelectUserByEmail returns the user that matches the email
-func (s *Store) SelectUserByEmail(email string) (User, error) {
-	if s.db == nil {
-		return User{}, ErrNoConnection
-	}
-	email = strings.ToLower(email)
-
-	stmt, err := s.db.Prepare("select id, effdt, enddt, email, handle from user where email = ?")
-	if err != nil {
-		return User{}, err
-	}
-	defer func(stmt *sql.Stmt) {
-		if err := stmt.Close(); err != nil {
-			log.Printf("%+v\n", err)
-		}
-	}(stmt)
-
-	var u User
-	err = stmt.QueryRow(strings.ToLower(email)).Scan(&u.Id, &u.EffDt, &u.EndDt, &u.Email, &u.Handle)
-	if err != nil {
-		return User{}, err
-	}
-
-	return u, nil
-}
-
-// SelectUserByHandle returns the user that matches the handle
-func (s *Store) SelectUserByHandle(handle string) (User, error) {
-	if s.db == nil {
-		return User{}, ErrNoConnection
-	}
-
-	stmt, err := s.db.Prepare("select id, effdt, enddt, email, handle from user where handle = ?")
-	if err != nil {
-		return User{}, err
-	}
-	defer func(stmt *sql.Stmt) {
-		if err := stmt.Close(); err != nil {
-			log.Printf("%+v\n", err)
-		}
-	}(stmt)
-
-	var u User
-	err = stmt.QueryRow(strings.ToLower(handle)).Scan(&u.Id, &u.EffDt, &u.EndDt, &u.Email, &u.Handle)
-	if err != nil {
-		return User{}, err
-	}
-
-	return u, nil
-}
-
-// SelectUserById returns the user that matches the id
-func (s *Store) SelectUserById(id int) (User, error) {
-	if s.db == nil {
-		return User{}, ErrNoConnection
-	}
-
-	stmt, err := s.db.Prepare("select id, effdt, enddt, email, handle from user where id = ?")
-	if err != nil {
-		return User{}, err
-	}
-	defer func(stmt *sql.Stmt) {
-		if err := stmt.Close(); err != nil {
-			log.Printf("%+v\n", err)
-		}
-	}(stmt)
-
-	var u User
-	err = stmt.QueryRow(id).Scan(&u.Id, &u.EffDt, &u.EndDt, &u.Email, &u.Handle)
-	if err != nil {
-		return User{}, err
-	}
-
-	return u, nil
 }

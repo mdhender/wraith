@@ -17,23 +17,3 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 package models
-
-type Nations struct {
-	Id          int
-	Name        string
-	Description string
-	Speciality  string
-	Government  struct {
-		Kind string
-		Name string
-	}
-	HomeWorld struct {
-		Name     string
-		Location struct {
-			X     int
-			Y     int
-			Z     int
-			Orbit int
-		}
-	}
-}

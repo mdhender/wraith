@@ -67,6 +67,7 @@ drop table if exists users;
 
 drop table if exists units;
 
+
 create table units
 (
     id    varchar(5)  not null,
@@ -130,9 +131,11 @@ values ('STUN', 'structural', 'structural');
 insert into units (id, name, descr)
 values ('TPT', 'transport', 'transport');
 
+
 create table users
 (
     id            int         not null auto_increment,
+    handle        varchar(32) not null comment 'handle forced to lower-case',
     hashed_secret varchar(64) not null,
     primary key (id)
 );
@@ -142,12 +145,13 @@ create table user_profile
     user_id int         not null,
     effdt   datetime    not null,
     enddt   datetime    not null,
-    handle  varchar(32) not null,
+    handle  varchar(32) not null comment 'display handle',
     email   varchar(64) not null,
     primary key (user_id, effdt),
     foreign key (user_id) references users (id)
         on delete cascade
 );
+
 
 create table games
 (
@@ -159,6 +163,19 @@ create table games
     primary key (id),
     unique key (short_name)
 );
+
+
+create table turns
+(
+    game_id  int        not null,
+    turn     varchar(6) not null comment 'formatted as yyyy/q',
+    start_dt datetime   not null,
+    end_dt   datetime   not null,
+    primary key (game_id, turn),
+    foreign key (game_id) references games (id)
+        on delete cascade
+);
+
 
 create table players
 (
@@ -175,16 +192,17 @@ create table players
         on delete set null
 );
 
-create table turns
+create table player_dtl
 (
-    game_id  int        not null,
-    turn     varchar(6) not null comment 'formatted as yyyy/q',
-    start_dt datetime   not null,
-    end_dt   datetime   not null,
-    primary key (game_id, turn),
-    foreign key (game_id) references games (id)
+    player_id int         not null,
+    efftn     varchar(6)  not null,
+    endtn     varchar(6)  not null,
+    handle    varchar(32) not null comment 'name in the game',
+    primary key (player_id, efftn),
+    foreign key (player_id) references players (id)
         on delete cascade
 );
+
 
 create table nations
 (
@@ -236,17 +254,6 @@ create table nation_skills
         on delete cascade
 );
 
-create table player_dtl
-(
-    player_id int         not null,
-    efftn     varchar(6)  not null,
-    endtn     varchar(6)  not null,
-    handle    varchar(32) not null comment 'name in the game',
-    primary key (player_id, efftn),
-    foreign key (player_id) references players (id)
-        on delete cascade
-);
-
 create table systems
 (
     id        int not null auto_increment,
@@ -265,10 +272,10 @@ create table stars
 (
     id        int        not null auto_increment,
     system_id int        not null,
-    suffix    varchar(1) not null comment 'suffix appended to star location',
+    sequence  varchar(1) not null comment 'suffix appended to star location',
     kind      varchar(4) not null,
     primary key (id),
-    unique key (system_id, suffix),
+    unique key (system_id, sequence),
     foreign key (system_id) references systems (id)
         on delete cascade
 );

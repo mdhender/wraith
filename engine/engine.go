@@ -21,6 +21,7 @@ package engine
 import (
 	"context"
 	"database/sql"
+	"github.com/mdhender/wraith/models"
 	"github.com/mdhender/wraith/storage/config"
 	"path/filepath"
 )
@@ -142,6 +143,7 @@ type Engine struct {
 	ctx  context.Context
 	db   *sql.DB
 	game *Game
+	r    *models.Store
 }
 
 func (e *Engine) Ping() error {

@@ -19,6 +19,7 @@
 package models
 
 import (
+	"github.com/google/uuid"
 	"github.com/mdhender/wraith/storage/config"
 	"log"
 	"os"
@@ -43,13 +44,15 @@ func Bootstrap(cfg *config.Global) (*Store, error) {
 	log.Printf("executed schema file %q\n", cfg.SchemaFile)
 
 	// create the default users required by the engine
-	for _, user := range []string{"sysop", "batch"} {
-		_, err := s.CreateUser(User{Email: user, Handle: user})
+	for _, user := range []string{"nobody", "sysop", "batch"} {
+		err := s.CreateUser(user, user, uuid.New().String())
 		if err != nil {
 			return nil, err
 		}
 		log.Printf("created user %q\n", user)
 	}
+
+	// create the default set of units used by the engine
 
 	return s, nil
 }
