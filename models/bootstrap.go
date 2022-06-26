@@ -53,6 +53,44 @@ func Bootstrap(cfg *config.Global) (*Store, error) {
 	}
 
 	// create the default set of units used by the engine
+	type unit struct {
+		code  string
+		name  string
+		descr string
+	}
+	for _, u := range []unit{
+		{"ANM", "anti-missile", "anti-missile"},
+		{"ASC", "assault-craft", "assault-craft"},
+		{"ASW", "assault-weapon", "assault-weapon"},
+		{"AUT", "automation", "automation"},
+		{"CNGD", "consumer-goods", "consumer-goods"},
+		{"ESH", "energy-shield", "energy-shield"},
+		{"EWP", "energy-weapon", "energy-weapon"},
+		{"FCT", "factory", "factory"},
+		{"FOOD", "food", "food"},
+		{"FRM", "farm", "farm"},
+		{"FUEL", "fuel", "fuel"},
+		{"GOLD", "gold", "gold"},
+		{"HDR", "hyper-drive", "hyper-drive"},
+		{"LSP", "life-support", "life-support"},
+		{"LTSU", "light-structural", "light-structural"},
+		{"MIN", "mine", "mine"},
+		{"MLR", "military-robots", "military-robots"},
+		{"MLSP", "military-supplies", "military-supplies"},
+		{"MSS", "missile", "missile"},
+		{"MSL", "missile-launcher", "missile-launcher"},
+		{"MTLS", "metallics", "metallics"},
+		{"NMTS", "non-metallics", "non-metallics"},
+		{"SDR", "space-drive", "space-drive"},
+		{"SNR", "sensor", "sensor"},
+		{"SLSU", "super-light-structural", "super-light-structural"},
+		{"STUN", "structural", "structural"},
+		{"TPT", "transport", "transport"},
+	} {
+		if err := s.CreateUnit(u.code, u.name, u.descr, false); err != nil {
+			return nil, err
+		}
+	}
 
 	return s, nil
 }

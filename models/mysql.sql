@@ -70,7 +70,8 @@ drop table if exists units;
 
 create table units
 (
-    id    varchar(5)  not null,
+    id int not null auto_increment,
+    code    varchar(5)  not null,
     name  varchar(25) not null,
     descr varchar(64) not null,
     primary key (id)

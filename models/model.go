@@ -88,6 +88,7 @@ type Nation struct {
 	Speciality  string
 	Description string
 	Details     []*NationDetail
+	Research    []*NationResearch
 	Skills      []*NationSkills
 	Player      *Player // player currently controlling the nation
 	Colonies    []*ColonyOrShip
@@ -133,12 +134,12 @@ type NationResearch struct {
 // System is a system in the game.
 // It contains zero or more stars.
 type System struct {
-	Game     *Game
-	Id       int // unique identifier
-	X        int
-	Y        int
-	Z        int
-	QtyStars int
+	Game  *Game
+	Id    int // unique identifier
+	X     int
+	Y     int
+	Z     int
+	Stars []*Star
 }
 
 // Star is a stellar system in the game.
@@ -176,7 +177,7 @@ type PlanetDetail struct {
 type NaturalResource struct {
 	Planet     *Planet
 	Id         int     // unique identifier
-	DepositNo  int     // number of deposit on planet
+	No         int     // number of deposit on planet
 	Kind       string  // fuel, gold, metallics, non-metallics
 	QtyInitial int     // in mass units
 	YieldPct   float64 // percentage of each mass unit that yields units
@@ -288,10 +289,12 @@ type CSRations struct {
 type FactoryGroup struct {
 	CS      *ColonyOrShip
 	Id      int // unique identifier
-	GroupNo int
-	EffTurn *Turn // turn record becomes active
-	EndTurn *Turn // turn record ceases to be active
-	Unit    *Unit // unit being manufactured
+	No      int
+	EffTurn *Turn                // turn record becomes active
+	EndTurn *Turn                // turn record ceases to be active
+	Unit    *Unit                // unit being manufactured
+	Units   []*FactoryGroupUnits // factory units in the group
+	Stages  []*FactoryGroupStages
 }
 
 // FactoryGroupUnits is the number of factories working together in the group
@@ -317,7 +320,7 @@ type FactoryGroupStages struct {
 type FarmGroup struct {
 	CS      *ColonyOrShip
 	Id      int // unique identifier
-	GroupNo int
+	No      int
 	EffTurn *Turn // turn record becomes active
 	EndTurn *Turn // turn record ceases to be active
 }
@@ -345,10 +348,12 @@ type FarmGroupStages struct {
 type MiningGroup struct {
 	CS      *ColonyOrShip
 	Id      int // unique identifier
-	GroupNo int
+	No      int
 	EffTurn *Turn // turn record becomes active
 	EndTurn *Turn // turn record ceases to be active
 	Deposit *NaturalResource
+	Units   []*MiningGroupUnits // mine units in the group
+	Stages  []*MiningGroupStages
 }
 
 // MiningGroupUnits is the number of mines working together in the group
