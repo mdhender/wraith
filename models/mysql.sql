@@ -204,9 +204,10 @@ create table nation_dtl
     nation_id     int         not null,
     efftn         varchar(6)  not null,
     endtn         varchar(6)  not null,
-    controlled_by int comment 'player controlling the nation',
+    name          varchar(64) not null,
     govt_name     varchar(64) not null,
     govt_kind     varchar(64) not null,
+    controlled_by int comment 'player controlling the nation',
     primary key (nation_id, efftn),
     foreign key (nation_id) references nations (id)
         on delete cascade,

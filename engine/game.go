@@ -33,6 +33,7 @@ type Game struct {
 	ShortName string
 	Name      string
 	Descr     string
+	Players   []*Player
 	Turn      int // index to current game turn
 	Turns     []*Turn
 	Nations   []*Nation
@@ -41,7 +42,7 @@ type Game struct {
 
 // CreateGame creates a new game in the engine.
 // It will replace any game currently in the engine.
-func (e *Engine) CreateGame(shortName, name, descr string, numberOfNations, radius int, startDt time.Time) error {
+func (e *Engine) CreateGame(shortName, name, descr string, radius int, startDt time.Time, players []*Player) error {
 	if e == nil {
 		return ErrNoEngine
 	} else if e.db == nil {
@@ -69,7 +70,7 @@ func (e *Engine) CreateGame(shortName, name, descr string, numberOfNations, radi
 		return fmt.Errorf("createGame: %w", err)
 	}
 
-	systemsPerRing := numberOfNations
+	systemsPerRing := len(players)
 	totalSystems := radius * systemsPerRing
 	log.Printf("createGame: systems per ring %3d estimated systems %6d\n", systemsPerRing, totalSystems)
 	rings := mkrings(radius, systemsPerRing)
@@ -85,6 +86,7 @@ func (e *Engine) CreateGame(shortName, name, descr string, numberOfNations, radi
 		Name:      name,
 		Descr:     descr,
 		Turn:      0,
+		Players:   players,
 	}
 
 	turnDuration := 2 * 7 * 24 * time.Hour // assume two-week turns
@@ -99,7 +101,7 @@ func (e *Engine) CreateGame(shortName, name, descr string, numberOfNations, radi
 	systemId, ring, colonyNo := 0, 5, 0
 
 	// generate nations and their home systems
-	for i := 0; i < numberOfNations; i++ {
+	for i, player := range players {
 		systemId++
 		coords := rings[ring][0]
 		rings[ring] = rings[ring][1:]
@@ -108,8 +110,7 @@ func (e *Engine) CreateGame(shortName, name, descr string, numberOfNations, radi
 		system.Ring, system.X, system.Y, system.Z = ring, coords.X, coords.Y, coords.Z
 		e.game.Systems = append(e.game.Systems, system)
 
-		nation := e.createNation(i+1, system.Stars[0].Orbits[3])
-		nation.HomePlanet.Location = system.Stars[0].Orbits[3]
+		nation := e.createNation(i+1, system.Stars[0].Orbits[3], player)
 		colonyNo++
 		nation.Colonies[0].No = colonyNo
 		nation.Colonies[0].Location = nation.HomePlanet.Location

@@ -18,10 +18,6 @@
 
 package engine
 
-import (
-	"fmt"
-)
-
 // Nation configuration
 type Nation struct {
 	Id          int // this is the PK in the database
@@ -42,26 +38,28 @@ type Nation struct {
 	Skills       Skills
 	Colonies     []*XColony
 	Ships        []*XShip
+	ControlledBy *Player
 }
 
-func (e *Engine) createNation(id int, planet *Planet) *Nation {
-	n := &Nation{No: id, Speciality: "exploration"}
-	n.Name = fmt.Sprintf("SP%d", n.No)
-	n.Government.Name = fmt.Sprintf("GOV%d", n.No)
-	n.Government.Kind = "monarchy"
-
+func (e *Engine) createNation(id int, planet *Planet, player *Player) *Nation {
+	n := &Nation{No: id}
+	n.Name = player.Nation.Name
+	n.Government.Kind = player.Nation.GovtKind
+	n.Government.Name = player.Nation.GovtName
 	n.HomePlanet.Location = planet
-	n.HomePlanet.Name = "Not Named"
-
-	n.TechLevel, n.ResearchPool = 1, 0
-	n.Skills.Biology = n.TechLevel
-	n.Skills.Bureaucracy = n.TechLevel
-	n.Skills.Gravitics = n.TechLevel
-	n.Skills.LifeSupport = n.TechLevel
-	n.Skills.Manufacturing = n.TechLevel
-	n.Skills.Military = n.TechLevel
-	n.Skills.Mining = n.TechLevel
-	n.Skills.Shields = n.TechLevel
+	n.HomePlanet.Name = player.Nation.HomeWorld
+	n.ResearchPool = 0
+	n.Skills.Biology = 1
+	n.Skills.Bureaucracy = 1
+	n.Skills.Gravitics = 1
+	n.Skills.LifeSupport = 1
+	n.Skills.Manufacturing = 1
+	n.Skills.Military = 1
+	n.Skills.Mining = 1
+	n.Skills.Shields = 1
+	n.Speciality = player.Nation.Speciality
+	n.TechLevel = 1
+	n.ControlledBy = player
 
 	colony := e.genHomeOpenColony(planet)
 	n.Colonies = append(n.Colonies, colony)

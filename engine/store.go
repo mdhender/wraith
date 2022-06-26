@@ -84,7 +84,7 @@ func (e *Engine) createUser(handle, email, secret string) error {
 	row := tx.QueryRow("select ifnull(count(user_id), 0) from user_profile where (effdt <= ? and ? < enddt) and (email = ? or handle = ?)", now, now, email, handle)
 	err = row.Scan(&matches)
 	if err != nil {
-		return nil
+		return err
 	} else if matches != 0 {
 		return fmt.Errorf("createUser: %w", ErrDuplicateKey)
 	}
@@ -144,6 +144,8 @@ func (e *Engine) lookupGameByName(shortName string) *Game {
 }
 
 func (e *Engine) saveGame() error {
+	now := time.Now()
+
 	// get a transaction with a deferred rollback in case things fail
 	tx, err := e.db.BeginTx(e.ctx, nil)
 	if err != nil {
@@ -169,6 +171,34 @@ func (e *Engine) saveGame() error {
 		if err != nil {
 			return fmt.Errorf("saveGame: insert: 120: %w", err)
 		}
+	}
+
+	var nobody int
+	row := tx.QueryRow("select ifnull(user_id, 0) from user_profile where (effdt <= ? and ? < enddt) and handle = ?", now, now, "nobody")
+	err = row.Scan(&nobody)
+	if err != nil {
+		return fmt.Errorf("saveGame: players: nobody: %w", err)
+	}
+
+	for _, player := range e.game.Players {
+		var uid int
+		row := tx.QueryRow("select ifnull(user_id, 0) from user_profile where (effdt <= ? and ? < enddt) and handle = ?", now, now, player.Handle)
+		err = row.Scan(&uid)
+		if err != nil || uid == 0 {
+			uid = nobody
+			log.Printf("hey: player %q has no matching user\n", player.Handle)
+		}
+
+		r, err := tx.ExecContext(e.ctx, "insert into players (game_id, controlled_by, subject_of) values (?, ?, null)",
+			e.game.Id, uid)
+		if err != nil {
+			return fmt.Errorf("saveGame: players: insert: %w", err)
+		}
+		id, err := r.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("saveGame: players: lastInsertId: %w", err)
+		}
+		player.Id = int(id)
 	}
 
 	for _, system := range e.game.Systems {
@@ -247,8 +277,8 @@ func (e *Engine) saveGame() error {
 			return fmt.Errorf("saveGame: nations: lastInsertId: %w", err)
 		}
 		nation.Id = int(id)
-		_, err = tx.ExecContext(e.ctx, "insert into nation_dtl (nation_id, efftn, endtn, govt_kind, govt_name) values (?, ?, ?, ?, ?)",
-			nation.Id, "0000/0", "9999/9", nation.Government.Kind, nation.Government.Name)
+		_, err = tx.ExecContext(e.ctx, "insert into nation_dtl (nation_id, efftn, endtn, name, govt_name, govt_kind, controlled_by) values (?, ?, ?, ?, ?, ?, ?)",
+			nation.Id, "0000/0", "9999/9", nation.Name, nation.Government.Name, nation.Government.Kind, nation.ControlledBy.Id)
 		if err != nil {
 			return fmt.Errorf("saveGame: nation_dtl: insert: %w", err)
 		}

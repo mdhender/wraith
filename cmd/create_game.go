@@ -20,22 +20,25 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/mdhender/wraith/engine"
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 var globalCreateGame struct {
-	Force           bool
-	ShortName       string
-	Name            string
-	NumberOfNations int
-	Radius          int
-	StartDate       string
+	Force     bool
+	ShortName string
+	Name      string
+	Players   string // location of player data
+	Radius    int
+	StartDate string
 }
 
 var cmdCreateGame = &cobra.Command{
@@ -56,12 +59,36 @@ var cmdCreateGame = &cobra.Command{
 		if globalCreateGame.Name == "" {
 			globalCreateGame.Name = globalCreateGame.ShortName
 		}
-		if !(0 < globalCreateGame.NumberOfNations && globalCreateGame.NumberOfNations < 225) {
-			log.Fatalf("number of nations must be 1..225\n")
-		}
-
 		if !(2 < globalCreateGame.Radius && globalCreateGame.Radius < 18) {
 			log.Fatalf("radius must be 3..17\n")
+		}
+
+		globalCreateGame.Players = filepath.Clean(globalCreateGame.Players)
+		b, err := os.ReadFile(globalCreateGame.Players)
+		if err != nil {
+			log.Fatal(err)
+		}
+		var data struct {
+			Game    string `json:"game"`
+			Players []struct {
+				Id     string `json:"id"`
+				Handle string `json:"handle"`
+				Nation struct {
+					Name       string `json:"name"`
+					Speciality string `json:"speciality"`
+					HomeWorld  string `json:"home-world"`
+					GovtKind   string `json:"govt-kind"`
+					GovtName   string `json:"govt-name"`
+				} `json:"nation"`
+			} `json:"players"`
+		}
+		err = json.Unmarshal(b, &data)
+		if err != nil {
+			log.Fatal(err)
+		} else if data.Game != globalCreateGame.ShortName {
+			log.Fatalf("name in data file does not match command line\n")
+		} else if !(0 < len(data.Players) && len(data.Players) < 225) {
+			log.Fatalf("number of players must be 1..225\n")
 		}
 
 		cfg, err := config.LoadGlobal(globalBase.ConfigFile)
@@ -88,11 +115,21 @@ var cmdCreateGame = &cobra.Command{
 			log.Printf("short name %q purged\n", globalCreateGame.ShortName)
 		}
 
+		var gamePlayers []*engine.Player
+		for _, player := range data.Players {
+			gp := &engine.Player{Handle: player.Handle}
+			gp.Nation.Name = player.Nation.Name
+			gp.Nation.GovtKind = player.Nation.GovtKind
+			gp.Nation.GovtName = player.Nation.GovtName
+			gp.Nation.HomeWorld = player.Nation.HomeWorld
+			gp.Nation.Speciality = player.Nation.Speciality
+			gamePlayers = append(gamePlayers, gp)
+		}
 		startDt, err := time.Parse(time.RFC3339, "2022-06-29T23:00:00Z")
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = e.CreateGame(globalCreateGame.ShortName, globalCreateGame.Name, globalCreateGame.Name, globalCreateGame.NumberOfNations, globalCreateGame.Radius, startDt)
+		err = e.CreateGame(globalCreateGame.ShortName, globalCreateGame.Name, globalCreateGame.Name, globalCreateGame.Radius, startDt, gamePlayers)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -106,7 +143,8 @@ func init() {
 	cmdCreateGame.Flags().StringVar(&globalCreateGame.ShortName, "short-name", "", "report code for new game (eg PT-1)")
 	_ = cmdCreateGame.MarkFlagRequired("short-name")
 	cmdCreateGame.Flags().StringVar(&globalCreateGame.Name, "name", "", "descriptive name of new game")
-	cmdCreateGame.Flags().IntVar(&globalCreateGame.NumberOfNations, "nations", 20, "number of nations in game")
+	cmdCreateGame.Flags().StringVar(&globalCreateGame.Players, "players", "", "name of players data file")
+	_ = cmdCreateGame.MarkFlagRequired("players")
 	cmdCreateGame.Flags().IntVar(&globalCreateGame.Radius, "radius", 8, "radius of cluster")
 	cmdCreateGame.Flags().StringVar(&globalCreateGame.StartDate, "start-date", "", "start date for game")
 	cmdCreateGame.Flags().BoolVar(&globalCreateGame.Force, "force", false, "delete any existing game")
