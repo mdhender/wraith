@@ -29,15 +29,16 @@ import (
 
 // Game configuration
 type Game struct {
-	Id        int
-	ShortName string
-	Name      string
-	Descr     string
-	Players   []*Player
-	Turn      int // index to current game turn
-	Turns     []*Turn
-	Nations   []*Nation
-	Systems   []*System
+	Id          int
+	ShortName   string
+	Name        string
+	Descr       string
+	Players     []*Player
+	CurrentTurn string // formatted as yyyy/q
+	Turn        int    // index to current game turn
+	Turns       []*Turn
+	Nations     []*Nation
+	Systems     []*System
 }
 
 // CreateGame creates a new game in the engine.
@@ -82,20 +83,26 @@ func (e *Engine) CreateGame(shortName, name, descr string, radius int, startDt t
 	log.Printf("createGame:   total: %5d\n", numPoints)
 
 	e.game = &Game{
-		ShortName: shortName,
-		Name:      name,
-		Descr:     descr,
-		Turn:      0,
-		Players:   players,
+		ShortName:   shortName,
+		Name:        name,
+		Descr:       descr,
+		Turn:        0,
+		CurrentTurn: "0000/0",
+		Players:     players,
 	}
 
 	turnDuration := 2 * 7 * 24 * time.Hour // assume two-week turns
 	effDt := startDt
 	endDt := effDt.Add(turnDuration)
-	for t := 0; t < 10; t++ {
-		e.game.Turns = append(e.game.Turns, &Turn{No: t, EffDt: effDt, EndDt: endDt})
-		effDt = endDt
-		endDt = effDt.Add(turnDuration)
+	for year := 0; year < 10; year++ {
+		for quarter := 0; quarter < 4; quarter++ {
+			if quarter == 0 && year != 0 {
+				continue
+			}
+			e.game.Turns = append(e.game.Turns, &Turn{Turn: fmt.Sprintf("%04d/%d", year, quarter), StartDt: effDt, EndDt: endDt})
+			effDt = endDt
+			endDt = effDt.Add(turnDuration)
+		}
 	}
 
 	systemId, ring, colonyNo := 0, 5, 0

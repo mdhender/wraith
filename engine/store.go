@@ -123,20 +123,59 @@ func (e *Engine) deleteGameByName(shortName string) error {
 	return nil
 }
 
-func (e *Engine) lookupGame(id int) *Game {
-	var g Game
-	row := e.db.QueryRow("select id, name, descr, current_turn from games where id = ?", id)
-	err := row.Scan(&g.Id, &g.Name, &g.Descr, &g.Turn)
+func (e *Engine) fetchNations() ([]*Nation, error) {
+	var nations []*Nation
+	rows, err := e.db.Query(`select nations.id, nations.nation_no, nations.speciality, nations.descr,
+       nation_dtl.name, nation_dtl.govt_name, nation_dtl.govt_kind,
+       nation_skills.tech_level, nation_skills.research_points_pool
+		from nations, nation_dtl, nation_skills
+		where nations.game_id = ?
+		and (nation_dtl.nation_id = nations.id and nation_dtl.efftn <= ? and ? < nation_dtl.endtn)
+		and (nation_skills.nation_id = nations.id and nation_skills.efftn <= ? and ? < nation_skills.endtn)
+		order by nations.nation_no`,
+		e.game.Id,
+		e.game.CurrentTurn, e.game.CurrentTurn,
+		e.game.CurrentTurn, e.game.CurrentTurn)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return &g
+	for rows.Next() {
+		nation := Nation{}
+		err := rows.Scan(&nation.Id, &nation.No, &nation.Speciality, &nation.Description,
+			&nation.Name, &nation.Government.Name, &nation.Government.Kind,
+			&nation.TechLevel, &nation.ResearchPool)
+		if err != nil {
+			return nil, err
+		}
+		nations = append(nations, &nation)
+	}
+	return nations, nil
+}
+
+func (e *Engine) fetchTurn(turn string) (*Turn, error) {
+	t := Turn{GameID: e.game.Id, Turn: turn}
+	row := e.db.QueryRow("select start_dt, end_dt from turns where game_id = ? and turn = ?", t.GameID, t.Turn)
+	err := row.Scan(&t.StartDt, &t.EndDt)
+	if err != nil {
+		return nil, nil
+	}
+	return &t, nil
+}
+
+func (e *Engine) lookupGame(id int) (*Game, error) {
+	var g Game
+	row := e.db.QueryRow("select id, short_name, name, descr, current_turn from games where id = ?", id)
+	err := row.Scan(&g.Id, &g.ShortName, &g.Name, &g.Descr, &g.CurrentTurn)
+	if err != nil {
+		return nil, err
+	}
+	return &g, nil
 }
 
 func (e *Engine) lookupGameByName(shortName string) *Game {
 	var g Game
-	row := e.db.QueryRow("select id, name, descr, current_turn from games where short_name= ?", shortName)
-	err := row.Scan(&g.Id, &g.Name, &g.Descr, &g.Turn)
+	row := e.db.QueryRow("select id, short_name, name, descr, current_turn from games where short_name= ?", shortName)
+	err := row.Scan(&g.Id, &g.ShortName, &g.Name, &g.Descr, &g.CurrentTurn)
 	if err != nil {
 		return nil
 	}
@@ -153,8 +192,8 @@ func (e *Engine) saveGame() error {
 	}
 	defer tx.Rollback()
 
-	r, err := tx.ExecContext(e.ctx, "insert into games (short_name, name, descr, current_turn) values (?, ?, ?, ?)",
-		e.game.ShortName, e.game.Name, e.game.Descr, e.game.Turn)
+	r, err := tx.ExecContext(e.ctx, "insert into games (short_name, name, current_turn, descr) values (?, ?, ?, ?)",
+		e.game.ShortName, e.game.Name, e.game.CurrentTurn, e.game.Descr)
 	if err != nil {
 		return fmt.Errorf("saveGame: insert: 107: %w", err)
 	}
@@ -167,7 +206,7 @@ func (e *Engine) saveGame() error {
 
 	for _, turn := range e.game.Turns {
 		_, err = tx.ExecContext(e.ctx, "insert into turns (game_id, turn, start_dt, end_dt) values (?, ?, ?, ?)",
-			e.game.Id, turn.No, turn.EffDt, turn.EndDt)
+			e.game.Id, turn.Turn, turn.StartDt, turn.EndDt)
 		if err != nil {
 			return fmt.Errorf("saveGame: insert: 120: %w", err)
 		}
@@ -523,7 +562,33 @@ func (e *Engine) Load(id string) error {
 	}
 	e.reset()
 
-	return fmt.Errorf("engine.Load: %w", ErrNotImplemented)
+	log.Printf("loading %q\n", id)
+	e.game = e.lookupGameByName(id)
+	if e.game == nil {
+		return ErrNoGame
+	}
+
+	log.Printf("loading %q: turn %q\n", e.game.ShortName, e.game.CurrentTurn)
+	turn, err := e.fetchTurn(e.game.CurrentTurn)
+	if err != nil {
+		return err
+	} else if turn == nil {
+		return ErrNoTurn
+	}
+	log.Printf("turn %v\n", *turn)
+
+	log.Printf("loading %q: nations\n", e.game.ShortName)
+	e.game.Nations, err = e.fetchNations()
+	if err != nil {
+		return err
+	} else if e.game.Nations == nil {
+		return ErrNoNation
+	}
+	for _, nation := range e.game.Nations {
+		log.Printf("game %q: nation %d %q\n", e.game.ShortName, nation.Id, nation.Name)
+	}
+
+	return nil
 }
 
 func (e *Engine) Save() error {

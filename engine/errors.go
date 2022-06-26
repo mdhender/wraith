@@ -22,7 +22,9 @@ import "errors"
 
 var ErrNoEngine = errors.New("missing engine")
 var ErrNoGame = errors.New("missing game")
+var ErrNoNation = errors.New("missing nation")
 var ErrNoStore = errors.New("missing store")
+var ErrNoTurn = errors.New("missing turn")
 var ErrNotImplemented = errors.New("not implemented")
 
 var ErrDuplicateKey = errors.New("duplicate key")

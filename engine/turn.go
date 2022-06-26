@@ -23,10 +23,8 @@ import (
 )
 
 type Turn struct {
-	//gorm.Model
-	ID     int       // primary key for gorm
-	No     int       // turn number
-	EffDt  time.Time // date+time the turn starts
-	EndDt  time.Time // date+time the turn ends
-	GameID string    // foreign key for gorm
+	GameID  int
+	Turn    string    // turn number as yyyy/q
+	StartDt time.Time // date+time the turn starts
+	EndDt   time.Time // date+time the turn ends
 }
