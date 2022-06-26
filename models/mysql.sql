@@ -18,8 +18,6 @@
 
 drop table if exists resource_dtl;
 
-drop table if exists colony_factory_group_orders;
-drop table if exists colony_factory_group_inventory;
 drop table if exists colony_factory_group_stages;
 drop table if exists colony_factory_group_units;
 drop table if exists colony_factory_group;
@@ -35,6 +33,18 @@ drop table if exists colony_inventory;
 drop table if exists colony_hull;
 drop table if exists colony_dtl;
 drop table if exists colonies;
+
+drop table if exists ship_factory_group_stages;
+drop table if exists ship_factory_group_units;
+drop table if exists ship_factory_group;
+
+drop table if exists ship_pay;
+drop table if exists ship_population;
+drop table if exists ship_rations;
+drop table if exists ship_inventory;
+drop table if exists ship_hull;
+drop table if exists ship_dtl;
+drop table if exists ships;
 
 drop table if exists resources;
 drop table if exists planets;
@@ -319,12 +329,12 @@ create table colony_dtl
 create table colony_hull
 (
     colony_id       int        not null,
-    unit_id         varchar(5) not null,
-    tech_level      int        not null,
     efftn           varchar(6) not null,
     endtn           varchar(6) not null,
+    unit_id         varchar(5) not null,
+    tech_level      int        not null,
     qty_operational int,
-    primary key (colony_id, unit_id, tech_level, efftn),
+    primary key (colony_id, efftn, unit_id, tech_level),
     foreign key (colony_id) references colonies (id)
         on delete cascade
 ) comment 'infrastructure of the colony';
@@ -332,13 +342,13 @@ create table colony_hull
 create table colony_inventory
 (
     colony_id       int        not null,
-    unit_id         varchar(5) not null,
-    tech_level      int        not null,
     efftn           varchar(6) not null,
     endtn           varchar(6) not null,
+    unit_id         varchar(5) not null,
+    tech_level      int        not null,
     qty_operational int        not null,
     qty_stowed      int        not null,
-    primary key (colony_id, unit_id, tech_level, efftn),
+    primary key (colony_id, efftn, unit_id, tech_level),
     foreign key (colony_id) references colonies (id)
         on delete cascade
 ) comment 'cargo of the colony';
@@ -477,6 +487,151 @@ create table colony_mining_group_stages
         on delete cascade
 );
 
+create table ships
+(
+    id        int         not null auto_increment,
+    game_id   int         not null,
+    ship_no   int         not null,
+    kind      varchar(13) not null,
+    planet_id int         not null,
+    primary key (id),
+    unique key (game_id, ship_no),
+    foreign key (planet_id) references planets (id)
+        on delete cascade
+);
+
+create table ship_dtl
+(
+    ship_id       int         not null,
+    efftn         varchar(6)  not null,
+    endtn         varchar(6)  not null,
+    name          varchar(32) not null comment 'name of ship',
+    controlled_by int comment 'player controlling the ship',
+    primary key (ship_id, efftn),
+    foreign key (ship_id) references ships (id)
+        on delete cascade,
+    foreign key (controlled_by) references players (id)
+        on delete set null
+);
+
+create table ship_hull
+(
+    ship_id         int        not null,
+    efftn           varchar(6) not null,
+    endtn           varchar(6) not null,
+    unit_id         varchar(5) not null,
+    tech_level      int        not null,
+    qty_operational int,
+    primary key (ship_id, efftn, unit_id, tech_level),
+    foreign key (ship_id) references ships (id)
+        on delete cascade
+) comment 'infrastructure of the ship';
+
+create table ship_inventory
+(
+    ship_id         int        not null,
+    efftn           varchar(6) not null,
+    endtn           varchar(6) not null,
+    unit_id         varchar(5) not null,
+    tech_level      int        not null,
+    qty_operational int        not null,
+    qty_stowed      int        not null,
+    primary key (ship_id, efftn, unit_id, tech_level),
+    foreign key (ship_id) references ships (id)
+        on delete cascade
+) comment 'cargo of the ship';
+
+create table ship_population
+(
+    ship_id                int        not null,
+    efftn                  varchar(6) not null,
+    endtn                  varchar(6) not null,
+    qty_professional       int        not null,
+    qty_soldier            int        not null,
+    qty_unskilled          int        not null,
+    qty_unemployed         int        not null,
+    qty_construction_crews int        not null,
+    qty_spy_teams          int        not null,
+    rebel_pct              float      not null,
+    primary key (ship_id, efftn),
+    foreign key (ship_id) references ships (id)
+        on delete cascade
+);
+
+create table ship_rations
+(
+    ship_id          int        not null,
+    efftn            varchar(6) not null,
+    endtn            varchar(6) not null,
+    professional_pct float      not null,
+    soldier_pct      float      not null,
+    unskilled_pct    float      not null,
+    unemployed_pct   float      not null,
+    primary key (ship_id, efftn),
+    foreign key (ship_id) references ships (id)
+        on delete cascade
+);
+
+create table ship_pay
+(
+    ship_id          int        not null,
+    efftn            varchar(6) not null,
+    endtn            varchar(6) not null,
+    professional_pct float      not null,
+    soldier_pct      float      not null,
+    unskilled_pct    float      not null,
+    unemployed_pct   float      not null,
+    primary key (ship_id, efftn),
+    foreign key (ship_id) references ships (id)
+        on delete cascade
+);
+
+create table ship_factory_group
+(
+    id         int        not null auto_increment,
+    ship_id    int        not null,
+    group_no   int        not null,
+    efftn      varchar(6) not null,
+    endtn      varchar(6) not null,
+    unit_id    varchar(5) not null comment 'unit being manufactured',
+    tech_level int        not null comment 'tech level of unit being manufactured',
+    primary key (id),
+    unique key (ship_id, group_no, efftn),
+    foreign key (ship_id) references ships (id)
+        on delete cascade,
+    foreign key (unit_id) references units (id)
+        on delete cascade
+);
+
+create table ship_factory_group_units
+(
+    factory_group_id int        not null,
+    efftn            varchar(6) not null,
+    endtn            varchar(6) not null,
+    unit_id          varchar(5) not null,
+    tech_level       int        not null,
+    qty_operational  int        not null,
+    primary key (factory_group_id, efftn, unit_id, tech_level),
+    foreign key (factory_group_id) references ship_factory_group (id)
+        on delete cascade,
+    foreign key (unit_id) references units (id)
+        on delete cascade
+);
+
+create table ship_factory_group_stages
+(
+    factory_group_id int        not null,
+    turn             varchar(6) not null,
+    qty_stage_1      int        not null,
+    qty_stage_2      int        not null,
+    qty_stage_3      int        not null,
+    qty_stage_4      int        not null,
+    primary key (factory_group_id, turn),
+    foreign key (factory_group_id) references ship_factory_group (id)
+        on delete cascade
+);
+
+
 create table resource_dtl
 (
     resource_id   int        not null,
@@ -522,124 +677,3 @@ insert into user_profile (user_id, effdt, enddt, handle, email)
 select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'batch', 'batch'
 from users
 where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user01*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user01', 'user01'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user02*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user02', 'user02'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user03*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user03', 'user03'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user04*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user04', 'user04'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user05*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user05', 'user05'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user06*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user06', 'user06'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user07*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user07', 'user07'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user08*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user08', 'user08'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user09*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user09', 'user09'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user10*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user10', 'user10'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user11*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user11', 'user11'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user12*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user12', 'user12'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user13*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user13', 'user13'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user14*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user14', 'user14'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*user15*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'user15', 'user15'
-from users
-where id = (select max(id) from users);
-

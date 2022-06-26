@@ -25,6 +25,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/mdhender/wraith/storage/config"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"time"
 )
@@ -55,6 +56,55 @@ func Open(cfg *config.Global, ctx context.Context) (e *Engine, err error) {
 
 func (e *Engine) createGame() error {
 	return fmt.Errorf("engine.createGame: %w", ErrNotImplemented)
+}
+
+// CreateUser creates a new user.
+// Returns an error if the email or handle are active
+func (e *Engine) CreateUser(handle, email, secret string) error {
+	return e.createUser(handle, email, secret)
+}
+
+func (e *Engine) createUser(handle, email, secret string) error {
+	now := time.Now()
+
+	hashedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.MinCost)
+	if err != nil {
+		return fmt.Errorf("createUser: hash secret: %w", err)
+	}
+
+	// get a transaction with a deferred rollback in case things fail
+	tx, err := e.db.BeginTx(e.ctx, nil)
+	if err != nil {
+		return fmt.Errorf("createUser: beginTx: %w", err)
+	}
+	defer tx.Rollback()
+
+	// check for duplicate email or handle
+	var matches int
+	row := tx.QueryRow("select ifnull(count(user_id), 0) from user_profile where (effdt <= ? and ? < enddt) and (email = ? or handle = ?)", now, now, email, handle)
+	err = row.Scan(&matches)
+	if err != nil {
+		return nil
+	} else if matches != 0 {
+		return fmt.Errorf("createUser: %w", ErrDuplicateKey)
+	}
+
+	r, err := tx.ExecContext(e.ctx, "insert into users (hashed_secret) values (?)", string(hashedPasswordBytes))
+	if err != nil {
+		return fmt.Errorf("createUser: insert: %w", err)
+	}
+	id, err := r.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("createUser: fetchId: %w", err)
+	}
+	uid := int(id)
+
+	_, err = tx.ExecContext(e.ctx, "insert into user_profile (user_id, effdt, enddt, handle, email) values (?, ?, str_to_date('2099/12/31', '%Y/%m/%d'), ?, ?)", uid, now, handle, email)
+	if err != nil {
+		return fmt.Errorf("createUser: insert: %w", err)
+	}
+
+	return tx.Commit()
 }
 
 func (e *Engine) deleteGame(id int) error {
@@ -97,18 +147,18 @@ func (e *Engine) saveGame() error {
 	// get a transaction with a deferred rollback in case things fail
 	tx, err := e.db.BeginTx(e.ctx, nil)
 	if err != nil {
-		return fmt.Errorf("engine.saveGame: beginTx: %w", err)
+		return fmt.Errorf("saveGame: beginTx: %w", err)
 	}
 	defer tx.Rollback()
 
 	r, err := tx.ExecContext(e.ctx, "insert into games (short_name, name, descr, current_turn) values (?, ?, ?, ?)",
 		e.game.ShortName, e.game.Name, e.game.Descr, e.game.Turn)
 	if err != nil {
-		return fmt.Errorf("engine.saveGame: insert: 107: %w", err)
+		return fmt.Errorf("saveGame: insert: 107: %w", err)
 	}
 	id, err := r.LastInsertId()
 	if err != nil {
-		return fmt.Errorf("engine.saveGame: fetchId: %w", err)
+		return fmt.Errorf("saveGame: fetchId: %w", err)
 	}
 	e.game.Id = int(id)
 	log.Printf("created game %3d %s\n", int(id), e.game.ShortName)
@@ -117,7 +167,7 @@ func (e *Engine) saveGame() error {
 		_, err = tx.ExecContext(e.ctx, "insert into turns (game_id, turn, start_dt, end_dt) values (?, ?, ?, ?)",
 			e.game.Id, turn.No, turn.EffDt, turn.EndDt)
 		if err != nil {
-			return fmt.Errorf("engine.saveGame: insert: 120: %w", err)
+			return fmt.Errorf("saveGame: insert: 120: %w", err)
 		}
 	}
 
@@ -321,16 +371,113 @@ func (e *Engine) saveGame() error {
 					_, err = tx.ExecContext(e.ctx, "insert into colony_mining_group_units (mining_group_id, efftn, endtn, unit_id, tech_level, qty_operational) values (?, ?, ?, ?, ?, ?)",
 						group.Id, "0000/0", "9999/9", "MIN", unit.TechLevel, unit.Qty)
 					if err != nil {
-						return fmt.Errorf("saveGame: colony_mining_group_Units: insert: %w", err)
+						return fmt.Errorf("saveGame: colony_mining_group_units: insert: %w", err)
 					}
 					_, err = tx.ExecContext(e.ctx, "insert into colony_mining_group_stages (mining_group_id, turn, qty_stage_1, qty_stage_2, qty_stage_3, qty_stage_4) values (?, ?, ?, ?, ?, ?)",
 						group.Id, "0000/0", unit.Stages[0], unit.Stages[1], unit.Stages[2], 0)
 					if err != nil {
-						return fmt.Errorf("saveGame: colony_mining_group_Units: insert: %w", err)
+						return fmt.Errorf("saveGame: colony_mining_group_units: insert: %w", err)
 					}
 				}
 			}
 			log.Printf("created nation %3d: colony %3d %8d\n", nation.No, colony.No, colony.Id)
+		}
+
+		for _, ship := range nation.Ships {
+			r, err := tx.ExecContext(e.ctx, "insert into ships (game_id, ship_no, planet_id, kind) values (?, ?, ?, ?)",
+				e.game.Id, ship.No, ship.Location.Id, ship.Kind)
+			if err != nil {
+				return fmt.Errorf("saveGame: ships: insert: %w", err)
+			}
+			id, err := r.LastInsertId()
+			if err != nil {
+				return fmt.Errorf("saveGame: ships: lastInsertId: %w", err)
+			}
+			ship.Id = int(id)
+
+			_, err = tx.ExecContext(e.ctx, "insert into ship_dtl (ship_id, efftn, endtn, name) values (?, ?, ?, ?)",
+				ship.Id, "0000/0", "9999/9", ship.Name)
+			if err != nil {
+				return fmt.Errorf("saveGame: ship_dtl: insert: %w", err)
+			}
+
+			_, err = tx.ExecContext(e.ctx, "insert into ship_population (ship_id, efftn, endtn, qty_professional, qty_soldier, qty_unskilled, qty_unemployed, qty_construction_crews, qty_spy_teams, rebel_pct) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				ship.Id, "0000/0", "9999/9",
+				ship.Population.Professional.Qty,
+				ship.Population.Soldier.Qty,
+				ship.Population.Unskilled.Qty,
+				ship.Population.Unemployed.Qty,
+				ship.Population.ConstructionCrews,
+				ship.Population.SpyTeams,
+				ship.Population.RebelPct,
+			)
+			if err != nil {
+				return fmt.Errorf("saveGame: ship_dtl: insert: %w", err)
+			}
+
+			_, err = tx.ExecContext(e.ctx, "insert into ship_rations (ship_id, efftn, endtn, professional_pct, soldier_pct, unskilled_pct, unemployed_pct) values (?, ?, ?, ?, ?, ?, ?)",
+				ship.Id, "0000/0", "9999/9",
+				ship.Population.Professional.Ration,
+				ship.Population.Soldier.Ration,
+				ship.Population.Unskilled.Ration,
+				ship.Population.Unemployed.Ration,
+			)
+			if err != nil {
+				return fmt.Errorf("saveGame: ship_rations: insert: %w", err)
+			}
+
+			_, err = tx.ExecContext(e.ctx, "insert into ship_pay (ship_id, efftn, endtn, professional_pct, soldier_pct, unskilled_pct, unemployed_pct) values (?, ?, ?, ?, ?, ?, ?)",
+				ship.Id, "0000/0", "9999/9",
+				ship.Population.Professional.Pay,
+				ship.Population.Soldier.Pay,
+				ship.Population.Unskilled.Pay,
+				ship.Population.Unemployed.Pay,
+			)
+			if err != nil {
+				return fmt.Errorf("saveGame: ship_pay: insert: %w", err)
+			}
+
+			for _, inventory := range ship.Hull {
+				_, err = tx.ExecContext(e.ctx, "insert into ship_hull (ship_id, unit_id, tech_level, efftn, endtn, qty_operational) values (?, ?, ?, ?, ?, ?)",
+					ship.Id, inventory.Code, inventory.TechLevel, "0000/0", "9999/9", inventory.OperationalQty)
+				if err != nil {
+					return fmt.Errorf("saveGame: ship_hull: insert: %w", err)
+				}
+			}
+
+			for _, inventory := range ship.Inventory {
+				_, err = tx.ExecContext(e.ctx, "insert into ship_inventory (ship_id, unit_id, tech_level, efftn, endtn, qty_operational, qty_stowed) values (?, ?, ?, ?, ?, ?, ?)",
+					ship.Id, inventory.Code, inventory.TechLevel, "0000/0", "9999/9", inventory.OperationalQty, inventory.StowedQty)
+				if err != nil {
+					return fmt.Errorf("saveGame: ship_inventory: insert: %w", err)
+				}
+			}
+
+			for _, group := range ship.FactoryGroups {
+				r, err := tx.ExecContext(e.ctx, "insert into ship_factory_group (ship_id, group_no, efftn, endtn, unit_id, tech_level) values (?, ?, ?, ?, ?, ?)",
+					ship.Id, group.No, "0000/0", "9999/9", group.BuildCode, group.BuildTechLevel)
+				if err != nil {
+					return fmt.Errorf("saveGame: ship_factory_group: insert: %w", err)
+				}
+				id, err := r.LastInsertId()
+				if err != nil {
+					return fmt.Errorf("saveGame: ship_factory_group: lastInsertId: %w", err)
+				}
+				group.Id = int(id)
+				for _, unit := range group.Units {
+					_, err = tx.ExecContext(e.ctx, "insert into ship_factory_group_units (factory_group_id, efftn, endtn, unit_id, tech_level, qty_operational) values (?, ?, ?, ?, ?, ?)",
+						group.Id, "0000/0", "9999/9", "FCT", unit.TechLevel, unit.Qty)
+					if err != nil {
+						return fmt.Errorf("saveGame: ship_factory_group_units: insert: %w", err)
+					}
+					_, err = tx.ExecContext(e.ctx, "insert into ship_factory_group_stages (factory_group_id, turn, qty_stage_1, qty_stage_2, qty_stage_3, qty_stage_4) values (?, ?, ?, ?, ?, ?)",
+						group.Id, "0000/0", unit.Stages[0], unit.Stages[1], unit.Stages[2], 0)
+					if err != nil {
+						return fmt.Errorf("saveGame: ship_factory_group_units: insert: %w", err)
+					}
+				}
+			}
+			log.Printf("created nation %3d: ship  %3d %8d\n", nation.No, ship.No, ship.Id)
 		}
 	}
 

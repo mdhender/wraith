@@ -18,4 +18,24 @@
 
 package engine
 
-type XShip struct{}
+type XShip struct {
+	Id         int // key for database
+	No         int
+	Name       string
+	Kind       string
+	Location   *Planet
+	TechLevel  int
+	Population struct {
+		Professional      XPopulation
+		Soldier           XPopulation
+		Unskilled         XPopulation
+		Unemployed        XPopulation
+		ConstructionCrews int
+		SpyTeams          int
+		RebelPct          float64
+	}
+	Hull          []*Inventory // units used to build ship
+	Inventory     []*Inventory // units stored in ship
+	FactoryGroups []*FactoryGroup
+	FarmGroups    []*XGroup
+}

@@ -60,7 +60,8 @@ func (s *Store) CreateUser(u User) (User, error) {
 	}
 
 	// check for duplicate email or handle
-	stmtDup, err := s.db.Prepare("select ifnull(count(id), 0) from user where email = ? or handle = ?")
+	now := time.Now()
+	stmtDup, err := s.db.Prepare("select ifnull(count(user_id), 0) from user_profile where (effdt <= ? and ? < enddt) and (email = ? or handle = ?)")
 	if err != nil {
 		return User{}, err
 	}
@@ -70,7 +71,7 @@ func (s *Store) CreateUser(u User) (User, error) {
 		}
 	}(stmtDup)
 	var count int
-	err = stmtDup.QueryRow(u.Email, u.Handle).Scan(&count)
+	err = stmtDup.QueryRow(now, now, u.Email, u.Handle).Scan(&count)
 	if err != nil {
 		return User{}, err
 	}
