@@ -45,7 +45,7 @@ func Bootstrap(cfg *config.Global) (*Store, error) {
 
 	// create the default users required by the engine
 	for _, user := range []string{"nobody", "sysop", "batch"} {
-		err := s.CreateUser(user, user, uuid.New().String())
+		err := s.CreateUser(user, user, user, uuid.New().String())
 		if err != nil {
 			return nil, err
 		}

@@ -34,6 +34,7 @@ type Store struct {
 	dateFormat string
 	endOfTime  time.Time
 	ctx        context.Context
+	units      map[string]*Unit
 }
 
 func Open(cfg *config.Global) (*Store, error) {

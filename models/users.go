@@ -20,7 +20,6 @@ package models
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 	"strings"
 	"time"
@@ -28,11 +27,11 @@ import (
 )
 
 // CreateUser adds a new user to the store if it passes validation
-func (s *Store) CreateUser(handle, email, secret string) error {
+func (s *Store) CreateUser(displayHandle, handle, email, secret string) error {
 	if s.db == nil {
 		return ErrNoConnection
 	}
-	return s.createUser(handle, email, secret)
+	return s.createUser(displayHandle, handle, email, secret)
 }
 
 func (s *Store) FetchUser(id int) (*User, error) {
@@ -64,24 +63,24 @@ func (s *Store) UpdateUserSecret(id int, secret string) error {
 	return s.updateUserSecret(id, secret)
 }
 
-func (s *Store) createUser(handle, email, secret string) error {
+func (s *Store) createUser(displayHandle, handle, email, secret string) error {
 	now := time.Now()
 
-	displayHandle := strings.TrimSpace(handle)
+	displayHandle = strings.TrimSpace(displayHandle)
 	if displayHandle == "" {
-		return errors.Wrap(ErrMissingField, "handle")
+		return fmt.Errorf("display-handle: %w", ErrMissingField)
 	}
 	email = strings.ToLower(strings.TrimSpace(email))
 	if email == "" {
-		return errors.Wrap(ErrMissingField, "email")
+		return fmt.Errorf("email: %w", ErrMissingField)
 	}
 	handle = strings.ToLower(strings.TrimSpace(handle))
 	if handle == "" {
-		return errors.Wrap(ErrMissingField, "handle")
+		return fmt.Errorf("handle: %w", ErrMissingField)
 	}
 	for _, r := range handle { // check for invalid runes in the field
-		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' || r == '.') {
-			return errors.Wrap(ErrInvalidField, "handle: invalid rune")
+		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' || r == '.' || r == ' ') {
+			return fmt.Errorf("handle: invalid rune: %w", ErrInvalidField)
 		}
 	}
 
@@ -126,7 +125,8 @@ func (s *Store) createUser(handle, email, secret string) error {
 	}
 	uid := int(id)
 
-	_, err = tx.ExecContext(s.ctx, "insert into user_profile (user_id, effdt, enddt, handle, email) values (?, ?, str_to_date('2099/12/31', '%Y/%m/%d'), ?, ?)", uid, now, displayHandle, email)
+	_, err = tx.ExecContext(s.ctx, "insert into user_profile (user_id, effdt, enddt, handle, email) values (?, ?, str_to_date('2099/12/31', '%Y/%m/%d'), ?, ?)",
+		uid, now, displayHandle, email)
 	if err != nil {
 		return fmt.Errorf("createUser: insert: %w", err)
 	}

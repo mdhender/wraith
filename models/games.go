@@ -20,7 +20,6 @@ package models
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"log"
 	"strings"
 	"time"
@@ -35,11 +34,11 @@ func (s *Store) CreateGame(g *Game) error {
 
 	g.ShortName = strings.ToUpper(strings.TrimSpace(g.ShortName))
 	if g.ShortName == "" {
-		return errors.Wrap(ErrMissingField, "short name")
+		return fmt.Errorf("short name: %w", ErrMissingField)
 	}
 	for _, r := range g.ShortName { // check for invalid runes in the field
 		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_') {
-			return errors.Wrap(ErrInvalidField, "short name: invalid rune")
+			return fmt.Errorf("short name: invalid rune: %w", ErrInvalidField)
 		}
 	}
 
@@ -75,9 +74,14 @@ func (s *Store) DeleteGameByName(shortName string) error {
 	return s.deleteGameByName(shortName)
 }
 
+// FetchGame fetches a game by id
+func (s *Store) FetchGame(id int) (*Game, error) {
+	return s.fetchGame(id)
+}
+
 // FetchGameByName does just that
 func (s *Store) FetchGameByName(name string) (*Game, error) {
-	panic("!")
+	return s.fetchGameByName(name)
 }
 
 func (s *Store) GenerateGame(shortName, name, descr string, radius int, startDt time.Time, positions []*PlayerPosition) (*Game, error) {
@@ -85,7 +89,7 @@ func (s *Store) GenerateGame(shortName, name, descr string, radius int, startDt 
 }
 
 func (s *Store) SaveGame(game *Game) error {
-	panic("!")
+	return s.saveGame(game)
 }
 
 func (s *Store) deleteGame(id int) error {
@@ -252,8 +256,12 @@ func (s *Store) saveGame(g *Game) error {
 	}
 	defer tx.Rollback()
 
+	if g.CurrentTurn == nil {
+		g.CurrentTurn = g.Turns[0]
+	}
+
 	r, err := tx.ExecContext(s.ctx, "insert into games (short_name, name, current_turn, descr) values (?, ?, ?, ?)",
-		g.ShortName, g.Name, g.CurrentTurn, g.Description)
+		g.ShortName, g.Name, g.CurrentTurn.String(), g.Description)
 	if err != nil {
 		return fmt.Errorf("saveGame: games: insert: %w", err)
 	}
@@ -281,12 +289,14 @@ func (s *Store) saveGame(g *Game) error {
 
 	for _, player := range g.Players {
 		var uid int
-		row := tx.QueryRow("select ifnull(id, 0) from users where handle = ?", player.Details[0].Handle)
+		row := tx.QueryRow("select ifnull(id, 0) from users where handle = ?", player.ControlledBy.Handle)
 		err = row.Scan(&uid)
-		if err != nil || uid == 0 {
-			uid = nobody
-			log.Printf("saveGame: player %q: no matching user\n", player.Details[0].Handle)
+		if err != nil {
+			return fmt.Errorf("saveGame: users: %w", err)
+		} else if uid == 0 {
+			return fmt.Errorf("saveGame: users: %q: %w", player.ControlledBy.Handle, ErrNoSuchUser)
 		}
+		log.Printf("saveGame: mapped %8d to player %q\n", uid, player.Details[0].Handle)
 
 		r, err := tx.ExecContext(s.ctx, "insert into players (game_id, controlled_by, subject_of) values (?, ?, null)",
 			g.Id, uid)
@@ -377,12 +387,12 @@ func (s *Store) saveGame(g *Game) error {
 		}
 		nation.Id = int(id)
 		_, err = tx.ExecContext(s.ctx, "insert into nation_dtl (nation_id, efftn, endtn, name, govt_name, govt_kind, controlled_by) values (?, ?, ?, ?, ?, ?, ?)",
-			nation.Id, nation.Details[0].EffTurn, nation.Details[0].EndTurn, nation.Details[0].Name, nation.Details[0].GovtName, nation.Details[0].GovtKind, nation.Details[0].ControlledBy.Id)
+			nation.Id, nation.Details[0].EffTurn.String(), nation.Details[0].EndTurn.String(), nation.Details[0].Name, nation.Details[0].GovtName, nation.Details[0].GovtKind, nation.Details[0].ControlledBy.Id)
 		if err != nil {
 			return fmt.Errorf("saveGame: nation_dtl: insert: %w", err)
 		}
 		_, err = tx.ExecContext(s.ctx, "insert into nation_skills (nation_id, efftn, endtn, tech_level, research_points_pool, biology, bureaucracy, gravitics, life_support, manufacturing, military, mining, shields) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			nation.Id, nation.Research[0].EffTurn, nation.Research[0].EndTurn, nation.Research[0].TechLevel, nation.Research[0].ResearchPointsPool, nation.Skills[0].Biology, nation.Skills[0].Bureaucracy, nation.Skills[0].Gravitics, nation.Skills[0].LifeSupport, nation.Skills[0].Manufacturing, nation.Skills[0].Military, nation.Skills[0].Mining, nation.Skills[0].Shields)
+			nation.Id, nation.Research[0].EffTurn.String(), nation.Research[0].EndTurn.String(), nation.Research[0].TechLevel, nation.Research[0].ResearchPointsPool, nation.Skills[0].Biology, nation.Skills[0].Bureaucracy, nation.Skills[0].Gravitics, nation.Skills[0].LifeSupport, nation.Skills[0].Manufacturing, nation.Skills[0].Military, nation.Skills[0].Mining, nation.Skills[0].Shields)
 		if err != nil {
 			return fmt.Errorf("saveGame: nation_skills: insert: %w", err)
 		}
@@ -394,8 +404,8 @@ func (s *Store) saveGame(g *Game) error {
 			if colony.Kind == "ship" {
 				continue
 			}
-			r, err := tx.ExecContext(s.ctx, "insert into colonies (game_id, colony_no, planet_id, kind) values (?, ?, ?, ?)",
-				g.Id, colony.MSN, colony.Details[0].Location.Id, colony.Kind)
+			r, err := tx.ExecContext(s.ctx, "insert into cors (game_id, msn, kind, planet_id) values (?, ?, ?, ?)",
+				g.Id, colony.MSN, colony.Kind, colony.Details[0].Location.Id)
 			if err != nil {
 				return fmt.Errorf("saveGame: colonies: insert: %w", err)
 			}
@@ -405,14 +415,14 @@ func (s *Store) saveGame(g *Game) error {
 			}
 			colony.Id = int(id)
 
-			_, err = tx.ExecContext(s.ctx, "insert into colony_dtl (colony_id, efftn, endtn, name) values (?, ?, ?, ?)",
-				colony.Id, colony.Details[0].EffTurn, colony.Details[0].EndTurn, colony.Details[0].Name)
+			_, err = tx.ExecContext(s.ctx, "insert into cors_dtl (cors_id, efftn, endtn, name, controlled_by) values (?, ?, ?, ?, ?)",
+				colony.Id, colony.Details[0].EffTurn.String(), colony.Details[0].EndTurn.String(), colony.Details[0].Name, colony.Details[0].ControlledBy.Id)
 			if err != nil {
-				return fmt.Errorf("saveGame: colony_dtl: insert: %w", err)
+				return fmt.Errorf("saveGame: colony: cors_dtl: insert: %w", err)
 			}
 
-			_, err = tx.ExecContext(s.ctx, "insert into colony_population (colony_id, efftn, endtn, qty_professional, qty_soldier, qty_unskilled, qty_unemployed, qty_construction_crews, qty_spy_teams, rebel_pct) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-				colony.Id, colony.Population[0].EffTurn, colony.Population[0].EndTurn,
+			_, err = tx.ExecContext(s.ctx, "insert into cors_population (cors_id, efftn, endtn, qty_professional, qty_soldier, qty_unskilled, qty_unemployed, qty_construction_crews, qty_spy_teams, rebel_pct) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				colony.Id, colony.Population[0].EffTurn.String(), colony.Population[0].EndTurn.String(),
 				colony.Population[0].QtyProfessional,
 				colony.Population[0].QtySoldier,
 				colony.Population[0].QtyUnskilled,
@@ -422,97 +432,112 @@ func (s *Store) saveGame(g *Game) error {
 				colony.Population[0].RebelPct,
 			)
 			if err != nil {
-				return fmt.Errorf("saveGame: colony_population: insert: %w", err)
+				return fmt.Errorf("saveGame: colony: cors_population: insert: %w", err)
 			}
 
-			_, err = tx.ExecContext(s.ctx, "insert into colony_pay (colony_id, efftn, endtn, professional_pct, soldier_pct, unskilled_pct, unemployed_pct) values (?, ?, ?, ?, ?, ?, ?)",
-				colony.Id, colony.Pay[0].EffTurn, colony.Pay[0].EndTurn,
+			_, err = tx.ExecContext(s.ctx, "insert into cors_pay (cors_id, efftn, endtn, professional_pct, soldier_pct, unskilled_pct, unemployed_pct) values (?, ?, ?, ?, ?, ?, ?)",
+				colony.Id, colony.Pay[0].EffTurn.String(), colony.Pay[0].EndTurn.String(),
 				colony.Pay[0].ProfessionalPct,
 				colony.Pay[0].SoldierPct,
 				colony.Pay[0].UnskilledPct,
 				colony.Pay[0].UnemployedPct,
 			)
 			if err != nil {
-				return fmt.Errorf("saveGame: colony_pay: insert: %w", err)
+				return fmt.Errorf("saveGame: colony: cors_pay: insert: %w", err)
 			}
 
-			_, err = tx.ExecContext(s.ctx, "insert into colony_rations (colony_id, efftn, endtn, professional_pct, soldier_pct, unskilled_pct, unemployed_pct) values (?, ?, ?, ?, ?, ?, ?)",
-				colony.Id, colony.Rations[0].EffTurn, colony.Rations[0].EndTurn,
+			_, err = tx.ExecContext(s.ctx, "insert into cors_rations (cors_id, efftn, endtn, professional_pct, soldier_pct, unskilled_pct, unemployed_pct) values (?, ?, ?, ?, ?, ?, ?)",
+				colony.Id, colony.Rations[0].EffTurn.String(), colony.Rations[0].EndTurn.String(),
 				colony.Rations[0].ProfessionalPct,
 				colony.Rations[0].SoldierPct,
 				colony.Rations[0].UnskilledPct,
 				colony.Rations[0].UnemployedPct,
 			)
 			if err != nil {
-				return fmt.Errorf("saveGame: colony_rations: insert: %w", err)
+				return fmt.Errorf("saveGame: colony: cors_rations: insert: %w", err)
 			}
 
 			for _, hull := range colony.Hull {
-				_, err = tx.ExecContext(s.ctx, "insert into colony_hull (colony_id, unit_id, tech_level, efftn, endtn, qty_operational) values (?, ?, ?, ?, ?, ?)",
-					colony.Id, hull.Unit.Code, hull.Unit.TechLevel, hull.EffTurn, hull.EndTurn, hull.QtyOperational)
+				if hull.Unit.Id == 0 {
+					hull.Unit.Id = s.lookupUnitIdByCode(hull.Unit.Code)
+				}
+				_, err = tx.ExecContext(s.ctx, "insert into cors_hull (cors_id, unit_id, tech_level, efftn, endtn, qty_operational) values (?, ?, ?, ?, ?, ?)",
+					colony.Id, hull.Unit.Id, hull.Unit.TechLevel, hull.EffTurn.String(), hull.EndTurn.String(), hull.QtyOperational)
 				if err != nil {
-					return fmt.Errorf("saveGame: colony_hull: insert: %w", err)
+					return fmt.Errorf("saveGame: colony: cors_hull: insert: %w", err)
 				}
 			}
 
 			for _, inventory := range colony.Inventory {
-				_, err = tx.ExecContext(s.ctx, "insert into colony_inventory (colony_id, unit_id, tech_level, efftn, endtn, qty_operational, qty_stowed) values (?, ?, ?, ?, ?, ?, ?)",
-					colony.Id, inventory.Unit.Code, inventory.Unit.TechLevel, inventory.EffTurn, inventory.EndTurn, inventory.QtyOperational, inventory.QtyStowed)
+				if inventory.Unit.Id == 0 {
+					inventory.Unit.Id = s.lookupUnitIdByCode(inventory.Unit.Code)
+				}
+				_, err = tx.ExecContext(s.ctx, "insert into cors_inventory (cors_id, unit_id, tech_level, efftn, endtn, qty_operational, qty_stowed) values (?, ?, ?, ?, ?, ?, ?)",
+					colony.Id, inventory.Unit.Id, inventory.Unit.TechLevel, inventory.EffTurn.String(), inventory.EndTurn.String(), inventory.QtyOperational, inventory.QtyStowed)
 				if err != nil {
-					return fmt.Errorf("saveGame: colony_inventory: insert: %w", err)
+					return fmt.Errorf("saveGame: colony: cors_inventory: insert: %w", err)
 				}
 			}
 
 			for _, group := range colony.Factories {
-				r, err := tx.ExecContext(s.ctx, "insert into colony_factory_group (colony_id, group_no, efftn, endtn, unit_id, tech_level) values (?, ?, ?, ?, ?, ?)",
-					colony.Id, group.No, group.EffTurn, group.EndTurn, group.Unit.Code, group.Unit.TechLevel)
+				if group.Unit.Id == 0 {
+					group.Unit.Id = s.lookupUnitIdByCode(group.Unit.Code)
+				}
+				r, err := tx.ExecContext(s.ctx, "insert into cors_factory_group (cors_id, group_no, efftn, endtn, unit_id, tech_level) values (?, ?, ?, ?, ?, ?)",
+					colony.Id, group.No, group.EffTurn.String(), group.EndTurn.String(), group.Unit.Id, group.Unit.TechLevel)
 				if err != nil {
-					return fmt.Errorf("saveGame: colony_factory_group: insert: %w", err)
+					return fmt.Errorf("saveGame: colony: cors_factory_group: insert: %w", err)
 				}
 				id, err := r.LastInsertId()
 				if err != nil {
-					return fmt.Errorf("saveGame: colony_factory_group: lastInsertId: %w", err)
+					return fmt.Errorf("saveGame: colony: cors_factory_group: lastInsertId: %w", err)
 				}
 				group.Id = int(id)
 				for _, unit := range group.Units {
-					_, err = tx.ExecContext(s.ctx, "insert into colony_factory_group_units (factory_group_id, efftn, endtn, unit_id, tech_level, qty_operational) values (?, ?, ?, ?, ?, ?)",
-						group.Id, unit.EffTurn, unit.EndTurn, unit.Unit.Code, unit.Unit.TechLevel, unit.QtyOperational)
+					if unit.Unit.Id == 0 {
+						unit.Unit.Id = s.lookupUnitIdByCode(unit.Unit.Code)
+					}
+					_, err = tx.ExecContext(s.ctx, "insert into cors_factory_group_units (factory_group_id, efftn, endtn, unit_id, tech_level, qty_operational) values (?, ?, ?, ?, ?, ?)",
+						group.Id, unit.EffTurn.String(), unit.EndTurn.String(), unit.Unit.Id, unit.Unit.TechLevel, unit.QtyOperational)
 					if err != nil {
-						return fmt.Errorf("saveGame: colony_factory_group_units: insert: %w", err)
+						return fmt.Errorf("saveGame: colony: cors_factory_group_units: insert: %w", err)
 					}
 				}
 				for _, stage := range group.Stages {
-					_, err = tx.ExecContext(s.ctx, "insert into colony_factory_group_stages (factory_group_id, turn, qty_stage_1, qty_stage_2, qty_stage_3, qty_stage_4) values (?, ?, ?, ?, ?, ?)",
+					_, err = tx.ExecContext(s.ctx, "insert into cors_factory_group_stages (factory_group_id, turn, qty_stage_1, qty_stage_2, qty_stage_3, qty_stage_4) values (?, ?, ?, ?, ?, ?)",
 						group.Id, "0000/0", stage.QtyStage1, stage.QtyStage2, stage.QtyStage3, stage.QtyStage4)
 					if err != nil {
-						return fmt.Errorf("saveGame: colony_factory_group_stages: insert: %w", err)
+						return fmt.Errorf("saveGame: colony: cors_factory_group_stages: insert: %w", err)
 					}
 				}
 			}
 
 			for _, group := range colony.Mines {
-				r, err := tx.ExecContext(s.ctx, "insert into colony_mining_group (colony_id, group_no, efftn, endtn, resource_id) values (?, ?, ?, ?, ?)",
-					colony.Id, group.No, group.EffTurn, group.EndTurn, group.Deposit.Id)
+				r, err := tx.ExecContext(s.ctx, "insert into cors_mining_group (cors_id, group_no, efftn, endtn, resource_id) values (?, ?, ?, ?, ?)",
+					colony.Id, group.No, group.EffTurn.String(), group.EndTurn.String(), group.Deposit.Id)
 				if err != nil {
-					return fmt.Errorf("saveGame: colony_mining_group: insert: %w", err)
+					return fmt.Errorf("saveGame: colony: cors_mining_group: insert: %w", err)
 				}
 				id, err := r.LastInsertId()
 				if err != nil {
-					return fmt.Errorf("saveGame: colony_mining_group: lastInsertId: %w", err)
+					return fmt.Errorf("saveGame: colony: cors_mining_group: lastInsertId: %w", err)
 				}
 				group.Id = int(id)
 				for _, unit := range group.Units {
-					_, err = tx.ExecContext(s.ctx, "insert into colony_mining_group_units (mining_group_id, efftn, endtn, unit_id, tech_level, qty_operational) values (?, ?, ?, ?, ?, ?)",
-						group.Id, unit.EffTurn, unit.EndTurn, unit.Unit.Code, unit.Unit.TechLevel, unit.QtyOperational)
+					if unit.Unit.Id == 0 {
+						unit.Unit.Id = s.lookupUnitIdByCode(unit.Unit.Code)
+					}
+					_, err = tx.ExecContext(s.ctx, "insert into cors_mining_group_units (mining_group_id, efftn, endtn, unit_id, tech_level, qty_operational) values (?, ?, ?, ?, ?, ?)",
+						group.Id, unit.EffTurn.String(), unit.EndTurn.String(), unit.Unit.Id, unit.Unit.TechLevel, unit.QtyOperational)
 					if err != nil {
-						return fmt.Errorf("saveGame: colony_mining_group_units: insert: %w", err)
+						return fmt.Errorf("saveGame: colony: cors_mining_group_units: insert: %w", err)
 					}
 				}
 				for _, stage := range group.Stages {
-					_, err = tx.ExecContext(s.ctx, "insert into colony_mining_group_stages (mining_group_id, turn, qty_stage_1, qty_stage_2, qty_stage_3, qty_stage_4) values (?, ?, ?, ?, ?, ?)",
+					_, err = tx.ExecContext(s.ctx, "insert into cors_mining_group_stages (mining_group_id, turn, qty_stage_1, qty_stage_2, qty_stage_3, qty_stage_4) values (?, ?, ?, ?, ?, ?)",
 						group.Id, "0000/0", stage.QtyStage1, stage.QtyStage2, stage.QtyStage3, stage.QtyStage4)
 					if err != nil {
-						return fmt.Errorf("saveGame: colony_mining_group_stages: insert: %w", err)
+						return fmt.Errorf("saveGame: colony: cors_mining_group_stages: insert: %w", err)
 					}
 				}
 			}
@@ -523,8 +548,8 @@ func (s *Store) saveGame(g *Game) error {
 			if ship.Kind != "ship" {
 				continue
 			}
-			r, err := tx.ExecContext(s.ctx, "insert into ships (game_id, ship_no, planet_id, kind) values (?, ?, ?, ?)",
-				g.Id, ship.MSN, ship.Details[0].Location.Id, ship.Kind)
+			r, err := tx.ExecContext(s.ctx, "insert into cors (game_id, msn, kind, planet_id) values (?, ?, ?, ?)",
+				g.Id, ship.MSN, ship.Kind, ship.Details[0].Location.Id)
 			if err != nil {
 				return fmt.Errorf("saveGame: ships: insert: %w", err)
 			}
@@ -534,14 +559,14 @@ func (s *Store) saveGame(g *Game) error {
 			}
 			ship.Id = int(id)
 
-			_, err = tx.ExecContext(s.ctx, "insert into ship_dtl (ship_id, efftn, endtn, name) values (?, ?, ?, ?)",
-				ship.Id, ship.Details[0].EffTurn, ship.Details[0].EndTurn, ship.Details[0].Name)
+			_, err = tx.ExecContext(s.ctx, "insert into cors_dtl (cors_id, efftn, endtn, name, controlled_by) values (?, ?, ?, ?, ?)",
+				ship.Id, ship.Details[0].EffTurn.String(), ship.Details[0].EndTurn.String(), ship.Details[0].Name, ship.Details[0].ControlledBy.Id)
 			if err != nil {
-				return fmt.Errorf("saveGame: ship_dtl: insert: %w", err)
+				return fmt.Errorf("saveGame: ship: cors_dtl: insert: %w", err)
 			}
 
-			_, err = tx.ExecContext(s.ctx, "insert into ship_population (ship_id, efftn, endtn, qty_professional, qty_soldier, qty_unskilled, qty_unemployed, qty_construction_crews, qty_spy_teams, rebel_pct) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-				ship.Id, ship.Population[0].EffTurn, ship.Population[0].EndTurn,
+			_, err = tx.ExecContext(s.ctx, "insert into cors_population (cors_id, efftn, endtn, qty_professional, qty_soldier, qty_unskilled, qty_unemployed, qty_construction_crews, qty_spy_teams, rebel_pct) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				ship.Id, ship.Population[0].EffTurn.String(), ship.Population[0].EndTurn.String(),
 				ship.Population[0].QtyProfessional,
 				ship.Population[0].QtySoldier,
 				ship.Population[0].QtyUnskilled,
@@ -551,70 +576,82 @@ func (s *Store) saveGame(g *Game) error {
 				ship.Population[0].RebelPct,
 			)
 			if err != nil {
-				return fmt.Errorf("saveGame: ship_dtl: insert: %w", err)
+				return fmt.Errorf("saveGame: ship: cors_dtl: insert: %w", err)
 			}
 
-			_, err = tx.ExecContext(s.ctx, "insert into ship_pay (ship_id, efftn, endtn, professional_pct, soldier_pct, unskilled_pct, unemployed_pct) values (?, ?, ?, ?, ?, ?, ?)",
-				ship.Id, ship.Pay[0].EffTurn, ship.Pay[0].EndTurn,
+			_, err = tx.ExecContext(s.ctx, "insert into cors_pay (cors_id, efftn, endtn, professional_pct, soldier_pct, unskilled_pct, unemployed_pct) values (?, ?, ?, ?, ?, ?, ?)",
+				ship.Id, ship.Pay[0].EffTurn.String(), ship.Pay[0].EndTurn.String(),
 				ship.Pay[0].ProfessionalPct,
 				ship.Pay[0].SoldierPct,
 				ship.Pay[0].UnskilledPct,
 				ship.Pay[0].UnemployedPct,
 			)
 			if err != nil {
-				return fmt.Errorf("saveGame: ship_pay: insert: %w", err)
+				return fmt.Errorf("saveGame: ship: cors_pay: insert: %w", err)
 			}
 
-			_, err = tx.ExecContext(s.ctx, "insert into ship_rations (ship_id, efftn, endtn, professional_pct, soldier_pct, unskilled_pct, unemployed_pct) values (?, ?, ?, ?, ?, ?, ?)",
-				ship.Id, ship.Rations[0].EffTurn, ship.Rations[0].EndTurn,
+			_, err = tx.ExecContext(s.ctx, "insert into cors_rations (cors_id, efftn, endtn, professional_pct, soldier_pct, unskilled_pct, unemployed_pct) values (?, ?, ?, ?, ?, ?, ?)",
+				ship.Id, ship.Rations[0].EffTurn.String(), ship.Rations[0].EndTurn.String(),
 				ship.Rations[0].ProfessionalPct,
 				ship.Rations[0].SoldierPct,
 				ship.Rations[0].UnskilledPct,
 				ship.Rations[0].UnemployedPct,
 			)
 			if err != nil {
-				return fmt.Errorf("saveGame: ship_rations: insert: %w", err)
+				return fmt.Errorf("saveGame: ship: cors_rations: insert: %w", err)
 			}
 
 			for _, hull := range ship.Hull {
-				_, err = tx.ExecContext(s.ctx, "insert into ship_hull (ship_id, unit_id, tech_level, efftn, endtn, qty_operational) values (?, ?, ?, ?, ?, ?)",
-					ship.Id, hull.Unit.Code, hull.Unit.TechLevel, hull.EffTurn, hull.EndTurn, hull.QtyOperational)
+				if hull.Unit.Id == 0 {
+					hull.Unit.Id = s.lookupUnitIdByCode(hull.Unit.Code)
+				}
+				_, err = tx.ExecContext(s.ctx, "insert into cors_hull (cors_id, unit_id, tech_level, efftn, endtn, qty_operational) values (?, ?, ?, ?, ?, ?)",
+					ship.Id, hull.Unit.Id, hull.Unit.TechLevel, hull.EffTurn.String(), hull.EndTurn.String(), hull.QtyOperational)
 				if err != nil {
-					return fmt.Errorf("saveGame: ship_hull: insert: %w", err)
+					return fmt.Errorf("saveGame: ship: cors_hull: insert: %w", err)
 				}
 			}
 
 			for _, inventory := range ship.Inventory {
-				_, err = tx.ExecContext(s.ctx, "insert into ship_inventory (ship_id, unit_id, tech_level, efftn, endtn, qty_operational, qty_stowed) values (?, ?, ?, ?, ?, ?, ?)",
-					ship.Id, inventory.Unit.Code, inventory.Unit.TechLevel, inventory.EffTurn, inventory.EndTurn, inventory.QtyOperational, inventory.QtyStowed)
+				if inventory.Unit.Id == 0 {
+					inventory.Unit.Id = s.lookupUnitIdByCode(inventory.Unit.Code)
+				}
+				_, err = tx.ExecContext(s.ctx, "insert into cors_inventory (cors_id, unit_id, tech_level, efftn, endtn, qty_operational, qty_stowed) values (?, ?, ?, ?, ?, ?, ?)",
+					ship.Id, inventory.Unit.Id, inventory.Unit.TechLevel, inventory.EffTurn.String(), inventory.EndTurn.String(), inventory.QtyOperational, inventory.QtyStowed)
 				if err != nil {
-					return fmt.Errorf("saveGame: ship_inventory: insert: %w", err)
+					return fmt.Errorf("saveGame: ship: cors_inventory: insert: %w", err)
 				}
 			}
 
 			for _, group := range ship.Factories {
-				r, err := tx.ExecContext(s.ctx, "insert into ship_factory_group (ship_id, group_no, efftn, endtn, unit_id, tech_level) values (?, ?, ?, ?, ?, ?)",
-					ship.Id, group.No, group.EffTurn, group.EndTurn, group.Unit.Code, group.Unit.TechLevel)
+				if group.Unit.Id == 0 {
+					group.Unit.Id = s.lookupUnitIdByCode(group.Unit.Code)
+				}
+				r, err := tx.ExecContext(s.ctx, "insert into cors_factory_group (cors_id, group_no, efftn, endtn, unit_id, tech_level) values (?, ?, ?, ?, ?, ?)",
+					ship.Id, group.No, group.EffTurn.String(), group.EndTurn.String(), group.Unit.Id, group.Unit.TechLevel)
 				if err != nil {
-					return fmt.Errorf("saveGame: ship_factory_group: insert: %w", err)
+					return fmt.Errorf("saveGame: ship: cors_factory_group: insert: %w", err)
 				}
 				id, err := r.LastInsertId()
 				if err != nil {
-					return fmt.Errorf("saveGame: ship_factory_group: lastInsertId: %w", err)
+					return fmt.Errorf("saveGame: ship: cors_factory_group: lastInsertId: %w", err)
 				}
 				group.Id = int(id)
 				for _, unit := range group.Units {
-					_, err = tx.ExecContext(s.ctx, "insert into ship_factory_group_units (factory_group_id, efftn, endtn, unit_id, tech_level, qty_operational) values (?, ?, ?, ?, ?, ?)",
-						group.Id, unit.EffTurn, unit.EndTurn, unit.Unit.Code, unit.Unit.TechLevel, unit.QtyOperational)
+					if unit.Unit.Id == 0 {
+						unit.Unit.Id = s.lookupUnitIdByCode(unit.Unit.Code)
+					}
+					_, err = tx.ExecContext(s.ctx, "insert into cors_factory_group_units (factory_group_id, efftn, endtn, unit_id, tech_level, qty_operational) values (?, ?, ?, ?, ?, ?)",
+						group.Id, unit.EffTurn.String(), unit.EndTurn.String(), unit.Unit.Id, unit.Unit.TechLevel, unit.QtyOperational)
 					if err != nil {
-						return fmt.Errorf("saveGame: ship_factory_group_units: insert: %w", err)
+						return fmt.Errorf("saveGame: ship: cors_factory_group_units: insert: %w", err)
 					}
 				}
 				for _, stage := range group.Stages {
-					_, err = tx.ExecContext(s.ctx, "insert into ship_factory_group_stages (factory_group_id, turn, qty_stage_1, qty_stage_2, qty_stage_3, qty_stage_4) values (?, ?, ?, ?, ?, ?)",
+					_, err = tx.ExecContext(s.ctx, "insert into cors_factory_group_stages (factory_group_id, turn, qty_stage_1, qty_stage_2, qty_stage_3, qty_stage_4) values (?, ?, ?, ?, ?, ?)",
 						group.Id, "0000/0", stage.QtyStage1, stage.QtyStage2, stage.QtyStage3, stage.QtyStage4)
 					if err != nil {
-						return fmt.Errorf("saveGame: ship_factory_group_stages: insert: %w", err)
+						return fmt.Errorf("saveGame: ship: cors_factory_group_stages: insert: %w", err)
 					}
 				}
 			}

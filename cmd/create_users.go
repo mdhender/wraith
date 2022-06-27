@@ -53,16 +53,17 @@ var cmdCreateUsers = &cobra.Command{
 		}
 		log.Printf("loaded config %q\n", cfg.Self)
 
-		data, err := os.ReadFile(globalCreateUsers.Filename)
-		if err != nil {
-			log.Fatal(err)
-		}
-
 		s, err := models.Open(cfg)
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Printf("loaded store version %q\n", s.Version())
+
+		data, err := os.ReadFile(globalCreateUsers.Filename)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("loaded datafile %q\n", globalCreateUsers.Filename)
 
 		var users []struct {
 			Handle string `json:"handle"`
@@ -75,10 +76,11 @@ var cmdCreateUsers = &cobra.Command{
 		}
 
 		for _, user := range users {
+			displayHandle := strings.TrimSpace(user.Handle)
 			user.Handle = strings.ToLower(strings.TrimSpace(user.Handle))
 			user.Email = strings.ToLower(strings.TrimSpace(user.Email))
 
-			err := s.CreateUser(user.Handle, user.Email, user.Secret)
+			err := s.CreateUser(displayHandle, user.Handle, user.Email, user.Secret)
 			if err != nil {
 				log.Printf("user %q %q: %+v\n", user.Handle, user.Email, err)
 			} else {

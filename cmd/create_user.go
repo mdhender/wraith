@@ -51,6 +51,7 @@ var cmdCreateUser = &cobra.Command{
 		if globalCreateUser.Handle == "" {
 			return errors.New("missing handle")
 		}
+		displayHandle := strings.TrimSpace(globalCreateUser.Handle)
 		if len(globalCreateUser.Secret) < 8 {
 			return errors.New("secret too short")
 		}
@@ -67,7 +68,7 @@ var cmdCreateUser = &cobra.Command{
 		}
 		defer s.Close()
 
-		err = s.CreateUser(globalCreateUser.Handle, globalCreateUser.Email, globalCreateUser.Secret)
+		err = s.CreateUser(displayHandle, globalCreateUser.Handle, globalCreateUser.Email, globalCreateUser.Secret)
 		if err != nil {
 			log.Fatal(err)
 		}

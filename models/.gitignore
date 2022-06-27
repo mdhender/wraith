@@ -1,2 +1,3 @@
 *.png
 create_schema.sql
+users.sql

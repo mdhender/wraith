@@ -20,7 +20,7 @@ package models
 
 import (
 	"database/sql"
-	"github.com/pkg/errors"
+	"fmt"
 	"log"
 	"math/rand"
 )
@@ -32,7 +32,7 @@ func (s *Store) AddSystem(g Game, x, y, z int) (System, error) {
 
 	stmt, err := s.db.Prepare("insert into systems (game_id, x, y, z) values(?, ?, ?, ?)")
 	if err != nil {
-		return System{}, errors.Wrap(err, "prepare insert new systems")
+		return System{}, fmt.Errorf("prepare insert new systems: %w", err)
 	}
 	defer func(stmt *sql.Stmt) {
 		if err := stmt.Close(); err != nil {
@@ -41,11 +41,11 @@ func (s *Store) AddSystem(g Game, x, y, z int) (System, error) {
 	}(stmt)
 	r, err := stmt.Exec(g.Id, x, y, z)
 	if err != nil {
-		return System{}, errors.Wrap(err, "exec insert new systems")
+		return System{}, fmt.Errorf("exec insert new systems: %w", err)
 	}
 	id, err := r.LastInsertId()
 	if err != nil {
-		return System{}, errors.Wrap(err, "fetch id new systems")
+		return System{}, fmt.Errorf("fetch id new systems: %w", err)
 	}
 
 	return System{Id: int(id), Coords: Coordinates{X: x, Y: y, Z: z}}, nil

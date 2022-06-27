@@ -18,33 +18,25 @@
 
 drop table if exists resource_dtl;
 
-drop table if exists colony_factory_group_stages;
-drop table if exists colony_factory_group_units;
-drop table if exists colony_factory_group;
+drop table if exists cors_factory_group_stages;
+drop table if exists cors_factory_group_units;
+drop table if exists cors_factory_group;
 
-drop table if exists colony_mining_group_stages;
-drop table if exists colony_mining_group_units;
-drop table if exists colony_mining_group;
+drop table if exists cors_farm_group_stages;
+drop table if exists cors_farm_group_units;
+drop table if exists cors_farm_group;
 
-drop table if exists colony_pay;
-drop table if exists colony_population;
-drop table if exists colony_rations;
-drop table if exists colony_inventory;
-drop table if exists colony_hull;
-drop table if exists colony_dtl;
-drop table if exists colonies;
+drop table if exists cors_mining_group_stages;
+drop table if exists cors_mining_group_units;
+drop table if exists cors_mining_group;
 
-drop table if exists ship_factory_group_stages;
-drop table if exists ship_factory_group_units;
-drop table if exists ship_factory_group;
-
-drop table if exists ship_pay;
-drop table if exists ship_population;
-drop table if exists ship_rations;
-drop table if exists ship_inventory;
-drop table if exists ship_hull;
-drop table if exists ship_dtl;
-drop table if exists ships;
+drop table if exists cors_pay;
+drop table if exists cors_population;
+drop table if exists cors_rations;
+drop table if exists cors_inventory;
+drop table if exists cors_hull;
+drop table if exists cors_dtl;
+drop table if exists cors;
 
 drop table if exists resources;
 drop table if exists planets;
@@ -67,70 +59,14 @@ drop table if exists users;
 
 drop table if exists units;
 
-
 create table units
 (
-    id int not null auto_increment,
-    code    varchar(5)  not null,
+    id    int         not null auto_increment,
+    code  varchar(5)  not null,
     name  varchar(25) not null,
     descr varchar(64) not null,
     primary key (id)
 );
-
-insert into units (id, name, descr)
-values ('ANM', 'anti-missile', 'anti-missile');
-insert into units (id, name, descr)
-values ('ASC', 'assault-craft', 'assault-craft');
-insert into units (id, name, descr)
-values ('ASW', 'assault-weapon', 'assault-weapon');
-insert into units (id, name, descr)
-values ('AUT', 'automation', 'automation');
-insert into units (id, name, descr)
-values ('CNGD', 'consumer-goods', 'consumer-goods');
-insert into units (id, name, descr)
-values ('ESH', 'energy-shield', 'energy-shield');
-insert into units (id, name, descr)
-values ('EWP', 'energy-weapon', 'energy-weapon');
-insert into units (id, name, descr)
-values ('FCT', 'factory', 'factory');
-insert into units (id, name, descr)
-values ('FOOD', 'food', 'food');
-insert into units (id, name, descr)
-values ('FRM', 'farm', 'farm');
-insert into units (id, name, descr)
-values ('FUEL', 'fuel', 'fuel');
-insert into units (id, name, descr)
-values ('GOLD', 'gold', 'gold');
-insert into units (id, name, descr)
-values ('HDR', 'hyper-drive', 'hyper-drive');
-insert into units (id, name, descr)
-values ('LSP', 'life-support', 'life-support');
-insert into units (id, name, descr)
-values ('LTSU', 'light-structural', 'light-structural');
-insert into units (id, name, descr)
-values ('MIN', 'mine', 'mine');
-insert into units (id, name, descr)
-values ('MLR', 'military-robots', 'military-robots');
-insert into units (id, name, descr)
-values ('MLSP', 'military-supplies', 'military-supplies');
-insert into units (id, name, descr)
-values ('MSS', 'missile', 'missile');
-insert into units (id, name, descr)
-values ('MSL', 'missile-launcher', 'missile-launcher');
-insert into units (id, name, descr)
-values ('MTLS', 'metallics', 'metallics');
-insert into units (id, name, descr)
-values ('NMTS', 'non-metallics', 'non-metallics');
-insert into units (id, name, descr)
-values ('SDR', 'space-drive', 'space-drive');
-insert into units (id, name, descr)
-values ('SNR', 'sensor', 'sensor');
-insert into units (id, name, descr)
-values ('SLSU', 'super-light-structural', 'super-light-structural');
-insert into units (id, name, descr)
-values ('STUN', 'structural', 'structural');
-insert into units (id, name, descr)
-values ('TPT', 'transport', 'transport');
 
 
 create table users
@@ -308,63 +244,67 @@ create table resources
         on delete cascade
 );
 
-create table colonies
+create table cors
 (
     id        int         not null auto_increment,
     game_id   int         not null,
-    colony_no int         not null,
+    msn       int         not null comment 'unique hull number',
     kind      varchar(13) not null,
     planet_id int         not null,
     primary key (id),
-    unique key (game_id, colony_no),
+    unique key (game_id, msn),
     foreign key (planet_id) references planets (id)
         on delete cascade
-);
+) comment 'contains colonies and ships';
 
-create table colony_dtl
+create table cors_dtl
 (
-    colony_id     int         not null,
+    cors_id       int         not null,
     efftn         varchar(6)  not null,
     endtn         varchar(6)  not null,
-    name          varchar(32) not null comment 'name of colony',
-    controlled_by int comment 'player controlling the colony',
-    primary key (colony_id, efftn),
-    foreign key (colony_id) references colonies (id)
+    name          varchar(32) not null comment 'name of colony or ship',
+    controlled_by int comment 'player controlling the colony or ship',
+    primary key (cors_id, efftn),
+    foreign key (cors_id) references cors (id)
         on delete cascade,
     foreign key (controlled_by) references players (id)
         on delete set null
 );
 
-create table colony_hull
+create table cors_hull
 (
-    colony_id       int        not null,
+    cors_id         int        not null,
     efftn           varchar(6) not null,
     endtn           varchar(6) not null,
-    unit_id         varchar(5) not null,
+    unit_id         int        not null,
     tech_level      int        not null,
     qty_operational int,
-    primary key (colony_id, efftn, unit_id, tech_level),
-    foreign key (colony_id) references colonies (id)
+    primary key (cors_id, efftn, unit_id, tech_level),
+    foreign key (cors_id) references cors (id)
+        on delete cascade,
+    foreign key (unit_id) references units (id)
         on delete cascade
-) comment 'infrastructure of the colony';
+) comment 'infrastructure of the colony or ship';
 
-create table colony_inventory
+create table cors_inventory
 (
-    colony_id       int        not null,
+    cors_id         int        not null,
     efftn           varchar(6) not null,
     endtn           varchar(6) not null,
-    unit_id         varchar(5) not null,
+    unit_id         int        not null,
     tech_level      int        not null,
     qty_operational int        not null,
     qty_stowed      int        not null,
-    primary key (colony_id, efftn, unit_id, tech_level),
-    foreign key (colony_id) references colonies (id)
+    primary key (cors_id, efftn, unit_id, tech_level),
+    foreign key (cors_id) references cors (id)
+        on delete cascade,
+    foreign key (unit_id) references units (id)
         on delete cascade
-) comment 'cargo of the colony';
+) comment 'cargo of the colony or ship';
 
-create table colony_population
+create table cors_population
 (
-    colony_id              int        not null,
+    cors_id                int        not null,
     efftn                  varchar(6) not null,
     endtn                  varchar(6) not null,
     qty_professional       int        not null,
@@ -374,72 +314,72 @@ create table colony_population
     qty_construction_crews int        not null,
     qty_spy_teams          int        not null,
     rebel_pct              float      not null,
-    primary key (colony_id, efftn),
-    foreign key (colony_id) references colonies (id)
+    primary key (cors_id, efftn),
+    foreign key (cors_id) references cors (id)
         on delete cascade
 );
 
-create table colony_rations
+create table cors_rations
 (
-    colony_id        int        not null,
+    cors_id          int        not null,
     efftn            varchar(6) not null,
     endtn            varchar(6) not null,
     professional_pct float      not null,
     soldier_pct      float      not null,
     unskilled_pct    float      not null,
     unemployed_pct   float      not null,
-    primary key (colony_id, efftn),
-    foreign key (colony_id) references colonies (id)
+    primary key (cors_id, efftn),
+    foreign key (cors_id) references cors (id)
         on delete cascade
 );
 
-create table colony_pay
+create table cors_pay
 (
-    colony_id        int        not null,
+    cors_id          int        not null,
     efftn            varchar(6) not null,
     endtn            varchar(6) not null,
     professional_pct float      not null,
     soldier_pct      float      not null,
     unskilled_pct    float      not null,
     unemployed_pct   float      not null,
-    primary key (colony_id, efftn),
-    foreign key (colony_id) references colonies (id)
+    primary key (cors_id, efftn),
+    foreign key (cors_id) references cors (id)
         on delete cascade
 );
 
-create table colony_factory_group
+create table cors_factory_group
 (
     id         int        not null auto_increment,
-    colony_id  int        not null,
+    cors_id    int        not null,
     group_no   int        not null,
     efftn      varchar(6) not null,
     endtn      varchar(6) not null,
-    unit_id    varchar(5) not null comment 'unit being manufactured',
+    unit_id    int        not null comment 'unit being manufactured',
     tech_level int        not null comment 'tech level of unit being manufactured',
     primary key (id),
-    unique key (colony_id, group_no, efftn),
-    foreign key (colony_id) references colonies (id)
+    unique key (cors_id, group_no, efftn),
+    foreign key (cors_id) references cors (id)
         on delete cascade,
     foreign key (unit_id) references units (id)
         on delete cascade
 );
 
-create table colony_factory_group_units
+create table cors_factory_group_units
 (
     factory_group_id int        not null,
     efftn            varchar(6) not null,
     endtn            varchar(6) not null,
-    unit_id          varchar(5) not null,
+    unit_id          int        not null,
     tech_level       int        not null,
     qty_operational  int        not null,
     primary key (factory_group_id, efftn, unit_id, tech_level),
-    foreign key (factory_group_id) references colony_factory_group (id)
+    foreign key (factory_group_id) references cors_factory_group (id)
         on delete cascade,
     foreign key (unit_id) references units (id)
         on delete cascade
 );
 
-create table colony_factory_group_stages
+create table cors_factory_group_stages
 (
     factory_group_id int        not null,
     turn             varchar(6) not null,
@@ -448,42 +388,42 @@ create table colony_factory_group_stages
     qty_stage_3      int        not null,
     qty_stage_4      int        not null,
     primary key (factory_group_id, turn),
-    foreign key (factory_group_id) references colony_factory_group (id)
+    foreign key (factory_group_id) references cors_factory_group (id)
         on delete cascade
 );
 
-create table colony_mining_group
+create table cors_mining_group
 (
     id          int        not null auto_increment,
-    colony_id   int        not null,
+    cors_id     int        not null,
     group_no    int        not null,
     efftn       varchar(6) not null,
     endtn       varchar(6) not null,
     resource_id int        not null,
     primary key (id),
-    unique key (colony_id, group_no, efftn),
-    foreign key (colony_id) references colonies (id)
+    unique key (cors_id, group_no, efftn),
+    foreign key (cors_id) references cors (id)
         on delete cascade,
     foreign key (resource_id) references resources (id)
         on delete cascade
 );
 
-create table colony_mining_group_units
+create table cors_mining_group_units
 (
     mining_group_id int        not null,
     efftn           varchar(6) not null,
     endtn           varchar(6) not null,
-    unit_id         varchar(5) not null,
+    unit_id         int        not null,
     tech_level      int        not null,
     qty_operational int,
     primary key (mining_group_id, efftn),
-    foreign key (mining_group_id) references colony_mining_group (id)
+    foreign key (mining_group_id) references cors_mining_group (id)
         on delete cascade,
     foreign key (unit_id) references units (id)
         on delete cascade
 );
 
-create table colony_mining_group_stages
+create table cors_mining_group_stages
 (
     mining_group_id int        not null,
     turn            varchar(6) not null,
@@ -492,154 +432,9 @@ create table colony_mining_group_stages
     qty_stage_3     int        not null,
     qty_stage_4     int        not null,
     primary key (mining_group_id, turn),
-    foreign key (mining_group_id) references colony_mining_group (id)
+    foreign key (mining_group_id) references cors_mining_group (id)
         on delete cascade
 );
-
-create table ships
-(
-    id        int         not null auto_increment,
-    game_id   int         not null,
-    ship_no   int         not null,
-    kind      varchar(13) not null,
-    planet_id int         not null,
-    primary key (id),
-    unique key (game_id, ship_no),
-    foreign key (planet_id) references planets (id)
-        on delete cascade
-);
-
-create table ship_dtl
-(
-    ship_id       int         not null,
-    efftn         varchar(6)  not null,
-    endtn         varchar(6)  not null,
-    name          varchar(32) not null comment 'name of ship',
-    controlled_by int comment 'player controlling the ship',
-    primary key (ship_id, efftn),
-    foreign key (ship_id) references ships (id)
-        on delete cascade,
-    foreign key (controlled_by) references players (id)
-        on delete set null
-);
-
-create table ship_hull
-(
-    ship_id         int        not null,
-    efftn           varchar(6) not null,
-    endtn           varchar(6) not null,
-    unit_id         varchar(5) not null,
-    tech_level      int        not null,
-    qty_operational int,
-    primary key (ship_id, efftn, unit_id, tech_level),
-    foreign key (ship_id) references ships (id)
-        on delete cascade
-) comment 'infrastructure of the ship';
-
-create table ship_inventory
-(
-    ship_id         int        not null,
-    efftn           varchar(6) not null,
-    endtn           varchar(6) not null,
-    unit_id         varchar(5) not null,
-    tech_level      int        not null,
-    qty_operational int        not null,
-    qty_stowed      int        not null,
-    primary key (ship_id, efftn, unit_id, tech_level),
-    foreign key (ship_id) references ships (id)
-        on delete cascade
-) comment 'cargo of the ship';
-
-create table ship_population
-(
-    ship_id                int        not null,
-    efftn                  varchar(6) not null,
-    endtn                  varchar(6) not null,
-    qty_professional       int        not null,
-    qty_soldier            int        not null,
-    qty_unskilled          int        not null,
-    qty_unemployed         int        not null,
-    qty_construction_crews int        not null,
-    qty_spy_teams          int        not null,
-    rebel_pct              float      not null,
-    primary key (ship_id, efftn),
-    foreign key (ship_id) references ships (id)
-        on delete cascade
-);
-
-create table ship_rations
-(
-    ship_id          int        not null,
-    efftn            varchar(6) not null,
-    endtn            varchar(6) not null,
-    professional_pct float      not null,
-    soldier_pct      float      not null,
-    unskilled_pct    float      not null,
-    unemployed_pct   float      not null,
-    primary key (ship_id, efftn),
-    foreign key (ship_id) references ships (id)
-        on delete cascade
-);
-
-create table ship_pay
-(
-    ship_id          int        not null,
-    efftn            varchar(6) not null,
-    endtn            varchar(6) not null,
-    professional_pct float      not null,
-    soldier_pct      float      not null,
-    unskilled_pct    float      not null,
-    unemployed_pct   float      not null,
-    primary key (ship_id, efftn),
-    foreign key (ship_id) references ships (id)
-        on delete cascade
-);
-
-create table ship_factory_group
-(
-    id         int        not null auto_increment,
-    ship_id    int        not null,
-    group_no   int        not null,
-    efftn      varchar(6) not null,
-    endtn      varchar(6) not null,
-    unit_id    varchar(5) not null comment 'unit being manufactured',
-    tech_level int        not null comment 'tech level of unit being manufactured',
-    primary key (id),
-    unique key (ship_id, group_no, efftn),
-    foreign key (ship_id) references ships (id)
-        on delete cascade,
-    foreign key (unit_id) references units (id)
-        on delete cascade
-);
-
-create table ship_factory_group_units
-(
-    factory_group_id int        not null,
-    efftn            varchar(6) not null,
-    endtn            varchar(6) not null,
-    unit_id          varchar(5) not null,
-    tech_level       int        not null,
-    qty_operational  int        not null,
-    primary key (factory_group_id, efftn, unit_id, tech_level),
-    foreign key (factory_group_id) references ship_factory_group (id)
-        on delete cascade,
-    foreign key (unit_id) references units (id)
-        on delete cascade
-);
-
-create table ship_factory_group_stages
-(
-    factory_group_id int        not null,
-    turn             varchar(6) not null,
-    qty_stage_1      int        not null,
-    qty_stage_2      int        not null,
-    qty_stage_3      int        not null,
-    qty_stage_4      int        not null,
-    primary key (factory_group_id, turn),
-    foreign key (factory_group_id) references ship_factory_group (id)
-        on delete cascade
-);
-
 
 create table resource_dtl
 (
@@ -649,7 +444,7 @@ create table resource_dtl
     remaining_qty int        not null,
     controlled_by int comment 'colony controlling the resource deposit',
     primary key (resource_id, efftn),
-    foreign key (controlled_by) references colonies (id)
+    foreign key (controlled_by) references cors (id)
         on delete set null,
     foreign key (resource_id) references resources (id)
         on delete cascade
@@ -663,26 +458,68 @@ create table resource_dtl
 #     SET NEW.email = lower(NEW.email);
 # END;
 
-insert into users (hashed_secret)
-values ('*nobody*');
+insert into units (code, name, descr)
+values ('ANM', 'anti-missile', 'anti-missile');
+insert into units (code, name, descr)
+values ('ASC', 'assault-craft', 'assault-craft');
+insert into units (code, name, descr)
+values ('ASW', 'assault-weapon', 'assault-weapon');
+insert into units (code, name, descr)
+values ('AUT', 'automation', 'automation');
+insert into units (code, name, descr)
+values ('CNGD', 'consumer-goods', 'consumer-goods');
+insert into units (code, name, descr)
+values ('ESH', 'energy-shield', 'energy-shield');
+insert into units (code, name, descr)
+values ('EWP', 'energy-weapon', 'energy-weapon');
+insert into units (code, name, descr)
+values ('FCT', 'factory', 'factory');
+insert into units (code, name, descr)
+values ('FOOD', 'food', 'food');
+insert into units (code, name, descr)
+values ('FRM', 'farm', 'farm');
+insert into units (code, name, descr)
+values ('FUEL', 'fuel', 'fuel');
+insert into units (code, name, descr)
+values ('GOLD', 'gold', 'gold');
+insert into units (code, name, descr)
+values ('HDR', 'hyper-drive', 'hyper-drive');
+insert into units (code, name, descr)
+values ('LSP', 'life-support', 'life-support');
+insert into units (code, name, descr)
+values ('LTSU', 'light-structural', 'light-structural');
+insert into units (code, name, descr)
+values ('MIN', 'mine', 'mine');
+insert into units (code, name, descr)
+values ('MLR', 'military-robots', 'military-robots');
+insert into units (code, name, descr)
+values ('MLSP', 'military-supplies', 'military-supplies');
+insert into units (code, name, descr)
+values ('MSS', 'missile', 'missile');
+insert into units (code, name, descr)
+values ('MSL', 'missile-launcher', 'missile-launcher');
+insert into units (code, name, descr)
+values ('MTLS', 'metallics', 'metallics');
+insert into units (code, name, descr)
+values ('NMTS', 'non-metallics', 'non-metallics');
+insert into units (code, name, descr)
+values ('SDR', 'space-drive', 'space-drive');
+insert into units (code, name, descr)
+values ('SNR', 'sensor', 'sensor');
+insert into units (code, name, descr)
+values ('SLSU', 'super-light-structural', 'super-light-structural');
+insert into units (code, name, descr)
+values ('STUN', 'structural', 'structural');
+insert into units (code, name, descr)
+values ('TPT', 'transport', 'transport');
+
+insert into users (handle, hashed_secret)
+values ('nobody', '*nobody*');
+insert into users (handle, hashed_secret)
+values ('sysop', '*sysop*');
+insert into users (handle, hashed_secret)
+values ('batch', '*batch*');
 
 insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'nobody', 'nobody'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*sysop*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'sysop', 'sysop'
-from users
-where id = (select max(id) from users);
-
-insert into users (hashed_secret)
-values ('*batch*');
-
-insert into user_profile (user_id, effdt, enddt, handle, email)
-select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), 'batch', 'batch'
-from users
-where id = (select max(id) from users);
+select id, str_to_date('2022/06/22', '%Y/%m/%d'), str_to_date('2099/12/31', '%Y/%m/%d'), handle, handle
+from users;
