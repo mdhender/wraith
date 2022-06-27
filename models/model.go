@@ -188,7 +188,7 @@ type NaturalResource struct {
 	Planet     *Planet
 	Id         int     // unique identifier
 	No         int     // number of deposit on planet
-	Kind       string  // fuel, gold, metallics, non-metallics
+	Kind       string  // fuel, gold, metallic, non-metallic
 	QtyInitial int     // in mass units
 	YieldPct   float64 // percentage of each mass unit that yields units
 	Details    []*NaturalResourceDetail
@@ -284,7 +284,7 @@ type CSPopulation struct {
 	RebelPct            float64
 }
 
-// CSPay is the rations rate for the ship or colony.
+// CSRations is the rations rate for the ship or colony.
 type CSRations struct {
 	CS              *ColonyOrShip
 	EffTurn         *Turn // turn record becomes active
@@ -398,6 +398,7 @@ type Unit struct {
 	EnclosedMass float64 // volume (in enclosed mass units) of a single unit
 }
 
+// PlayerPosition maps json data into our users and players tables
 type PlayerPosition struct {
 	Id           int
 	UserHandle   string
