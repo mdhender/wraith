@@ -20,10 +20,12 @@ package cmd
 
 import (
 	"errors"
+	"github.com/mdhender/wraith/engine"
 	"github.com/mdhender/wraith/models"
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -58,14 +60,23 @@ var cmdReport = &cobra.Command{
 		}
 		log.Printf("loaded store version %q\n", s.Version())
 
-		//err = e.Load(globalReport.Game)
-		//if err != nil {
-		//	log.Fatal(err)
-		//}
-		//err = e.Report(1)
-		//if err != nil {
-		//	log.Fatal(err)
-		//}
+		e, err := engine.Open(s)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("loaded engine version %q\n", e.Version())
+
+		err = e.LoadGame(globalReport.Game)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("loaded game %q\n", e.Game.ShortName)
+
+		err = e.ReportWriter(os.Stdout, 1)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("reported game %q\n", e.Game.ShortName)
 
 		return nil
 	},

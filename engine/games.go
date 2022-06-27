@@ -18,6 +18,21 @@
 
 package engine
 
+import "fmt"
+
+func (e *Engine) LoadGame(shortName string) error {
+	game, err := e.r.FetchGameByName(shortName)
+	if err != nil {
+		return err
+	}
+	if game == nil {
+		return fmt.Errorf("game is missing")
+	}
+	e.Game = game
+
+	return nil
+}
+
 //// Games configuration
 //type Games struct {
 //	Store string       `json:"store"` // default path to store data

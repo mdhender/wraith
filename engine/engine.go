@@ -126,7 +126,7 @@ type ReportPlayer struct {
 
 type Engine struct {
 	r    *models.Store
-	game *Game
+	Game *models.Game
 }
 
 func (e *Engine) Version() string {
@@ -135,5 +135,5 @@ func (e *Engine) Version() string {
 
 // reset will free up any game already in memory
 func (e *Engine) reset() {
-	e.game = nil
+	e.Game = nil
 }

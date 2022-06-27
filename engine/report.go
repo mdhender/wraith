@@ -18,328 +18,334 @@
 
 package engine
 
-//import (
-//	"encoding/json"
-//	"errors"
-//	"fmt"
-//	"golang.org/x/text/language"
-//	"golang.org/x/text/message"
-//	"io"
-//	"io/ioutil"
-//	"log"
-//	"math"
-//	"path/filepath"
-//	"time"
-//)
-//
-//func (e *Engine) Report(spId int) error {
-//	// run the report for just the one nation
-//	for _, n := range e.game.Nations {
-//		if n.No != spId {
-//			continue
-//		}
-//		log.Printf("reporting for %d %q (%d)\n", n.No, n.Name, n.Id)
-//
-//		//reportFile := filepath.Clean(filepath.Join(n.Store, "report.txt"))
-//		//log.Printf("reporting for %d %q (%q)\n", n.Id, n.Name, reportFile)
-//		//
-//		//w, err := os.OpenFile(reportFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
-//		//if err != nil {
-//		//	return err
-//		//}
-//		//
-//		//return s.Report(w, spId)
-//	}
-//	return nil
-//}
-//
-//func (s *ReportStore) Report(w io.Writer, spId int) error {
-//	p := message.NewPrinter(language.English)
-//
-//	rptDate := time.Now().Format("2006/01/02")
-//
-//	for _, player := range s.Players {
-//		_, _ = p.Fprintf(w, "Status Report\n")
-//		_, _ = p.Fprintf(w, "ReportGame: %-6s    Turn: %5d    ReportPlayer: %3d    Date: %s\n", s.Game.Id, s.Game.Turn, spId, rptDate)
-//
-//		_, _ = p.Fprintf(w, "\nSpecies %3d ------------------------------------------------------------------\n", spId)
-//		_, _ = p.Fprintf(w, "  Bureaucracy:   %2d    Biology: %2d    Gravitics: %2d    LifeSupport: %2d\n",
-//			player.Skills.Bureaucracy, player.Skills.Biology, player.Skills.Gravitics, player.Skills.LifeSupport)
-//		_, _ = p.Fprintf(w, "  Manufacturing: %2d    Mining:  %2d    Military:  %2d    Shields:     %2d\n",
-//			player.Skills.Manufacturing, player.Skills.Mining, player.Skills.Military, player.Skills.Shields)
-//
-//		for _, colony := range player.Colonies {
-//			_, _ = p.Fprintf(w, "\nColony Activity Report -------------------------------------------------------\n")
-//			kind := "unknown"
-//			switch colony.Kind {
-//			case "enclosed":
-//				kind = "ENCLOSED"
-//			case "open":
-//				kind = "OPEN"
-//			case "orbital":
-//				kind = "ORBITAL"
-//			default:
-//				panic(fmt.Sprintf("assert(colony.Kind != %q)", colony.Kind))
-//			}
-//			name := colony.Name
-//			if name == "" {
-//				name = "NOT NAMED"
-//			}
-//			colonyId, colonyKind := fmt.Sprintf("C%d", colony.Id), fmt.Sprintf("%s COLONY", kind)
-//			_, _ = p.Fprintf(w, "%-6s Tech:%2d  %14s: %-22s  ReportSystem: %s #%d\n", colonyId, colony.TechLevel, colonyKind, name, colony.System, colony.Orbit)
-//
-//			_, _ = p.Fprintf(w, "\nConstruction --------------------------------------------------------------------------------\n")
-//			_, _ = p.Fprintf(w, "  Engines\n")
-//			_, _ = p.Fprintf(w, "    N/A\n")
-//
-//			_, _ = p.Fprintf(w, "\nPeople --------------------------------------------------------------------------------------\n")
-//			_, _ = p.Fprintf(w, "  Group____________  Population_Units  Pay_____         CNGD/Turn  Ration__         FOOD/Turn\n")
-//			_, _ = p.Fprintf(w, "  Professional       %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", colony.Population.PRO.Qty, colony.Population.PRO.Pay*100, colony.Population.PRO.TotalPay(), colony.Population.PRO.Ration*100, colony.Population.PRO.TotalRation())
-//			_, _ = p.Fprintf(w, "  Soldier            %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", colony.Population.SLD.Qty, colony.Population.SLD.Pay*100, colony.Population.SLD.TotalPay(), colony.Population.SLD.Ration*100, colony.Population.SLD.TotalRation())
-//			_, _ = p.Fprintf(w, "  Unskilled          %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", colony.Population.USK.Qty, colony.Population.USK.Pay*100, colony.Population.USK.TotalPay(), colony.Population.USK.Ration*100, colony.Population.USK.TotalRation())
-//			_, _ = p.Fprintf(w, "  Unemployed         %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", colony.Population.UEM.Qty, colony.Population.UEM.Pay*100, colony.Population.UEM.TotalPay(), colony.Population.UEM.Ration*100, colony.Population.UEM.TotalRation())
-//			_, _ = p.Fprintf(w, "  ----------------   %16d  --------  %16d  --------  %16d\n", colony.Population.TotalPopulation(), colony.Population.TotalPay(), colony.Population.TotalRation())
-//
-//			if colony.Population.Births == 0 && colony.Population.Deaths == 0 {
-//				colony.Population.Births = colony.Population.TotalPopulation() / 1600
-//				colony.Population.Deaths = colony.Population.Births
-//			}
-//
-//			_, _ = p.Fprintf(w, "\n  Crew/Team________  Units___________\n")
-//			_, _ = p.Fprintf(w, "  Construction Crew  %16d\n", colony.Population.CNW)
-//			_, _ = p.Fprintf(w, "  Spy Team           %16d\n", colony.Population.SPY)
-//
-//			_, _ = p.Fprintf(w, "\n  Changes__________  Population_Units\n")
-//			_, _ = p.Fprintf(w, "  Births             %16d\n", colony.Population.Births)
-//			_, _ = p.Fprintf(w, "  Non-Combat Deaths  %16d\n", colony.Population.Deaths)
-//
-//			availSUs := 0
-//			operMUs, operEMUs, operSUs := 0, 0, 0
-//			_, _ = p.Fprintf(w, "\nOperational ------------------------------------------------------------------\n")
-//			_, _ = p.Fprintf(w, "  Item-TL     Quantity          MUs  Hudnut         EMUs  SUs_Required\n")
-//			for _, unit := range colony.Operational {
-//				mu, emu := unit.MassUnits(), unit.EnclosedMassUnits()
-//				var sus int
-//				if unit.Name == "structural" || unit.Name == "light-structural" || unit.Name == "super-light-structural" {
-//					sus = 0
-//					availSUs += unit.Qty
-//				} else {
-//					switch colony.Kind {
-//					case "open":
-//						sus = emu * 1
-//					case "enclosed":
-//						sus = emu * 5
-//					case "orbital":
-//						sus = emu * 10
-//					}
-//				}
-//				_, _ = p.Fprintf(w, "  %-7s  %11d  %11d  %-6v  %11d  %12d\n", unit.Code(), unit.Qty, mu, unit.Hudnut(), emu, sus)
-//				operMUs += mu
-//				operEMUs += emu
-//				operSUs += sus
-//			}
-//			_, _ = p.Fprintf(w, "  Total                 %11d          %11d  %12d\n", operMUs, operEMUs, operSUs)
-//
-//			storMUs, storEMUs, storSUs := 0, 0, 0
-//			_, _ = p.Fprintf(w, "\nStorage ----------------------------------------------------------------------\n")
-//			_, _ = p.Fprintf(w, "  Item-TL     Quantity          MUs  Hudnut         EMUs  SUs_Required\n")
-//			for _, unit := range colony.Storage {
-//				mu, emu := unit.MassUnits(), unit.EnclosedMassUnits()
-//				var sus int
-//				switch colony.Kind {
-//				case "open":
-//					sus = emu * 1
-//				case "enclosed":
-//					sus = emu * 5
-//				case "orbital":
-//					sus = emu * 10
-//				}
-//				_, _ = p.Fprintf(w, "  %-7s  %11d  %11d  %-6v  %11d  %12d\n", unit.Code(), unit.Qty, mu, unit.Hudnut(), emu, sus)
-//				storMUs += mu
-//				storEMUs += emu
-//				storSUs += sus
-//			}
-//			_, _ = p.Fprintf(w, "  Total                 %11d          %11d  %12d\n", storMUs, storEMUs, storSUs)
-//
-//			_, _ = p.Fprintf(w, "\nHull -------------------------------------------------------------------------\n")
-//			_, _ = p.Fprintf(w, "  Area_______           EMUs   SUs_Required  SUs_Available\n")
-//			_, _ = p.Fprintf(w, "  Operational  %13d  %13d\n", operEMUs, operSUs)
-//			_, _ = p.Fprintf(w, "  Storage      %13d  %13d\n", storEMUs, storSUs)
-//			_, _ = p.Fprintf(w, "  Total        %13d  %13d  %13d\n", operEMUs+storMUs, operSUs+storSUs, availSUs)
-//
-//			//_, _ = p.Fprintf(w, "\nFarming --------------------------------------------------------------------------------------------------------\n")
-//			//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-//			//if farm := colony.Units["FRM-1"]; farm != nil {
-//			//	group, techLevel := 1, 1
-//			//	qty := farm.Qty * 100 / 4
-//			//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-//			//		group, "FOOD", farm.Qty, techLevel, int(math.Ceil(float64(farm.Qty)*0.5)), 1*farm.Qty, 3*farm.Qty, qty, qty, qty)
-//			//}
-//
-//			_, _ = p.Fprintf(w, "\nFarming --------------------------------------------------------------------------------------------------------\n")
-//			_, _ = p.Fprintf(w, "  ReportGroup  Orders          Farms  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-//			for _, group := range colony.FarmGroups {
-//				for _, unit := range group.Units {
-//					fuelPerTurn := int(math.Ceil(float64(unit.Qty) * 0.5))
-//					proLabor, uskLabor := 1*unit.Qty, 3*unit.Qty
-//					_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-//						group.Id, group.Code(), unit.Qty, unit.TechLevel, fuelPerTurn, proLabor, uskLabor, unit.Stages[0], unit.Stages[1], unit.Stages[2])
-//				}
-//			}
-//
-//			//_, _ = p.Fprintf(w, "\nMining ---------------------------------------------------------------------------------------------------------\n")
-//			//_, _ = p.Fprintf(w, "  ReportGroup  Orders        MIN_Qty  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-//			//if mine := colony.Units["MIN-1"]; mine != nil {
-//			//	techLevel := 1
-//			//	var no, qty int
-//			//	no = 50_000
-//			//	qty = no * 100 / 4
-//			//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-//			//		1, "FUEL", no, techLevel, int(math.Ceil(float64(no)*0.5)), 1*no, 3*no, qty, qty, qty)
-//			//	no = mine.Qty
-//			//	qty = no * 100 / 4
-//			//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-//			//		2, "METS", no, techLevel, int(math.Ceil(float64(no)*0.5)), 1*no, 3*no, qty, qty, qty)
-//			//	no = mine.Qty
-//			//	qty = no * 100 / 4
-//			//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-//			//		3, "NMET", no, techLevel, int(math.Ceil(float64(no)*0.5)), 1*no, 3*no, qty, qty, qty)
-//			//}
-//
-//			_, _ = p.Fprintf(w, "\nMining ---------------------------------------------------------------------------------------------------------\n")
-//			_, _ = p.Fprintf(w, "  ReportGroup  Orders          Mines  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-//			for _, group := range colony.MiningGroups {
-//				for _, unit := range group.Units {
-//					fuelPerTurn := int(math.Ceil(float64(unit.Qty) * 0.5))
-//					proLabor, uskLabor := 1*unit.Qty, 3*unit.Qty
-//					_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-//						group.Id, group.Code(), unit.Qty, unit.TechLevel, fuelPerTurn, proLabor, uskLabor, unit.Stages[0], unit.Stages[1], unit.Stages[2])
-//				}
-//			}
-//
-//			//_, _ = p.Fprintf(w, "\nProduction -----------------------------------------------------------------------------------------------------\n")
-//			//_, _ = p.Fprintf(w, "Input ----\n")
-//			//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL  Ingest/Turn    METS/ReportUnit    NMTS/ReportUnit    METS/Turn    NMTS/Turn   Units/Turn\n")
-//			//if fact := colony.Units["FCT-1"]; fact != nil {
-//			//	group, techLevel := 1, 1
-//			//
-//			//	// FACT-1 can ingest a maximum of 5 MU of resources per turn
-//			//	ingestTurn := fact.Qty * 5
-//			//
-//			//	// CNGD costs 0.2 METS 0.4 NMET
-//			//	metsUnit, nmetUnit := 0.2, 0.4
-//			//
-//			//	// quantity is units per turn
-//			//	qty := int(math.Floor(float64(ingestTurn) / (metsUnit + nmetUnit)))
-//			//	metsTurn := int(metsUnit * float64(qty))
-//			//	nmetTurn := int(nmetUnit * float64(qty))
-//			//
-//			//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d    %9.3f    %9.3f  %11d  %11d  %11d\n",
-//			//		group, "CNGD", fact.Qty, techLevel, ingestTurn, metsUnit, nmetUnit, metsTurn, nmetTurn, qty)
-//			//}
-//			//
-//			//_, _ = p.Fprintf(w, "Output ---\n")
-//			//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-//			//if fact := colony.Units["FCT-1"]; fact != nil {
-//			//	group, techLevel := 1, 1
-//			//	var pro, usk int
-//			//	if fact.Qty >= 50_000 {
-//			//		pro, usk = 1*fact.Qty, 3*fact.Qty
-//			//	} else if fact.Qty >= 5_000 {
-//			//		pro, usk = 2*fact.Qty, 6*fact.Qty
-//			//	} else if fact.Qty >= 500 {
-//			//		pro, usk = 3*fact.Qty, 9*fact.Qty
-//			//	} else if fact.Qty >= 50 {
-//			//		pro, usk = 4*fact.Qty, 12*fact.Qty
-//			//	} else if fact.Qty >= 5 {
-//			//		pro, usk = 5*fact.Qty, 15*fact.Qty
-//			//	} else {
-//			//		pro, usk = 6*fact.Qty, 18*fact.Qty
-//			//	}
-//			//
-//			//	// FACT-1 can ingest 20 MU of resources per YEAR
-//			//	ingest := fact.Qty * 20
-//			//	// CNGD costs 0.2 METS 0.4 NMET
-//			//	mets, nmet := 0.2, 0.4
-//			//	// quantity is units per turn
-//			//	qty := int(math.Floor(float64(ingest)/(mets+nmet))) / 4
-//			//
-//			//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-//			//		group, "CNGD", fact.Qty, techLevel, int(math.Ceil(float64(fact.Qty)*0.5)), pro, usk, qty, qty, qty)
-//			//}
-//
-//			_, _ = p.Fprintf(w, "\nProduction -----------------------------------------------------------------------------------------------------\n")
-//			_, _ = p.Fprintf(w, "Input ----\n")
-//			_, _ = p.Fprintf(w, "  ReportGroup  Orders      Factories  TL  Ingest/Turn    METS/ReportUnit    NMTS/ReportUnit    METS/Turn    NMTS/Turn   Units/Turn\n")
-//			for _, group := range colony.FactoryGroups {
-//				for _, unit := range group.Units {
-//					u := ReportUnit{Name: "factory", TechLevel: unit.TechLevel, Qty: unit.Qty}
-//
-//					metsUnit, nmetUnit := ReportUnit{Name: group.Name}.RawMaterials()
-//
-//					// quantity is units per turn
-//					qty := int(math.Floor(float64(u.IngestPerTurn()) / (metsUnit + nmetUnit)))
-//					metsTurn := int(metsUnit * float64(qty))
-//					nmetTurn := int(nmetUnit * float64(qty))
-//
-//					_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d    %9.3f    %9.3f  %11d  %11d  %11d\n",
-//						group.Id, group.Code(), u.Qty, u.TechLevel, u.IngestPerTurn(), metsUnit, nmetUnit, metsTurn, nmetTurn, qty)
-//				}
-//			}
-//
-//			_, _ = p.Fprintf(w, "Output ---\n")
-//			_, _ = p.Fprintf(w, "  ReportGroup  Orders      Factories  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-//			for _, group := range colony.FactoryGroups {
-//				for _, unit := range group.Units {
-//					u := ReportUnit{Name: "factory", TechLevel: unit.TechLevel, Qty: unit.Qty}
-//
-//					proLabor, uskLabor := u.LaborPerTurn()
-//
-//					_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-//						group.Id, group.Code(), unit.Qty, unit.TechLevel, u.Qty*u.FuelPerTurn(), proLabor, uskLabor, unit.Stages[0], unit.Stages[1], unit.Stages[2])
-//				}
-//			}
-//
-//			_, _ = p.Fprintf(w, "\nEspionage --------------------------------------------------------------------\n")
-//			_, _ = p.Fprintf(w, "  No activity.\n")
-//		}
-//
-//		orbits := []ReportOrbit{
-//			{Id: 1, Kind: "terrestrial", HabitabilityNumber: 0},
-//			{Id: 2, Kind: "terrestrial", HabitabilityNumber: 0},
-//			{Id: 3, Kind: "terrestrial", HabitabilityNumber: 25},
-//			{Id: 4, Kind: "terrestrial", HabitabilityNumber: 0},
-//			{Id: 5, Kind: "asteroid belt", HabitabilityNumber: 0},
-//			{Id: 6, Kind: "gas giant", HabitabilityNumber: 0},
-//			{Id: 7, Kind: "gas giant", HabitabilityNumber: 0},
-//			{Id: 8, Kind: "terrestrial", HabitabilityNumber: 0},
-//			{Id: 9, Kind: "terrestrial", HabitabilityNumber: 0},
-//			{Id: 10, Kind: "asteroid belt", HabitabilityNumber: 0},
-//		}
-//		_, _ = p.Fprintf(w, "\nSurvey Report ----------------------------------------------------------------\n")
-//		for _, orbit := range orbits {
-//			name, controlledBy := "NOT NAMED", "N/A"
-//			if orbit.Id == 3 {
-//				name, controlledBy = "My Homeworld", "SP018"
-//			}
-//			_, _ = p.Fprintf(w, "  ReportSystem %s %-3s   %-24s    Controlled By: %s\n", "0/0/0", fmt.Sprintf("#%d", orbit.Id), name, controlledBy)
-//			_, _ = p.Fprintf(w, "    Kind: %-13s    Habitability: %2d\n", orbit.Kind, orbit.HabitabilityNumber)
-//		}
-//
-//		_, _ = p.Fprintf(w, "\nMarket Report ---------------------------------------------------------------------\n")
-//		_, _ = p.Fprintf(w, "  News: *** 6 years ago, scientists discovered a signal broadcasting from the 10th\n")
-//		_, _ = p.Fprintf(w, "        orbit. 4 years ago, they decoded the message and recovered plans for an\n")
-//		_, _ = p.Fprintf(w, "        in-system engine (the \"space-drive\") and a faster-than-light engine\n")
-//		_, _ = p.Fprintf(w, "        (the \"hyper-drive\"). Work on both has recently completed.\n")
-//		_, _ = p.Fprintf(w, "  News: *** Moments after the hyper-drive was successfully tested in the orbital\n")
-//		_, _ = p.Fprintf(w, "        colony, the broadcast from the 10th orbit stopped.\n")
-//
-//		_, _ = p.Fprintf(w, "\nCombat Report ---------------------------------------------------------------------\n")
-//		_, _ = p.Fprintf(w, "  No activity.\n")
-//	}
-//	return nil
-//}
-//
+import (
+	"fmt"
+	"github.com/mdhender/wraith/models"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
+	"io"
+	"time"
+)
+
+func (e *Engine) Report(spId int) error {
+	panic("!")
+	//// run the report for just the one nation
+	//for _, n := range e.game.Nations {
+	//	if n.No != spId {
+	//		continue
+	//	}
+	//	log.Printf("reporting for %d %q (%d)\n", n.No, n.Name, n.Id)
+	//
+	//	//reportFile := filepath.Clean(filepath.Join(n.Store, "report.txt"))
+	//	//log.Printf("reporting for %d %q (%q)\n", n.Id, n.Name, reportFile)
+	//
+	//	//w, err := os.OpenFile(reportFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+	//	//if err != nil {
+	//	//	return err
+	//	//}
+	//
+	//	return e.ReportWriter(os.Stdout, spId)
+	//}
+	//
+	//return nil
+}
+
+func (e *Engine) ReportWriter(w io.Writer, spId int) error {
+	var asOfTurn *models.Turn
+	for _, turn := range e.Game.Turns {
+		if turn.String() != "0000/0" {
+			asOfTurn = turn
+			break
+		}
+	}
+	p := message.NewPrinter(language.English)
+
+	rptDate := time.Now().Format("2006/01/02")
+
+	for _, nation := range e.Game.Nations {
+		_, _ = p.Fprintf(w, "Status Report\n")
+		_, _ = p.Fprintf(w, "Game: %-8s   Turn: %s   Nation: %3d    Date: %s\n", e.Game.ShortName, asOfTurn.String(), nation.No, rptDate)
+
+		_, _ = p.Fprintf(w, "\nNation %3d -------------------------------------------------------------------\n", nation.No)
+		_, _ = p.Fprintf(w, "\nPlayer %3d -------------------------------------------------------------------\n", spId)
+		//_, _ = p.Fprintf(w, "  Bureaucracy:   %2d    Biology: %2d    Gravitics: %2d    LifeSupport: %2d\n",
+		//	player.Skills.Bureaucracy, player.Skills.Biology, player.Skills.Gravitics, player.Skills.LifeSupport)
+		//_, _ = p.Fprintf(w, "  Manufacturing: %2d    Mining:  %2d    Military:  %2d    Shields:     %2d\n",
+		//	player.Skills.Manufacturing, player.Skills.Mining, player.Skills.Military, player.Skills.Shields)
+
+		for _, colony := range nation.Colonies {
+			_, _ = p.Fprintf(w, "\nColony Activity Report -------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "\n%-8s Activity Report -------------------------------------------------------\n", fmt.Sprintf("C%d", colony.MSN))
+			//		kind := "unknown"
+			//		switch colony.Kind {
+			//		case "enclosed":
+			//			kind = "ENCLOSED"
+			//		case "open":
+			//			kind = "OPEN"
+			//		case "orbital":
+			//			kind = "ORBITAL"
+			//		default:
+			//			panic(fmt.Sprintf("assert(colony.Kind != %q)", colony.Kind))
+			//		}
+			//		name := colony.Name
+			//		if name == "" {
+			//			name = "NOT NAMED"
+			//		}
+			//		colonyId, colonyKind := fmt.Sprintf("C%d", colony.Id), fmt.Sprintf("%s COLONY", kind)
+			//		_, _ = p.Fprintf(w, "%-6s Tech:%2d  %14s: %-22s  ReportSystem: %s #%d\n", colonyId, colony.TechLevel, colonyKind, name, colony.System, colony.Orbit)
+
+			_, _ = p.Fprintf(w, "\nConstruction --------------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "  Engines\n")
+			_, _ = p.Fprintf(w, "    N/A\n")
+
+			_, _ = p.Fprintf(w, "\nPeople --------------------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "  Group____________  Population_Units  Pay_____         CNGD/Turn  Ration__         FOOD/Turn\n")
+			//		_, _ = p.Fprintf(w, "  Professional       %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", colony.Population.PRO.Qty, colony.Population.PRO.Pay*100, colony.Population.PRO.TotalPay(), colony.Population.PRO.Ration*100, colony.Population.PRO.TotalRation())
+			//		_, _ = p.Fprintf(w, "  Soldier            %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", colony.Population.SLD.Qty, colony.Population.SLD.Pay*100, colony.Population.SLD.TotalPay(), colony.Population.SLD.Ration*100, colony.Population.SLD.TotalRation())
+			//		_, _ = p.Fprintf(w, "  Unskilled          %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", colony.Population.USK.Qty, colony.Population.USK.Pay*100, colony.Population.USK.TotalPay(), colony.Population.USK.Ration*100, colony.Population.USK.TotalRation())
+			//		_, _ = p.Fprintf(w, "  Unemployed         %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", colony.Population.UEM.Qty, colony.Population.UEM.Pay*100, colony.Population.UEM.TotalPay(), colony.Population.UEM.Ration*100, colony.Population.UEM.TotalRation())
+			//		_, _ = p.Fprintf(w, "  ----------------   %16d  --------  %16d  --------  %16d\n", colony.Population.TotalPopulation(), colony.Population.TotalPay(), colony.Population.TotalRation())
+			//
+			//		if colony.Population.Births == 0 && colony.Population.Deaths == 0 {
+			//			colony.Population.Births = colony.Population.TotalPopulation() / 1600
+			//			colony.Population.Deaths = colony.Population.Births
+			//		}
+
+			_, _ = p.Fprintf(w, "\n  Crew/Team________  Units___________\n")
+			//		_, _ = p.Fprintf(w, "  Construction Crew  %16d\n", colony.Population.CNW)
+			//		_, _ = p.Fprintf(w, "  Spy Team           %16d\n", colony.Population.SPY)
+
+			_, _ = p.Fprintf(w, "\n  Changes__________  Population_Units\n")
+			//		_, _ = p.Fprintf(w, "  Births             %16d\n", colony.Population.Births)
+			//		_, _ = p.Fprintf(w, "  Non-Combat Deaths  %16d\n", colony.Population.Deaths)
+
+			availSUs := 0
+			operMUs, operEMUs, operSUs := 0, 0, 0
+			_, _ = p.Fprintf(w, "\nOperational ------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "  Item-TL     Quantity          MUs  Hudnut         EMUs  SUs_Required\n")
+			//		for _, unit := range colony.Operational {
+			//			mu, emu := unit.MassUnits(), unit.EnclosedMassUnits()
+			//			var sus int
+			//			if unit.Name == "structural" || unit.Name == "light-structural" || unit.Name == "super-light-structural" {
+			//				sus = 0
+			//				availSUs += unit.Qty
+			//			} else {
+			//				switch colony.Kind {
+			//				case "open":
+			//					sus = emu * 1
+			//				case "enclosed":
+			//					sus = emu * 5
+			//				case "orbital":
+			//					sus = emu * 10
+			//				}
+			//			}
+			//			_, _ = p.Fprintf(w, "  %-7s  %11d  %11d  %-6v  %11d  %12d\n", unit.Code(), unit.Qty, mu, unit.Hudnut(), emu, sus)
+			//			operMUs += mu
+			//			operEMUs += emu
+			//			operSUs += sus
+			//		}
+			_, _ = p.Fprintf(w, "  Total                 %11d          %11d  %12d\n", operMUs, operEMUs, operSUs)
+
+			storMUs, storEMUs, storSUs := 0, 0, 0
+			_, _ = p.Fprintf(w, "\nStorage ----------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "  Item-TL     Quantity          MUs  Hudnut         EMUs  SUs_Required\n")
+			//		for _, unit := range colony.Storage {
+			//			mu, emu := unit.MassUnits(), unit.EnclosedMassUnits()
+			//			var sus int
+			//			switch colony.Kind {
+			//			case "open":
+			//				sus = emu * 1
+			//			case "enclosed":
+			//				sus = emu * 5
+			//			case "orbital":
+			//				sus = emu * 10
+			//			}
+			//			_, _ = p.Fprintf(w, "  %-7s  %11d  %11d  %-6v  %11d  %12d\n", unit.Code(), unit.Qty, mu, unit.Hudnut(), emu, sus)
+			//			storMUs += mu
+			//			storEMUs += emu
+			//			storSUs += sus
+			//		}
+			_, _ = p.Fprintf(w, "  Total                 %11d          %11d  %12d\n", storMUs, storEMUs, storSUs)
+
+			_, _ = p.Fprintf(w, "\nHull -------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "  Area_______           EMUs   SUs_Required  SUs_Available\n")
+			_, _ = p.Fprintf(w, "  Operational  %13d  %13d\n", operEMUs, operSUs)
+			_, _ = p.Fprintf(w, "  Storage      %13d  %13d\n", storEMUs, storSUs)
+			_, _ = p.Fprintf(w, "  Total        %13d  %13d  %13d\n", operEMUs+storMUs, operSUs+storSUs, availSUs)
+
+			//		//_, _ = p.Fprintf(w, "\nFarming --------------------------------------------------------------------------------------------------------\n")
+			//		//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
+			//		//if farm := colony.Units["FRM-1"]; farm != nil {
+			//		//	group, techLevel := 1, 1
+			//		//	qty := farm.Qty * 100 / 4
+			//		//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
+			//		//		group, "FOOD", farm.Qty, techLevel, int(math.Ceil(float64(farm.Qty)*0.5)), 1*farm.Qty, 3*farm.Qty, qty, qty, qty)
+			//		//}
+
+			_, _ = p.Fprintf(w, "\nFarming --------------------------------------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "  ReportGroup  Orders          Farms  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
+			//		for _, group := range colony.FarmGroups {
+			//			for _, unit := range group.Units {
+			//				fuelPerTurn := int(math.Ceil(float64(unit.Qty) * 0.5))
+			//				proLabor, uskLabor := 1*unit.Qty, 3*unit.Qty
+			//				_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
+			//					group.Id, group.Code(), unit.Qty, unit.TechLevel, fuelPerTurn, proLabor, uskLabor, unit.Stages[0], unit.Stages[1], unit.Stages[2])
+			//			}
+			//		}
+
+			//		//_, _ = p.Fprintf(w, "\nMining ---------------------------------------------------------------------------------------------------------\n")
+			//		//_, _ = p.Fprintf(w, "  ReportGroup  Orders        MIN_Qty  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
+			//		//if mine := colony.Units["MIN-1"]; mine != nil {
+			//		//	techLevel := 1
+			//		//	var no, qty int
+			//		//	no = 50_000
+			//		//	qty = no * 100 / 4
+			//		//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
+			//		//		1, "FUEL", no, techLevel, int(math.Ceil(float64(no)*0.5)), 1*no, 3*no, qty, qty, qty)
+			//		//	no = mine.Qty
+			//		//	qty = no * 100 / 4
+			//		//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
+			//		//		2, "METS", no, techLevel, int(math.Ceil(float64(no)*0.5)), 1*no, 3*no, qty, qty, qty)
+			//		//	no = mine.Qty
+			//		//	qty = no * 100 / 4
+			//		//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
+			//		//		3, "NMET", no, techLevel, int(math.Ceil(float64(no)*0.5)), 1*no, 3*no, qty, qty, qty)
+			//		//}
+
+			_, _ = p.Fprintf(w, "\nMining ---------------------------------------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "  ReportGroup  Orders          Mines  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
+			//		for _, group := range colony.MiningGroups {
+			//			for _, unit := range group.Units {
+			//				fuelPerTurn := int(math.Ceil(float64(unit.Qty) * 0.5))
+			//				proLabor, uskLabor := 1*unit.Qty, 3*unit.Qty
+			//				_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
+			//					group.Id, group.Code(), unit.Qty, unit.TechLevel, fuelPerTurn, proLabor, uskLabor, unit.Stages[0], unit.Stages[1], unit.Stages[2])
+			//			}
+			//		}
+
+			//		//_, _ = p.Fprintf(w, "\nProduction -----------------------------------------------------------------------------------------------------\n")
+			//		//_, _ = p.Fprintf(w, "Input ----\n")
+			//		//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL  Ingest/Turn    METS/ReportUnit    NMTS/ReportUnit    METS/Turn    NMTS/Turn   Units/Turn\n")
+			//		//if fact := colony.Units["FCT-1"]; fact != nil {
+			//		//	group, techLevel := 1, 1
+			//		//
+			//		//	// FACT-1 can ingest a maximum of 5 MU of resources per turn
+			//		//	ingestTurn := fact.Qty * 5
+			//		//
+			//		//	// CNGD costs 0.2 METS 0.4 NMET
+			//		//	metsUnit, nmetUnit := 0.2, 0.4
+			//		//
+			//		//	// quantity is units per turn
+			//		//	qty := int(math.Floor(float64(ingestTurn) / (metsUnit + nmetUnit)))
+			//		//	metsTurn := int(metsUnit * float64(qty))
+			//		//	nmetTurn := int(nmetUnit * float64(qty))
+			//		//
+			//		//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d    %9.3f    %9.3f  %11d  %11d  %11d\n",
+			//		//		group, "CNGD", fact.Qty, techLevel, ingestTurn, metsUnit, nmetUnit, metsTurn, nmetTurn, qty)
+			//		//}
+			//		//
+			//		//_, _ = p.Fprintf(w, "Output ---\n")
+			//		//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
+			//		//if fact := colony.Units["FCT-1"]; fact != nil {
+			//		//	group, techLevel := 1, 1
+			//		//	var pro, usk int
+			//		//	if fact.Qty >= 50_000 {
+			//		//		pro, usk = 1*fact.Qty, 3*fact.Qty
+			//		//	} else if fact.Qty >= 5_000 {
+			//		//		pro, usk = 2*fact.Qty, 6*fact.Qty
+			//		//	} else if fact.Qty >= 500 {
+			//		//		pro, usk = 3*fact.Qty, 9*fact.Qty
+			//		//	} else if fact.Qty >= 50 {
+			//		//		pro, usk = 4*fact.Qty, 12*fact.Qty
+			//		//	} else if fact.Qty >= 5 {
+			//		//		pro, usk = 5*fact.Qty, 15*fact.Qty
+			//		//	} else {
+			//		//		pro, usk = 6*fact.Qty, 18*fact.Qty
+			//		//	}
+			//		//
+			//		//	// FACT-1 can ingest 20 MU of resources per YEAR
+			//		//	ingest := fact.Qty * 20
+			//		//	// CNGD costs 0.2 METS 0.4 NMET
+			//		//	mets, nmet := 0.2, 0.4
+			//		//	// quantity is units per turn
+			//		//	qty := int(math.Floor(float64(ingest)/(mets+nmet))) / 4
+			//		//
+			//		//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
+			//		//		group, "CNGD", fact.Qty, techLevel, int(math.Ceil(float64(fact.Qty)*0.5)), pro, usk, qty, qty, qty)
+			//		//}
+
+			_, _ = p.Fprintf(w, "\nProduction -----------------------------------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "Input ----\n")
+			_, _ = p.Fprintf(w, "  ReportGroup  Orders      Factories  TL  Ingest/Turn    METS/ReportUnit    NMTS/ReportUnit    METS/Turn    NMTS/Turn   Units/Turn\n")
+			//		for _, group := range colony.FactoryGroups {
+			//			for _, unit := range group.Units {
+			//				u := ReportUnit{Name: "factory", TechLevel: unit.TechLevel, Qty: unit.Qty}
+			//
+			//				metsUnit, nmetUnit := ReportUnit{Name: group.Name}.RawMaterials()
+			//
+			//				// quantity is units per turn
+			//				qty := int(math.Floor(float64(u.IngestPerTurn()) / (metsUnit + nmetUnit)))
+			//				metsTurn := int(metsUnit * float64(qty))
+			//				nmetTurn := int(nmetUnit * float64(qty))
+			//
+			//				_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d    %9.3f    %9.3f  %11d  %11d  %11d\n",
+			//					group.Id, group.Code(), u.Qty, u.TechLevel, u.IngestPerTurn(), metsUnit, nmetUnit, metsTurn, nmetTurn, qty)
+			//			}
+			//		}
+
+			_, _ = p.Fprintf(w, "Output ---\n")
+			_, _ = p.Fprintf(w, "  ReportGroup  Orders      Factories  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
+			//		for _, group := range colony.FactoryGroups {
+			//			for _, unit := range group.Units {
+			//				u := ReportUnit{Name: "factory", TechLevel: unit.TechLevel, Qty: unit.Qty}
+			//
+			//				proLabor, uskLabor := u.LaborPerTurn()
+			//
+			//				_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
+			//					group.Id, group.Code(), unit.Qty, unit.TechLevel, u.Qty*u.FuelPerTurn(), proLabor, uskLabor, unit.Stages[0], unit.Stages[1], unit.Stages[2])
+			//			}
+			//		}
+
+			_, _ = p.Fprintf(w, "\nEspionage --------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "  No activity.\n")
+		}
+
+		//	orbits := []ReportOrbit{
+		//		{Id: 1, Kind: "terrestrial", HabitabilityNumber: 0},
+		//		{Id: 2, Kind: "terrestrial", HabitabilityNumber: 0},
+		//		{Id: 3, Kind: "terrestrial", HabitabilityNumber: 25},
+		//		{Id: 4, Kind: "terrestrial", HabitabilityNumber: 0},
+		//		{Id: 5, Kind: "asteroid belt", HabitabilityNumber: 0},
+		//		{Id: 6, Kind: "gas giant", HabitabilityNumber: 0},
+		//		{Id: 7, Kind: "gas giant", HabitabilityNumber: 0},
+		//		{Id: 8, Kind: "terrestrial", HabitabilityNumber: 0},
+		//		{Id: 9, Kind: "terrestrial", HabitabilityNumber: 0},
+		//		{Id: 10, Kind: "asteroid belt", HabitabilityNumber: 0},
+		//	}
+		_, _ = p.Fprintf(w, "\nSurvey Report ----------------------------------------------------------------\n")
+		//	for _, orbit := range orbits {
+		//		name, controlledBy := "NOT NAMED", "N/A"
+		//		if orbit.Id == 3 {
+		//			name, controlledBy = "My Homeworld", "SP018"
+		//		}
+		//		_, _ = p.Fprintf(w, "  ReportSystem %s %-3s   %-24s    Controlled By: %s\n", "0/0/0", fmt.Sprintf("#%d", orbit.Id), name, controlledBy)
+		//		_, _ = p.Fprintf(w, "    Kind: %-13s    Habitability: %2d\n", orbit.Kind, orbit.HabitabilityNumber)
+		//	}
+		//
+		_, _ = p.Fprintf(w, "\nMarket Report ---------------------------------------------------------------------\n")
+		_, _ = p.Fprintf(w, "  News: *** 6 years ago, scientists discovered a signal broadcasting from the 10th\n")
+		_, _ = p.Fprintf(w, "        orbit. 4 years ago, they decoded the message and recovered plans for an\n")
+		_, _ = p.Fprintf(w, "        in-system engine (the \"space-drive\") and a faster-than-light engine\n")
+		_, _ = p.Fprintf(w, "        (the \"hyper-drive\"). Work on both has recently completed.\n")
+		_, _ = p.Fprintf(w, "  News: *** Moments after the hyper-drive was successfully tested in the orbital\n")
+		_, _ = p.Fprintf(w, "        colony, the broadcast from the 10th orbit stopped.\n")
+
+		_, _ = p.Fprintf(w, "\nCombat Report ---------------------------------------------------------------------\n")
+		_, _ = p.Fprintf(w, "  No activity.\n")
+	}
+	return nil
+}
+
 //type ReportStore struct {
 //	Game struct {
 //		Id   string `json:"id"`

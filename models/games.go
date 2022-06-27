@@ -88,6 +88,16 @@ func (s *Store) GenerateGame(shortName, name, descr string, radius int, startDt 
 	return s.genGame(shortName, name, descr, radius, startDt, positions)
 }
 
+// LookupGame looks up a game by id
+func (s *Store) LookupGame(id int) (*Game, error) {
+	return s.lookupGame(id)
+}
+
+// LookupGameByName does just that
+func (s *Store) LookupGameByName(name string) (*Game, error) {
+	return s.lookupGameByName(name)
+}
+
 func (s *Store) SaveGame(game *Game) error {
 	return s.saveGame(game)
 }
@@ -115,21 +125,78 @@ func (s *Store) deleteGameByName(shortName string) error {
 }
 
 func (s *Store) fetchGame(id int) (*Game, error) {
-	var g Game
-	row := s.db.QueryRow("select id, short_name, name, descr, current_turn from games where id = ?", id)
-	err := row.Scan(&g.Id, &g.ShortName, &g.Name, &g.Description, &g.CurrentTurn)
+	// get a transaction with a deferred rollback in case things fail
+	tx, err := s.db.BeginTx(s.ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetchGame: beginTx: %w", err)
 	}
-	return &g, nil
+	defer tx.Rollback()
+
+	g := &Game{}
+
+	row := s.db.QueryRow("select id, short_name, name, descr, current_turn from games where id = ?", id)
+	var currentTurn string
+	err = row.Scan(&g.Id, &g.ShortName, &g.Name, &g.Description, &currentTurn)
+	if err != nil {
+		return nil, fmt.Errorf("fetchGame: %d: %w", id, err)
+	}
+
+	rows, err := s.db.Query("select no, year, quarter, start_dt, end_dt from turns where game_id = ? order by turn", g.Id)
+	if err != nil {
+		return nil, fmt.Errorf("fetchGame: %d: turns: %w", id, err)
+	}
+	for rows.Next() {
+		turn := &Turn{}
+		err := rows.Scan(&turn.No, &turn.Year, &turn.Quarter, &turn.StartDt, &turn.EndDt)
+		if err != nil {
+			return nil, fmt.Errorf("fetchGame: turns: %w", err)
+		}
+		g.Turns = append(g.Turns, turn)
+		if currentTurn == turn.String() {
+			g.CurrentTurn = turn
+		}
+	}
+
+	rows, err = s.db.Query("select id, ifnull(controlled_by, 0), ifnull(subject_of, 0) from players where game_id = ? order by id", g.Id)
+	if err != nil {
+		return nil, fmt.Errorf("fetchGame: %d: players: %w", id, err)
+	}
+	for rows.Next() {
+		player := &Player{Game: g}
+		var controlledBy, subjectOf int
+		err := rows.Scan(&player.Id, &controlledBy, &subjectOf)
+		if err != nil {
+			return nil, fmt.Errorf("fetchGame: players: %+v", err)
+		}
+		log.Printf("fetchGame: player %d controlled_by %d subject_of %d\n", player.Id, controlledBy, subjectOf)
+		g.Players = append(g.Players, player)
+	}
+
+	rows, err = s.db.Query("select id, nation_no, speciality, descr from nations where game_id = ? order by nation_no", g.Id)
+	if err != nil {
+		return nil, fmt.Errorf("fetchGame: %d: nations: %w", id, err)
+	}
+	for rows.Next() {
+		nation := &Nation{Game: g}
+		err := rows.Scan(&nation.Id, &nation.No, &nation.Speciality, &nation.Description)
+		if err != nil {
+			return nil, fmt.Errorf("fetchGame: nations: %+v", err)
+		}
+		g.Nations = append(g.Nations, nation)
+	}
+
+	log.Printf("fetchGame: need to link nations to players\n")
+
+	return g, tx.Commit()
 }
 
 func (s *Store) fetchGameByName(name string) (*Game, error) {
+	name = strings.ToUpper(strings.TrimSpace(name))
 	var id int
-	row := s.db.QueryRow("select id from games where short_name = ?", strings.ToUpper(name))
+	row := s.db.QueryRow("select id from games where short_name = ?", name)
 	err := row.Scan(&id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetchGameByName: %q: %w", name, err)
 	}
 	return s.fetchGame(id)
 }
@@ -198,11 +265,12 @@ func (s *Store) genGame(shortName, name, descr string, radius int, startDt time.
 	turnNo, turnDuration := 0, 2*7*24*time.Hour // assume two-week turns
 	effDt := startDt
 	endDt := effDt.Add(turnDuration)
-	for year := 0; year < 10; year++ {
-		for quarter := 0; quarter < 4; quarter++ {
-			if quarter == 0 && year != 0 {
-				continue
-			}
+	game.Turns = append(game.Turns, &Turn{No: turnNo, Year: 0, Quarter: 0, StartDt: effDt, EndDt: endDt})
+	effDt = endDt
+	endDt = effDt.Add(turnDuration)
+	turnNo++
+	for year := 1; year <= 10; year++ {
+		for quarter := 1; quarter <= 4; quarter++ {
 			game.Turns = append(game.Turns, &Turn{No: turnNo, Year: year, Quarter: quarter, StartDt: effDt, EndDt: endDt})
 			effDt = endDt
 			endDt = effDt.Add(turnDuration)
@@ -248,6 +316,29 @@ func (s *Store) genGame(shortName, name, descr string, radius int, startDt time.
 	return game, nil
 }
 
+func (s *Store) lookupGame(id int) (*Game, error) {
+	row := s.db.QueryRow("select id, short_name, name, descr, current_turn from games where id = ?", id)
+	var g Game
+	var currentTurn string
+	err := row.Scan(&g.Id, &g.ShortName, &g.Name, &g.Description, &currentTurn)
+	if err != nil {
+		return nil, fmt.Errorf("lookupGame: %d: %w", id, err)
+	}
+
+	return &g, nil
+}
+
+func (s *Store) lookupGameByName(name string) (*Game, error) {
+	name = strings.ToUpper(strings.TrimSpace(name))
+	var id int
+	row := s.db.QueryRow("select id from games where short_name = ?", name)
+	err := row.Scan(&id)
+	if err != nil {
+		return nil, fmt.Errorf("lookupGameByName: %q: %w", name, err)
+	}
+	return s.lookupGame(id)
+}
+
 func (s *Store) saveGame(g *Game) error {
 	// get a transaction with a deferred rollback in case things fail
 	tx, err := s.db.BeginTx(s.ctx, nil)
@@ -273,8 +364,8 @@ func (s *Store) saveGame(g *Game) error {
 	log.Printf("created game %3d %s\n", g.Id, g.ShortName)
 
 	for _, turn := range g.Turns {
-		_, err = tx.ExecContext(s.ctx, "insert into turns (game_id, turn, start_dt, end_dt) values (?, ?, ?, ?)",
-			g.Id, turn.String(), turn.StartDt, turn.EndDt)
+		_, err = tx.ExecContext(s.ctx, "insert into turns (game_id, no, year, quarter, turn, start_dt, end_dt) values (?, ?, ?, ?, ?, ?, ?)",
+			g.Id, turn.No, turn.Year, turn.Quarter, turn.String(), turn.StartDt, turn.EndDt)
 		if err != nil {
 			return fmt.Errorf("saveGame: turns: insert: %w", err)
 		}

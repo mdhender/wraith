@@ -105,6 +105,9 @@ create table games
 create table turns
 (
     game_id  int        not null,
+    no       int        not null,
+    year     int        not null,
+    quarter  int        not null,
     turn     varchar(6) not null comment 'formatted as yyyy/q',
     start_dt datetime   not null,
     end_dt   datetime   not null,

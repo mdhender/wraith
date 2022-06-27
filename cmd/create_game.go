@@ -104,7 +104,7 @@ var cmdCreateGame = &cobra.Command{
 		log.Printf("loaded store version %q\n", s.Version())
 
 		// don't create if the game already exists
-		if game, err := s.FetchGameByName(globalCreateGame.ShortName); game != nil {
+		if game, err := s.LookupGameByName(globalCreateGame.ShortName); game != nil {
 			log.Printf("short name %q already exists\n", globalCreateGame.ShortName)
 			if !globalCreateGame.Force {
 				log.Fatal("unable to create game\n")
