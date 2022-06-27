@@ -18,40 +18,34 @@
 
 package engine
 
-import (
-	"encoding/json"
-	"io/ioutil"
-	"path/filepath"
-)
-
-// Nations configuration
-type Nations struct {
-	Store string         `json:"store"` // path to store data
-	Index []NationsIndex `json:"index"`
-}
-
-type NationsIndex struct {
-	Id    int    `json:"id"`    // unique identifier for nation
-	Name  string `json:"name"`  // name of nation
-	Store string `json:"store"` // path to the species game data
-}
-
-// ReadNations loads a store from a JSON file.
-// It returns any errors.
-func (e *Engine) ReadNations() error {
-	b, err := ioutil.ReadFile(filepath.Join(e.stores.nations.Store, "store.json"))
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(b, e.stores.nations)
-}
-
-// WriteNations writes a store to a JSON file.
-// It returns any errors.
-func (e *Engine) WriteNations() error {
-	b, err := json.MarshalIndent(e.stores.nations, "", "  ")
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(filepath.Join(e.stores.nations.Store, "store.json"), b, 0600)
-}
+//// Nations configuration
+//type Nations struct {
+//	Store string         `json:"store"` // path to store data
+//	Index []NationsIndex `json:"index"`
+//}
+//
+//type NationsIndex struct {
+//	Id    int    `json:"id"`    // unique identifier for nation
+//	Name  string `json:"name"`  // name of nation
+//	Store string `json:"store"` // path to the species game data
+//}
+//
+//// ReadNations loads a store from a JSON file.
+//// It returns any errors.
+//func (e *Engine) ReadNations() error {
+//	b, err := ioutil.ReadFile(filepath.Join(e.stores.nations.Store, "store.json"))
+//	if err != nil {
+//		return err
+//	}
+//	return json.Unmarshal(b, e.stores.nations)
+//}
+//
+//// WriteNations writes a store to a JSON file.
+//// It returns any errors.
+//func (e *Engine) WriteNations() error {
+//	b, err := json.MarshalIndent(e.stores.nations, "", "  ")
+//	if err != nil {
+//		return err
+//	}
+//	return ioutil.WriteFile(filepath.Join(e.stores.nations.Store, "store.json"), b, 0600)
+//}

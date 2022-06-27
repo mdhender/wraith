@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"log"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -65,13 +66,26 @@ func (s *Store) CreateGame(g *Game) error {
 }
 
 // DeleteGame removes a game from the store.
-func (s *Store) DeleteGame(g *Game) error {
-	if g.Id != 0 {
-		return s.deleteGame(g.Id)
-	} else if g.ShortName != "" {
-		return s.deleteGameByName(g.ShortName)
-	}
-	return ErrMissingField
+func (s *Store) DeleteGame(id int) error {
+	return s.deleteGame(id)
+}
+
+// DeleteGameByName removes a game from the store.
+func (s *Store) DeleteGameByName(shortName string) error {
+	return s.deleteGameByName(shortName)
+}
+
+// FetchGameByName does just that
+func (s *Store) FetchGameByName(name string) (*Game, error) {
+	panic("!")
+}
+
+func (s *Store) GenerateGame(shortName, name, descr string, radius int, startDt time.Time, positions []*PlayerPosition) (*Game, error) {
+	return s.genGame(shortName, name, descr, radius, startDt, positions)
+}
+
+func (s *Store) SaveGame(game *Game) error {
+	panic("!")
 }
 
 func (s *Store) deleteGame(id int) error {
@@ -94,6 +108,140 @@ func (s *Store) deleteGameByName(shortName string) error {
 		return err
 	}
 	return nil
+}
+
+func (s *Store) fetchGame(id int) (*Game, error) {
+	var g Game
+	row := s.db.QueryRow("select id, short_name, name, descr, current_turn from games where id = ?", id)
+	err := row.Scan(&g.Id, &g.ShortName, &g.Name, &g.Description, &g.CurrentTurn)
+	if err != nil {
+		return nil, err
+	}
+	return &g, nil
+}
+
+func (s *Store) fetchGameByName(name string) (*Game, error) {
+	var id int
+	row := s.db.QueryRow("select id from games where short_name = ?", strings.ToUpper(name))
+	err := row.Scan(&id)
+	if err != nil {
+		return nil, err
+	}
+	return s.fetchGame(id)
+}
+
+func (s *Store) genGame(shortName, name, descr string, radius int, startDt time.Time, positions []*PlayerPosition) (*Game, error) {
+	shortName = strings.ToUpper(strings.TrimSpace(shortName))
+	if shortName == "" {
+		return nil, fmt.Errorf("short name: %w", ErrMissingField)
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = shortName
+	}
+	descr = strings.TrimSpace(descr)
+	if descr == "" {
+		descr = shortName
+	}
+
+	// delete values
+	err := s.deleteGameByName(shortName)
+	if err != nil {
+		return nil, fmt.Errorf("createGame: %w", err)
+	}
+
+	effTurn, endTurn := &Turn{}, &Turn{Year: 9999, Quarter: 4}
+
+	game := &Game{
+		ShortName:   shortName,
+		Name:        name,
+		Description: descr,
+	}
+
+	// convert positions to players
+	for _, position := range positions {
+		user, err := s.fetchUserByHandle(position.UserHandle)
+		if err != nil {
+			return nil, fmt.Errorf("user: %q: %w", position.UserHandle, ErrNoSuchUser)
+		}
+		player := &Player{
+			Game:         game,
+			ControlledBy: user,
+			SubjectOf:    nil,
+			Details:      nil,
+		}
+		player.Details = []*PlayerDetail{{
+			Player:  player,
+			EffTurn: effTurn,
+			EndTurn: endTurn,
+			Handle:  position.PlayerHandle,
+		}}
+		game.Players = append(game.Players, player)
+		log.Printf("createGame: created position %q\n", position.PlayerHandle)
+	}
+
+	systemsPerRing := len(positions)
+	totalSystems := radius * systemsPerRing
+	log.Printf("createGame: systems per ring %3d estimated systems %6d\n", systemsPerRing, totalSystems)
+	rings := mkrings(radius, systemsPerRing)
+	numPoints := 0
+	for d := 0; d <= radius; d++ {
+		numPoints += len(rings[d])
+		log.Printf("createGame: ring %2d: %5d\n", d, len(rings[d]))
+	}
+	log.Printf("createGame:   total: %5d\n", numPoints)
+
+	turnNo, turnDuration := 0, 2*7*24*time.Hour // assume two-week turns
+	effDt := startDt
+	endDt := effDt.Add(turnDuration)
+	for year := 0; year < 10; year++ {
+		for quarter := 0; quarter < 4; quarter++ {
+			if quarter == 0 && year != 0 {
+				continue
+			}
+			game.Turns = append(game.Turns, &Turn{No: turnNo, Year: year, Quarter: quarter, StartDt: effDt, EndDt: endDt})
+			effDt = endDt
+			endDt = effDt.Add(turnDuration)
+			turnNo++
+		}
+	}
+
+	systemId, ring, colonyNo := 0, 5, 0
+
+	// generate nations and their home systems
+	for no, position := range positions {
+		// warning: assumes that player was created for this game
+		player := game.Players[no]
+
+		systemId++
+		coords := rings[ring][0]
+		rings[ring] = rings[ring][1:]
+
+		system := s.genHomeSystem(systemId)
+		system.Ring, system.Coords = ring, coords
+		game.Systems = append(game.Systems, system)
+
+		planet := system.Stars[0].Orbits[3]
+		nation := s.genNation(no+1, planet, player, position)
+		colonyNo++
+		nation.Colonies[0].MSN = colonyNo
+		colonyNo++
+		nation.Colonies[1].MSN = colonyNo
+
+		game.Nations = append(game.Nations, nation)
+	}
+
+	// generate the remainder of the systems
+	for ring := 0; ring < len(rings); ring++ {
+		for _, coords := range rings[ring] {
+			systemId++
+			system := s.genSystem(systemId)
+			system.Ring, system.Coords = ring, coords
+			game.Systems = append(game.Systems, system)
+		}
+	}
+
+	return game, nil
 }
 
 func (s *Store) saveGame(g *Game) error {
@@ -154,7 +302,7 @@ func (s *Store) saveGame(g *Game) error {
 
 	for _, system := range g.Systems {
 		r, err := tx.ExecContext(s.ctx, "insert into systems (game_id, x, y, z, qty_stars) values (?, ?, ?, ?, ?)",
-			g.Id, system.X, system.Y, system.Z, len(system.Stars))
+			g.Id, system.Coords.X, system.Coords.Y, system.Coords.Z, len(system.Stars))
 		if err != nil {
 			return fmt.Errorf("saveGame: systems: insert: %w", err)
 		}
@@ -229,12 +377,12 @@ func (s *Store) saveGame(g *Game) error {
 		}
 		nation.Id = int(id)
 		_, err = tx.ExecContext(s.ctx, "insert into nation_dtl (nation_id, efftn, endtn, name, govt_name, govt_kind, controlled_by) values (?, ?, ?, ?, ?, ?, ?)",
-			nation.Id, "0000/0", "9999/9", nation.Details[0].Name, nation.Details[0].GovtName, nation.Details[0].GovtKind, nation.Details[0].ControlledBy.Id)
+			nation.Id, nation.Details[0].EffTurn, nation.Details[0].EndTurn, nation.Details[0].Name, nation.Details[0].GovtName, nation.Details[0].GovtKind, nation.Details[0].ControlledBy.Id)
 		if err != nil {
 			return fmt.Errorf("saveGame: nation_dtl: insert: %w", err)
 		}
 		_, err = tx.ExecContext(s.ctx, "insert into nation_skills (nation_id, efftn, endtn, tech_level, research_points_pool, biology, bureaucracy, gravitics, life_support, manufacturing, military, mining, shields) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			nation.Id, "0000/0", "9999/9", nation.Research[0].TechLevel, nation.Research[0].ResearchPointsPool, nation.Skills[0].Biology, nation.Skills[0].Bureaucracy, nation.Skills[0].Gravitics, nation.Skills[0].LifeSupport, nation.Skills[0].Manufacturing, nation.Skills[0].Military, nation.Skills[0].Mining, nation.Skills[0].Shields)
+			nation.Id, nation.Research[0].EffTurn, nation.Research[0].EndTurn, nation.Research[0].TechLevel, nation.Research[0].ResearchPointsPool, nation.Skills[0].Biology, nation.Skills[0].Bureaucracy, nation.Skills[0].Gravitics, nation.Skills[0].LifeSupport, nation.Skills[0].Manufacturing, nation.Skills[0].Military, nation.Skills[0].Mining, nation.Skills[0].Shields)
 		if err != nil {
 			return fmt.Errorf("saveGame: nation_skills: insert: %w", err)
 		}
@@ -258,13 +406,13 @@ func (s *Store) saveGame(g *Game) error {
 			colony.Id = int(id)
 
 			_, err = tx.ExecContext(s.ctx, "insert into colony_dtl (colony_id, efftn, endtn, name) values (?, ?, ?, ?)",
-				colony.Id, "0000/0", "9999/9", colony.Details[0].Name)
+				colony.Id, colony.Details[0].EffTurn, colony.Details[0].EndTurn, colony.Details[0].Name)
 			if err != nil {
 				return fmt.Errorf("saveGame: colony_dtl: insert: %w", err)
 			}
 
 			_, err = tx.ExecContext(s.ctx, "insert into colony_population (colony_id, efftn, endtn, qty_professional, qty_soldier, qty_unskilled, qty_unemployed, qty_construction_crews, qty_spy_teams, rebel_pct) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-				colony.Id, "0000/0", "9999/9",
+				colony.Id, colony.Population[0].EffTurn, colony.Population[0].EndTurn,
 				colony.Population[0].QtyProfessional,
 				colony.Population[0].QtySoldier,
 				colony.Population[0].QtyUnskilled,
@@ -278,7 +426,7 @@ func (s *Store) saveGame(g *Game) error {
 			}
 
 			_, err = tx.ExecContext(s.ctx, "insert into colony_pay (colony_id, efftn, endtn, professional_pct, soldier_pct, unskilled_pct, unemployed_pct) values (?, ?, ?, ?, ?, ?, ?)",
-				colony.Id, "0000/0", "9999/9",
+				colony.Id, colony.Pay[0].EffTurn, colony.Pay[0].EndTurn,
 				colony.Pay[0].ProfessionalPct,
 				colony.Pay[0].SoldierPct,
 				colony.Pay[0].UnskilledPct,
@@ -289,7 +437,7 @@ func (s *Store) saveGame(g *Game) error {
 			}
 
 			_, err = tx.ExecContext(s.ctx, "insert into colony_rations (colony_id, efftn, endtn, professional_pct, soldier_pct, unskilled_pct, unemployed_pct) values (?, ?, ?, ?, ?, ?, ?)",
-				colony.Id, "0000/0", "9999/9",
+				colony.Id, colony.Rations[0].EffTurn, colony.Rations[0].EndTurn,
 				colony.Rations[0].ProfessionalPct,
 				colony.Rations[0].SoldierPct,
 				colony.Rations[0].UnskilledPct,

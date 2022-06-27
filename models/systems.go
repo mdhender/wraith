@@ -22,6 +22,7 @@ import (
 	"database/sql"
 	"github.com/pkg/errors"
 	"log"
+	"math/rand"
 )
 
 func (s *Store) AddSystem(g Game, x, y, z int) (System, error) {
@@ -47,5 +48,48 @@ func (s *Store) AddSystem(g Game, x, y, z int) (System, error) {
 		return System{}, errors.Wrap(err, "fetch id new systems")
 	}
 
-	return System{Id: int(id), X: x, Y: y, Z: z}, nil
+	return System{Id: int(id), Coords: Coordinates{X: x, Y: y, Z: z}}, nil
+}
+
+func (s *Store) genHomeSystem(id int) *System {
+	system := &System{Id: id, HomeSystem: true}
+
+	system.Stars = make([]*Star, 1, 1)
+	for i := range system.Stars {
+		var star *Star
+		if i == 0 {
+			star = s.genHomeStar(system)
+		} else {
+			star = s.genStar(system)
+		}
+		star.Sequence = string("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i])
+		system.Stars[i] = star
+	}
+	return system
+}
+
+func (s *Store) genSystem(id int) *System {
+	system := &System{Id: id}
+
+	switch rand.Intn(21) {
+	case 0, 1, 2, 3, 4, 5:
+		system.Stars = make([]*Star, 1, 1)
+	case 6, 7, 8, 9, 10:
+		system.Stars = make([]*Star, 2, 2)
+	case 11, 12, 13, 14:
+		system.Stars = make([]*Star, 3, 3)
+	case 15, 16, 17:
+		system.Stars = make([]*Star, 4, 4)
+	case 18, 19:
+		system.Stars = make([]*Star, 5, 5)
+	case 20:
+		system.Stars = make([]*Star, 6, 6)
+	}
+	for i := range system.Stars {
+		star := s.genStar(system)
+		star.Sequence = string("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i])
+		system.Stars[i] = star
+	}
+
+	return system
 }

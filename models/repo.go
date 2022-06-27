@@ -67,6 +67,10 @@ func (s *Store) Close() {
 	s.db = nil
 }
 
+func (s *Store) Ping() error {
+	return s.db.Ping()
+}
+
 func (s *Store) Version() string {
 	return s.version
 }

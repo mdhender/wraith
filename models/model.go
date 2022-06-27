@@ -85,6 +85,7 @@ type Nation struct {
 	Game        *Game
 	Id          int // unique identifier
 	No          int // nation number in the game, starts at 1
+	HomePlanet  *Planet
 	Speciality  string
 	Description string
 	Details     []*NationDetail
@@ -131,15 +132,22 @@ type NationResearch struct {
 	ResearchPointsPool int   //
 }
 
+// Coordinates are the x,y,z coordinates of a system
+type Coordinates struct {
+	X int
+	Y int
+	Z int
+}
+
 // System is a system in the game.
 // It contains zero or more stars.
 type System struct {
-	Game  *Game
-	Id    int // unique identifier
-	X     int
-	Y     int
-	Z     int
-	Stars []*Star
+	Game       *Game
+	Id         int // unique identifier
+	Coords     Coordinates
+	HomeSystem bool
+	Ring       int // ring is light years from the origin
+	Stars      []*Star
 }
 
 // Star is a stellar system in the game.
@@ -149,7 +157,8 @@ type Star struct {
 	Id       int    // unique identifier
 	Sequence string // A, B, etc
 	Kind     string
-	Orbits   [11]*Planet // each orbit may or may not contain a planet
+	HomeStar bool
+	Orbits   []*Planet // each orbit may or may not contain a planet
 }
 
 // Planet is a non-empty orbit.
@@ -161,6 +170,7 @@ type Planet struct {
 	HabitabilityNo int
 	HomePlanet     bool
 	Deposits       []*NaturalResource
+	Details        []*PlanetDetail
 	Colonies       []*ColonyOrShip // colonies on or orbiting the planet
 	Ships          []*ColonyOrShip // ships orbiting the planet
 }
@@ -199,6 +209,7 @@ type ColonyOrShip struct {
 	Id         int    // unique identifier
 	MSN        int    // manufacturer serial number; in game id for the colony or ship
 	Kind       string // surface colony, enclosed colony, orbital colony, ship
+	HomeColony bool
 	BuiltBy    *Nation
 	Details    []*CSDetail
 	Hull       []*CSHull
@@ -302,7 +313,7 @@ type FactoryGroupUnits struct {
 	Group          *FactoryGroup
 	EffTurn        *Turn // turn record becomes active
 	EndTurn        *Turn // turn record ceases to be active
-	Unit           *Unit // unit being manufactured
+	Unit           *Unit // factory unit doing the manufacturing
 	QtyOperational int
 }
 
@@ -385,4 +396,17 @@ type Unit struct {
 	Hudnut       bool    // true if unit can be disassembled for storage
 	Mass         float64 // mass (in mass units) of a single unit
 	EnclosedMass float64 // volume (in enclosed mass units) of a single unit
+}
+
+type PlayerPosition struct {
+	Id           int
+	UserHandle   string
+	PlayerHandle string
+	Nation       struct {
+		Name       string
+		Speciality string
+		HomeWorld  string
+		GovtKind   string
+		GovtName   string
+	}
 }

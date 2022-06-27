@@ -33,7 +33,6 @@ type System struct {
 
 func (e *Engine) genSystem(id int) *System {
 	system := &System{Id: id}
-
 	switch rand.Intn(21) {
 	case 0, 1, 2, 3, 4, 5:
 		system.Stars = make([]*Star, 1, 1)
@@ -59,7 +58,6 @@ func (e *Engine) genSystem(id int) *System {
 
 func (e *Engine) genHomeSystem(id int) *System {
 	system := &System{Id: id, HomeSystem: true}
-
 	system.Stars = make([]*Star, 1, 1)
 	for i := range system.Stars {
 		var star *Star

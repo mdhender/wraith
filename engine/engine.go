@@ -19,11 +19,7 @@
 package engine
 
 import (
-	"context"
-	"database/sql"
 	"github.com/mdhender/wraith/models"
-	"github.com/mdhender/wraith/storage/config"
-	"path/filepath"
 )
 
 /*
@@ -129,45 +125,8 @@ type ReportPlayer struct {
 */
 
 type Engine struct {
-	config struct {
-		base *config.Global
-	}
-	stores struct {
-		games   *Games
-		game    *ReportGame
-		nations *Nations
-		turns   *ReportTurns
-		users   *Users
-	}
-	s    *ReportStore
-	ctx  context.Context
-	db   *sql.DB
-	game *Game
 	r    *models.Store
-}
-
-func (e *Engine) Ping() error {
-	return e.db.Ping()
-}
-
-func (e *Engine) RootDir(stores ...string) string {
-	if len(stores) == 0 {
-		return "D:\\wraith\\testdata"
-	}
-	return filepath.Join(append([]string{"D:\\wraith\\testdata"}, stores...)...)
-}
-
-func CreateGame(string, string, string, bool) (*ReportGame, error) {
-	panic("!")
-}
-func CreateNations(string, bool) (*ReportNation, error) {
-	panic("!")
-}
-func LoadGames(string) (*Games, error) {
-	panic("!")
-}
-func LoadNations(string) (*Nations, error) {
-	panic("!")
+	game *Game
 }
 
 func (e *Engine) Version() string {
@@ -177,5 +136,4 @@ func (e *Engine) Version() string {
 // reset will free up any game already in memory
 func (e *Engine) reset() {
 	e.game = nil
-	e.stores.game, e.stores.nations, e.stores.turns = nil, nil, nil
 }

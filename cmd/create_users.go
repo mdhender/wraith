@@ -19,10 +19,9 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
-	"github.com/mdhender/wraith/engine"
+	"github.com/mdhender/wraith/models"
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
@@ -59,10 +58,11 @@ var cmdCreateUsers = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		e, err := engine.Open(cfg, context.Background())
+		s, err := models.Open(cfg)
 		if err != nil {
 			log.Fatal(err)
 		}
+		log.Printf("loaded store version %q\n", s.Version())
 
 		var users []struct {
 			Handle string `json:"handle"`
@@ -78,7 +78,7 @@ var cmdCreateUsers = &cobra.Command{
 			user.Handle = strings.ToLower(strings.TrimSpace(user.Handle))
 			user.Email = strings.ToLower(strings.TrimSpace(user.Email))
 
-			err := e.CreateUser(user.Handle, user.Email, user.Secret)
+			err := s.CreateUser(user.Handle, user.Email, user.Secret)
 			if err != nil {
 				log.Printf("user %q %q: %+v\n", user.Handle, user.Email, err)
 			} else {

@@ -19,10 +19,9 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
-	"github.com/mdhender/wraith/engine"
+	"github.com/mdhender/wraith/models"
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
@@ -71,9 +70,10 @@ var cmdCreateGame = &cobra.Command{
 		var data struct {
 			Game    string `json:"game"`
 			Players []struct {
-				Id     string `json:"id"`
-				Handle string `json:"handle"`
-				Nation struct {
+				Id           string `json:"id"`
+				UserHandle   string `json:"user"`
+				PlayerHandle string `json:"handle"`
+				Nation       struct {
 					Name       string `json:"name"`
 					Speciality string `json:"speciality"`
 					HomeWorld  string `json:"home-world"`
@@ -97,43 +97,50 @@ var cmdCreateGame = &cobra.Command{
 		}
 		log.Printf("loaded config %q\n", cfg.Self)
 
-		e, err := engine.Open(cfg, context.Background())
+		s, err := models.Open(cfg)
 		if err != nil {
 			log.Fatal(err)
 		}
+		log.Printf("loaded store version %q\n", s.Version())
 
 		// don't create if the game already exists
-		if e.LookupGameByName(globalCreateGame.ShortName) != nil {
+		if game, err := s.FetchGameByName(globalCreateGame.ShortName); game != nil {
 			log.Printf("short name %q already exists\n", globalCreateGame.ShortName)
 			if !globalCreateGame.Force {
 				log.Fatal("unable to create game\n")
 			}
-			err = e.DeleteGameByName(globalCreateGame.ShortName)
+			err = s.DeleteGameByName(globalCreateGame.ShortName)
 			if err != nil {
 				log.Fatal(err)
 			}
 			log.Printf("short name %q purged\n", globalCreateGame.ShortName)
 		}
 
-		var gamePlayers []*engine.Player
+		// convert players from data file to positions for game
+		var positions []*models.PlayerPosition
 		for _, player := range data.Players {
-			gp := &engine.Player{Handle: player.Handle}
-			gp.Nation.Name = player.Nation.Name
-			gp.Nation.GovtKind = player.Nation.GovtKind
-			gp.Nation.GovtName = player.Nation.GovtName
-			gp.Nation.HomeWorld = player.Nation.HomeWorld
-			gp.Nation.Speciality = player.Nation.Speciality
-			gamePlayers = append(gamePlayers, gp)
+			position := &models.PlayerPosition{
+				UserHandle:   player.UserHandle,
+				PlayerHandle: player.PlayerHandle,
+			}
+			position.Nation.Name = player.Nation.Name
+			position.Nation.Speciality = player.Nation.Speciality
+			position.Nation.HomeWorld = player.Nation.HomeWorld
+			position.Nation.GovtKind = player.Nation.GovtKind
+			position.Nation.GovtName = player.Nation.GovtName
+			positions = append(positions, position)
 		}
-		startDt, err := time.Parse(time.RFC3339, "2022-06-29T23:00:00Z")
+
+		game, err := s.GenerateGame(globalCreateGame.ShortName, globalCreateGame.Name, "", globalCreateGame.Radius, time.Now(), positions)
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = e.CreateGame(globalCreateGame.ShortName, globalCreateGame.Name, globalCreateGame.Name, globalCreateGame.Radius, startDt, gamePlayers)
+		err = s.SaveGame(game)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("created game %q\n", globalCreateGame.ShortName)
+
+		log.Printf("created game %q\n", game.ShortName)
 
 		return nil
 	},

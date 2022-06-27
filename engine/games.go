@@ -18,39 +18,33 @@
 
 package engine
 
-import (
-	"encoding/json"
-	"io/ioutil"
-	"path/filepath"
-)
-
-// Games configuration
-type Games struct {
-	Store string       `json:"store"` // default path to store data
-	Index []GamesIndex `json:"index"`
-}
-
-type GamesIndex struct {
-	Id    string `json:"id"`    // unique identifier for game
-	Store string `json:"store"` // path to the game store file
-}
-
-// ReadGames loads a store from a JSON file.
-// It returns any errors.
-func (e *Engine) ReadGames() error {
-	b, err := ioutil.ReadFile(filepath.Join(e.stores.games.Store, "store.json"))
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(b, e.stores.games)
-}
-
-// WriteGames writes a store to a JSON file.
-// It returns any errors.
-func (e *Engine) WriteGames() error {
-	b, err := json.MarshalIndent(e.stores.games, "", "  ")
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(filepath.Join(e.stores.games.Store, "store.json"), b, 0600)
-}
+//// Games configuration
+//type Games struct {
+//	Store string       `json:"store"` // default path to store data
+//	Index []GamesIndex `json:"index"`
+//}
+//
+//type GamesIndex struct {
+//	Id    string `json:"id"`    // unique identifier for game
+//	Store string `json:"store"` // path to the game store file
+//}
+//
+//// ReadGames loads a store from a JSON file.
+//// It returns any errors.
+//func (e *Engine) ReadGames() error {
+//	b, err := ioutil.ReadFile(filepath.Join(e.stores.games.Store, "store.json"))
+//	if err != nil {
+//		return err
+//	}
+//	return json.Unmarshal(b, e.stores.games)
+//}
+//
+//// WriteGames writes a store to a JSON file.
+//// It returns any errors.
+//func (e *Engine) WriteGames() error {
+//	b, err := json.MarshalIndent(e.stores.games, "", "  ")
+//	if err != nil {
+//		return err
+//	}
+//	return ioutil.WriteFile(filepath.Join(e.stores.games.Store, "store.json"), b, 0600)
+//}
