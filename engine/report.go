@@ -187,7 +187,7 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 			_, _ = p.Fprintf(w, "\n")
 			_, _ = p.Fprintf(w, "  Farming --------------------------------------------------------------------------------------------------------\n")
 			for _, group := range cs.Farms {
-				_, _ = p.Fprintf(w, "  Group: %2d  Orders: %s\n", group.No, group.Unit.Code)
+				_, _ = p.Fprintf(w, "  Group: %2d  Produces: %s\n", group.No, group.Unit.Code)
 				for _, unit := range group.Units {
 					fuelPerTurn := int(math.Ceil(float64(unit.QtyOperational) * 0.5))
 					proLabor, uskLabor := 1*unit.QtyOperational, 3*unit.QtyOperational
@@ -204,102 +204,42 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 
 			_, _ = p.Fprintf(w, "\n")
 			_, _ = p.Fprintf(w, "  Mining ---------------------------------------------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Group  Orders          Mines  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
 			for _, group := range cs.Mines {
+				_, _ = p.Fprintf(w, "  Group: %2d  Produces: %s\n", group.No, group.Deposit.Unit.Code)
 				for _, unit := range group.Units {
 					fuelPerTurn := int(math.Ceil(float64(unit.QtyOperational) * 0.5))
 					proLabor, uskLabor := 1*unit.QtyOperational, 3*unit.QtyOperational
-					_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-						group.No, group.Deposit.Unit.Code, unit.QtyOperational, unit.Unit.TechLevel, fuelPerTurn, proLabor, uskLabor, group.Stages[0].QtyStage1, group.Stages[0].QtyStage2, group.Stages[0].QtyStage3)
+					_, _ = p.Fprintf(w, "     Input:  Mines_     Quantity  Professionals    Unskilled    FUEL/Turn\n")
+					_, _ = p.Fprintf(w, "             %6s  %11d  %11d    %11d  %11d\n",
+						unit.Unit.Code, unit.QtyOperational, proLabor, uskLabor, fuelPerTurn)
+				}
+				for _, stage := range group.Stages {
+					_, _ = p.Fprintf(w, "    Output:  Unit__      Stage_1      Stage_2        Stage_3\n")
+					_, _ = p.Fprintf(w, "             %6s  %11d  %11d    %11d\n",
+						group.Deposit.Unit.Code, stage.QtyStage1, stage.QtyStage2, stage.QtyStage3)
 				}
 			}
 
 			_, _ = p.Fprintf(w, "\n")
 			_, _ = p.Fprintf(w, "  Production -----------------------------------------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Input ----\n")
-			_, _ = p.Fprintf(w, "  Group  Orders      Factories  TL  Ingest/Turn    METS/Unit    NMTS/Unit    METS/Turn    NMTS/Turn   Units/Turn\n")
 			for _, group := range cs.Factories {
+				_, _ = p.Fprintf(w, "  Group: %2d  Produces: %s\n", group.No, group.Unit.Code)
 				for _, unit := range group.Units {
-					//fuelPerTurn := int(math.Ceil(float64(unit.QtyOperational) * 0.5))
-					u := game.Units[1]
-
-					metsUnit, nmetUnit := 1.0, 1.0 //models.Unit{Name: group.Name}.RawMaterials()
-
-					// quantity is units per turn
-					qty := int(math.Floor(float64(99 /*u.IngestPerTurn()*/))) // / (metsUnit + nmetUnit)))
-					metsTurn := int(metsUnit * float64(qty))
-					nmetTurn := int(nmetUnit * float64(qty))
-
-					_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d    %9.3f    %9.3f  %11d  %11d  %11d\n",
-						group.Id, group.Unit.Code, unit.QtyOperational, u.TechLevel, 0 /*u.IngestPerTurn()*/, metsUnit, nmetUnit, metsTurn, nmetTurn, qty)
+					fuelPerTurn := int(math.Ceil(float64(unit.QtyOperational) * 0.5))
+					proLabor, uskLabor := 1*unit.QtyOperational, 3*unit.QtyOperational
+					_, _ = p.Fprintf(w, "     Input:  Facts_     Quantity  Professionals    Unskilled    METS/Turn    NMTS/Turn    FUEL/Turn\n")
+					_, _ = p.Fprintf(w, "             %6s  %11d  %11d    %11d            ?            ?  %11d\n",
+						unit.Unit.Code, unit.QtyOperational, proLabor, uskLabor, fuelPerTurn)
+				}
+				for _, stage := range group.Stages {
+					_, _ = p.Fprintf(w, "    Output:  Unit__      Stage_1      Stage_2        Stage_3\n")
+					_, _ = p.Fprintf(w, "             %6s  %11d  %11d    %11d\n",
+						group.Unit.Code, stage.QtyStage1, stage.QtyStage2, stage.QtyStage3)
 				}
 			}
 
-			_, _ = p.Fprintf(w, "  Output ---\n")
-			_, _ = p.Fprintf(w, "  Group  Orders      Factories  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-			//		for _, group := range cs.FactoryGroups {
-			//			for _, unit := range group.Units {
-			//				u := ReportUnit{Name: "factory", TechLevel: unit.TechLevel, Qty: unit.Qty}
-			//
-			//				proLabor, uskLabor := u.LaborPerTurn()
-			//
-			//				_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-			//					group.Id, group.Code(), unit.Qty, unit.TechLevel, u.Qty*u.FuelPerTurn(), proLabor, uskLabor, unit.Stages[0], unit.Stages[1], unit.Stages[2])
-			//			}
-			//		}
-
-			//		//_, _ = p.Fprintf(w, "\nProduction -----------------------------------------------------------------------------------------------------\n")
-			//		//_, _ = p.Fprintf(w, "Input ----\n")
-			//		//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL  Ingest/Turn    METS/ReportUnit    NMTS/ReportUnit    METS/Turn    NMTS/Turn   Units/Turn\n")
-			//		//if fact := cs.Units["FCT-1"]; fact != nil {
-			//		//	group, techLevel := 1, 1
-			//		//
-			//		//	// FACT-1 can ingest a maximum of 5 MU of resources per turn
-			//		//	ingestTurn := fact.Qty * 5
-			//		//
-			//		//	// CNGD costs 0.2 METS 0.4 NMET
-			//		//	metsUnit, nmetUnit := 0.2, 0.4
-			//		//
-			//		//	// quantity is units per turn
-			//		//	qty := int(math.Floor(float64(ingestTurn) / (metsUnit + nmetUnit)))
-			//		//	metsTurn := int(metsUnit * float64(qty))
-			//		//	nmetTurn := int(nmetUnit * float64(qty))
-			//		//
-			//		//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d    %9.3f    %9.3f  %11d  %11d  %11d\n",
-			//		//		group, "CNGD", fact.Qty, techLevel, ingestTurn, metsUnit, nmetUnit, metsTurn, nmetTurn, qty)
-			//		//}
-			//		//
-			//		//_, _ = p.Fprintf(w, "Output ---\n")
-			//		//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-			//		//if fact := cs.Units["FCT-1"]; fact != nil {
-			//		//	group, techLevel := 1, 1
-			//		//	var pro, usk int
-			//		//	if fact.Qty >= 50_000 {
-			//		//		pro, usk = 1*fact.Qty, 3*fact.Qty
-			//		//	} else if fact.Qty >= 5_000 {
-			//		//		pro, usk = 2*fact.Qty, 6*fact.Qty
-			//		//	} else if fact.Qty >= 500 {
-			//		//		pro, usk = 3*fact.Qty, 9*fact.Qty
-			//		//	} else if fact.Qty >= 50 {
-			//		//		pro, usk = 4*fact.Qty, 12*fact.Qty
-			//		//	} else if fact.Qty >= 5 {
-			//		//		pro, usk = 5*fact.Qty, 15*fact.Qty
-			//		//	} else {
-			//		//		pro, usk = 6*fact.Qty, 18*fact.Qty
-			//		//	}
-			//		//
-			//		//	// FACT-1 can ingest 20 MU of resources per YEAR
-			//		//	ingest := fact.Qty * 20
-			//		//	// CNGD costs 0.2 METS 0.4 NMET
-			//		//	mets, nmet := 0.2, 0.4
-			//		//	// quantity is units per turn
-			//		//	qty := int(math.Floor(float64(ingest)/(mets+nmet))) / 4
-			//		//
-			//		//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-			//		//		group, "CNGD", fact.Qty, techLevel, int(math.Ceil(float64(fact.Qty)*0.5)), pro, usk, qty, qty, qty)
-			//		//}
-
-			_, _ = p.Fprintf(w, "\nEspionage --------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "\n")
+			_, _ = p.Fprintf(w, "  Espionage --------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "  No activity.\n")
 		}
 
