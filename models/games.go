@@ -868,9 +868,10 @@ func (s *Store) genGame(shortName, name, descr string, radius int, startDt time.
 			return nil, fmt.Errorf("user: %q: %w", position.UserHandle, ErrNoDataFound)
 		}
 		player := &Player{
-			Id:      no + 1,
-			Game:    game,
-			Details: nil,
+			Id:       no + 1,
+			Game:     game,
+			MemberOf: nil,
+			Details:  nil,
 		}
 		player.Details = []*PlayerDetail{{
 			Player:       player,
@@ -938,6 +939,8 @@ func (s *Store) genGame(shortName, name, descr string, radius int, startDt time.
 		nation.Colonies[0].MSN = colonyNo
 		colonyNo++
 		nation.Colonies[1].MSN = colonyNo
+
+		player.MemberOf = nation // link the player to its nation
 
 		game.Nations[nation.No] = nation
 		log.Printf("genGame: nation no %d: controlledBy %v\n", nation.No, nation.Details[0].ControlledBy)
@@ -1446,6 +1449,14 @@ func (s *Store) saveGame(g *Game) error {
 				}
 			}
 			log.Printf("created nation %3d: ship  %3d %8d\n", nation.No, ship.MSN, ship.Id)
+		}
+	}
+
+	// link the players to their nation
+	for _, player := range g.Players {
+		_, err := tx.ExecContext(s.ctx, "insert into nation_player (nation_id, player_id) values (?, ?)", player.MemberOf.Id, player.Id)
+		if err != nil {
+			return fmt.Errorf("saveGame: memberOf: insert: %w", err)
 		}
 	}
 

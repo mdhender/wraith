@@ -48,6 +48,7 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 	} else if game.Id == 0 {
 		return nil, fmt.Errorf("fetchGameByIdAsOf: %d: game: %w", gameId, ErrNoDataFound)
 	}
+	game.CurrentTurn = turn
 	log.Printf("fetchGameByIdAsOf: %d: game: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	// fetch units
@@ -138,7 +139,7 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 	game.Nations = make(map[int]*Nation)
 	rows, err = tx.Query(`
 		select n.id, n.nation_no, n.speciality, n.descr,
-			   nd.name, nd.govt_name, nd.govt_kind,
+			   nd.name, nd.govt_name, nd.govt_kind, nd.controlled_by,
 			   nr.tech_level, nr.research_points_pool,
 			   ns.biology, ns.bureaucracy, ns.gravitics, ns.life_support, ns.manufacturing, ns.military, ns.mining, ns.shields
 		from nations n, nation_dtl nd, nation_research nr, nation_skills ns
@@ -158,17 +159,39 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 		nation.Research = append(nation.Research, research)
 		skills := &NationSkills{Nation: nation}
 		nation.Skills = append(nation.Skills, skills)
+		var controlledById int
 		err := rows.Scan(&nation.Id, &nation.No, &nation.Speciality, &nation.Description,
-			&detail.Name, &detail.GovtName, &detail.GovtKind,
+			&detail.Name, &detail.GovtName, &detail.GovtKind, &controlledById,
 			&research.TechLevel, &research.ResearchPointsPool,
 			&skills.Biology, &skills.Bureaucracy, &skills.Gravitics, &skills.LifeSupport, &skills.Manufacturing, &skills.Military, &skills.Mining, &skills.Shields)
 		if err != nil {
 			return nil, fmt.Errorf("fetchGameByIdAsOf: %d: nations: %s: %w", gameId, asOfTurn, err)
 		}
+		detail.ControlledBy = game.Players[controlledById]
 		game.Nations[nation.Id] = nation
 	}
 	log.Printf("fetchGameByIdAsOf: %d: nations: fetched %d nations\n", gameId, len(game.Nations))
 	log.Printf("fetchGameByIdAsOf: %d: nations: elapsed %v\n", gameId, time.Now().Sub(started))
+
+	// cross link nations and players
+	rows, err = tx.Query("select nation_id, player_id from nation_player where nation_id in (select id from nations where game_id = ?) order by player_id", gameId)
+	if err != nil {
+		return nil, fmt.Errorf("fetchGameByIdAsOf: %d: memberOf: %w", gameId, err)
+	}
+	numPlayers := 0
+	for rows.Next() {
+		numPlayers++
+		var nationId, playerId int
+		err := rows.Scan(&nationId, &playerId)
+		if err != nil {
+			return nil, fmt.Errorf("fetchGameByIdAsOf: %d: memberOf: %w", gameId, err)
+		}
+		nation, player := game.Nations[nationId], game.Players[playerId]
+		player.MemberOf = nation
+		nation.Players = append(nation.Players, player)
+	}
+	log.Printf("fetchGameByIdAsOf: %d: memberOf: fetched %d players\n", gameId, numPlayers)
+	log.Printf("fetchGameByIdAsOf: %d: memberOf: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	// fetch systems, stars, and planets
 	game.Systems, game.Stars, game.Planets = make(map[int]*System), make(map[int]*Star), make(map[int]*Planet)
@@ -209,6 +232,7 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 			game.Stars[star.Id] = star
 			system.Stars = append(system.Stars, star)
 		}
+		planet.Star = star
 		star.Orbits = append(star.Orbits, planet)
 		if controlledById != 0 {
 			planetDetail.ControlledBy = game.Nations[controlledById]
@@ -306,7 +330,7 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 			CS:           cors,
 			Name:         cdtlName,
 			TechLevel:    cdtlTechLevel,
-			ControlledBy: nil,
+			ControlledBy: game.Players[controlledById],
 		}}
 		cors.Locations = []*CSLocation{{
 			CS:       cors,
@@ -348,6 +372,44 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 	log.Printf("fetchGameByIdAsOf: %d: cors: fetched %8d ships\n", gameId, len(game.Ships))
 	log.Printf("fetchGameByIdAsOf: %d: cors: elapsed %v\n", gameId, time.Now().Sub(started))
 
+	// cross link nations and colonies or ships
+	numLinks, numNulls, numShips, numColonies := 0, 0, 0, 0
+	for _, cors := range game.CorS {
+		if cors.Details == nil || cors.Details[0].ControlledBy == nil {
+			numNulls++
+			continue
+		}
+		nation := cors.Details[0].ControlledBy.MemberOf
+		if cors.Kind == "ship" {
+			numShips++
+			nation.Ships = append(nation.Ships, cors)
+		} else {
+			numColonies++
+			nation.Colonies = append(nation.Colonies, cors)
+		}
+		numLinks++
+		nation.CorS = append(nation.CorS, cors)
+	}
+	log.Printf("fetchGameByIdAsOf: %d: cors: linked  %8d cors\n", gameId, numLinks)
+	log.Printf("fetchGameByIdAsOf: %d: cors: linked  %8d colonies\n", gameId, numColonies)
+	log.Printf("fetchGameByIdAsOf: %d: cors: linked  %8d ships\n", gameId, numShips)
+	log.Printf("fetchGameByIdAsOf: %d: cors: linked  %8d nulls\n", gameId, numNulls)
+	log.Printf("fetchGameByIdAsOf: %d: cors: elapsed %v\n", gameId, time.Now().Sub(started))
+
+	// sort cors
+	for _, nation := range game.Nations {
+		for _, cs := range [][]*ColonyOrShip{nation.CorS, nation.Colonies, nation.Ships} {
+			for i := 0; i < len(cs); i++ {
+				for j := i + 1; j < len(cs); j++ {
+					if cs[j].MSN < cs[i].MSN {
+						cs[i], cs[j] = cs[j], cs[i]
+					}
+				}
+			}
+		}
+	}
+	log.Printf("fetchGameByIdAsOf: %d: cors: elapsed %v\n", gameId, time.Now().Sub(started))
+
 	// fetch cors hulls
 	rows, err = tx.Query(`
 		select cors.id,
@@ -383,7 +445,7 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 	// fetch cors inventory
 	rows, err = tx.Query(`
 		select cors.id,
-			   ci.unit_id, ci.tech_level, ci.qty_operational
+			   ci.unit_id, ci.tech_level, ci.qty_operational, ci.qty_stowed
 		from cors, cors_inventory ci
 		where cors.game_id = ?
 		and (ci.cors_id = cors.id and ci.efftn <= ? and ? < ci.endtn)
@@ -394,8 +456,8 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 	var numInventory int
 	for rows.Next() {
 		numInventory++
-		var corsId, unitId, techLevel, qtyOperational int
-		err := rows.Scan(&corsId, &unitId, &techLevel, &qtyOperational)
+		var corsId, unitId, techLevel, qtyOperational, qtyStowed int
+		err := rows.Scan(&corsId, &unitId, &techLevel, &qtyOperational, &qtyStowed)
 		if err != nil {
 			return nil, fmt.Errorf("fetchGameByIdAsOf: %d: corsInventory: %w", gameId, err)
 		}
@@ -404,6 +466,7 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 			Unit:           game.Units[unitId],
 			TechLevel:      techLevel,
 			QtyOperational: qtyOperational,
+			QtyStowed:      qtyStowed,
 		}
 		inventory.CS.Inventory = append(inventory.CS.Inventory, inventory)
 	}

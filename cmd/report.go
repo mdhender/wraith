@@ -25,6 +25,7 @@ import (
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -71,10 +72,10 @@ var cmdReport = &cobra.Command{
 		}
 		log.Printf("loaded game %q\n", g.ShortName)
 
-		//err = e.ReportWriter(os.Stderr, 1)
-		//if err != nil {
-		//	log.Fatal(err)
-		//}
+		err = e.ReportWriter(g, os.Stderr)
+		if err != nil {
+			log.Fatal(err)
+		}
 		log.Printf("reported game %q\n", g.ShortName)
 
 		return nil

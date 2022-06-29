@@ -16,6 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+drop table if exists resource_dtl;
+
 drop table if exists cors_factory_group_stages;
 drop table if exists cors_factory_group_units;
 drop table if exists cors_factory_group;
@@ -28,14 +30,13 @@ drop table if exists cors_mining_group_stages;
 drop table if exists cors_mining_group_units;
 drop table if exists cors_mining_group;
 
+drop table if exists cors_loc;
 drop table if exists cors_pay;
 drop table if exists cors_population;
 drop table if exists cors_rations;
 drop table if exists cors_inventory;
 drop table if exists cors_hull;
 drop table if exists cors_dtl;
-
-drop table if exists resource_dtl;
 
 drop table if exists cors;
 
@@ -46,6 +47,8 @@ drop table if exists planets;
 
 drop table if exists stars;
 drop table if exists systems;
+
+drop table if exists nation_player;
 
 drop table if exists nation_research;
 drop table if exists nation_skills;
@@ -175,6 +178,18 @@ create table nation_dtl
         on delete cascade,
     foreign key (controlled_by) references players (id)
         on delete set null
+);
+
+create table nation_player
+(
+    nation_id int not null,
+    player_id int not null,
+    primary key (nation_id, player_id),
+    unique key (player_id),
+    foreign key (nation_id) references nations (id)
+        on delete cascade,
+    foreign key (player_id) references players (id)
+        on delete cascade
 );
 
 create table nation_research

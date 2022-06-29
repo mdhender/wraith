@@ -24,6 +24,7 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 	"io"
+	"math"
 	"time"
 )
 
@@ -50,25 +51,27 @@ func (e *Engine) Report(spId int) error {
 	//return nil
 }
 
-func (e *Engine) ReportWriter(w io.Writer, spId int) error {
-	var asOfTurn *models.Turn
-	for _, turn := range e.Game.Turns {
-		if turn.String() != "0000/0" {
-			asOfTurn = turn
-			break
-		}
-	}
+func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 	p := message.NewPrinter(language.English)
 
+	asOfTurn := game.CurrentTurn
 	rptDate := time.Now().Format("2006/01/02")
 
-	for _, nation := range e.Game.Nations {
+	for _, nation := range game.Nations {
+		if nation.Details[0].Name != "Yinshei" {
+			continue
+		}
+
 		_, _ = p.Fprintf(w, "Status Report\n")
-		_, _ = p.Fprintf(w, "Game: %-8s   Turn: %s   Nation: %3d    Date: %s\n", e.Game.ShortName, asOfTurn.String(), nation.No, rptDate)
+		_, _ = p.Fprintf(w, "Game: %-8s   Turn: %s   Nation: %3d    Date: %s\n", game.ShortName, asOfTurn.String(), nation.No, rptDate)
 
 		_, _ = p.Fprintf(w, "\nNation %3d -------------------------------------------------------------------\n", nation.No)
 		for _, detail := range nation.Details {
-			_, _ = p.Fprintf(w, "  Name: %-40s  Controlled By: %s\n", detail.Name, detail.ControlledBy.Details[0].Handle)
+			if detail.ControlledBy == nil {
+				_, _ = p.Fprintf(w, "  Name: %-40s  Controlled By: %s\n", detail.Name, "*nobody*")
+			} else {
+				_, _ = p.Fprintf(w, "  Name: %-40s  Controlled By: %s\n", detail.Name, detail.ControlledBy.Details[0].Handle)
+			}
 		}
 		for _, research := range nation.Research {
 			_, _ = p.Fprintf(w, "     Tech Level: %2d    Research Points: %11d\n", research.TechLevel, research.ResearchPointsPool)
@@ -78,64 +81,80 @@ func (e *Engine) ReportWriter(w io.Writer, spId int) error {
 			_, _ = p.Fprintf(w, "  Manufacturing: %2d     Mining: %2d     Military: %2d        Shields: %2d\n", skills.Manufacturing, skills.Mining, skills.Military, skills.Shields)
 		}
 
-		for _, colony := range nation.Colonies {
-			_, _ = p.Fprintf(w, "\nColony Activity Report -------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "\n%-8s Activity Report -------------------------------------------------------\n", fmt.Sprintf("C%d", colony.MSN))
-			//		kind := "unknown"
-			//		switch colony.Kind {
-			//		case "enclosed":
-			//			kind = "ENCLOSED"
-			//		case "open":
-			//			kind = "OPEN"
-			//		case "orbital":
-			//			kind = "ORBITAL"
-			//		default:
-			//			panic(fmt.Sprintf("assert(colony.Kind != %q)", colony.Kind))
-			//		}
-			//		name := colony.Name
-			//		if name == "" {
-			//			name = "NOT NAMED"
-			//		}
-			//		colonyId, colonyKind := fmt.Sprintf("C%d", colony.Id), fmt.Sprintf("%s COLONY", kind)
-			//		_, _ = p.Fprintf(w, "%-6s Tech:%2d  %14s: %-22s  ReportSystem: %s #%d\n", colonyId, colony.TechLevel, colonyKind, name, colony.System, colony.Orbit)
+		for _, cs := range nation.Colonies {
+			msnId := fmt.Sprintf("C%d", cs.MSN)
+			_, _ = p.Fprintf(w, "\n%s Activity Report -------------------------------------------------------\n", msnId)
 
-			_, _ = p.Fprintf(w, "\nConstruction --------------------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Engines\n")
-			_, _ = p.Fprintf(w, "    N/A\n")
+			kind := "unknown"
+			switch cs.Kind {
+			case "enclosed":
+				kind = "ENCLOSED"
+			case "open":
+				kind = "OPEN"
+			case "orbital":
+				kind = "ORBITAL"
+			default:
+				panic(fmt.Sprintf("assert(cs.Kind != %q)", cs.Kind))
+			}
+			name := cs.Details[0].Name
+			if name == "" {
+				name = "NOT NAMED"
+			}
+			techLevel := cs.Details[0].TechLevel
+			location := cs.Locations[0]
+			planet := location.Location
+			orbitNo := planet.OrbitNo
+			star := planet.Star
+			system := star.System
+			colonyKind := fmt.Sprintf("%s COLONY", kind)
+			_, _ = p.Fprintf(w, "  Location: %s #%d    Tech: %2d  %14s: %-22s\n", system.Coords.String(), orbitNo, techLevel, colonyKind, name)
 
-			_, _ = p.Fprintf(w, "\nPeople --------------------------------------------------------------------------------------\n")
+			totalPay := func(pct float64) int {
+				return 0
+			}
+			totalRations := func(pct float64) int {
+				return 0
+			}
+
+			_, _ = p.Fprintf(w, "\n  People ------------------------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "  Group____________  Population_Units  Pay_____         CNGD/Turn  Ration__         FOOD/Turn\n")
-			//		_, _ = p.Fprintf(w, "  Professional       %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", colony.Population.PRO.Qty, colony.Population.PRO.Pay*100, colony.Population.PRO.TotalPay(), colony.Population.PRO.Ration*100, colony.Population.PRO.TotalRation())
-			//		_, _ = p.Fprintf(w, "  Soldier            %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", colony.Population.SLD.Qty, colony.Population.SLD.Pay*100, colony.Population.SLD.TotalPay(), colony.Population.SLD.Ration*100, colony.Population.SLD.TotalRation())
-			//		_, _ = p.Fprintf(w, "  Unskilled          %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", colony.Population.USK.Qty, colony.Population.USK.Pay*100, colony.Population.USK.TotalPay(), colony.Population.USK.Ration*100, colony.Population.USK.TotalRation())
-			//		_, _ = p.Fprintf(w, "  Unemployed         %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", colony.Population.UEM.Qty, colony.Population.UEM.Pay*100, colony.Population.UEM.TotalPay(), colony.Population.UEM.Ration*100, colony.Population.UEM.TotalRation())
-			//		_, _ = p.Fprintf(w, "  ----------------   %16d  --------  %16d  --------  %16d\n", colony.Population.TotalPopulation(), colony.Population.TotalPay(), colony.Population.TotalRation())
-			//
-			//		if colony.Population.Births == 0 && colony.Population.Deaths == 0 {
-			//			colony.Population.Births = colony.Population.TotalPopulation() / 1600
-			//			colony.Population.Deaths = colony.Population.Births
+			_, _ = p.Fprintf(w, "  Professional       %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", cs.Population[0].QtyProfessional, cs.Pay[0].ProfessionalPct*100, totalPay(cs.Pay[0].ProfessionalPct), cs.Rations[0].ProfessionalPct*100, totalRations(cs.Rations[0].ProfessionalPct))
+			_, _ = p.Fprintf(w, "  Soldier            %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", cs.Population[0].QtySoldier, cs.Pay[0].SoldierPct*100, totalPay(cs.Pay[0].SoldierPct), cs.Rations[0].SoldierPct*100, totalRations(cs.Rations[0].SoldierPct))
+			_, _ = p.Fprintf(w, "  Unskilled          %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", cs.Population[0].QtyUnskilled, cs.Pay[0].UnskilledPct*100, totalPay(cs.Pay[0].UnskilledPct), cs.Rations[0].UnskilledPct*100, totalRations(cs.Rations[0].UnskilledPct))
+			_, _ = p.Fprintf(w, "  Unemployed         %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", cs.Population[0].QtyUnemployed, cs.Pay[0].UnemployedPct*100, totalPay(cs.Pay[0].UnemployedPct), cs.Rations[0].UnemployedPct*100, totalRations(cs.Rations[0].UnemployedPct))
+			//_, _ = p.Fprintf(w, "  ----------------   %16d  --------  %16d  --------  %16d\n", cs.Population[0].TotalPopulation(), cs.Population[0].TotalPay(), cs.Population[0].TotalRation())
+
+			//		if cs.Population[0].Births == 0 && cs.Population[0].Deaths == 0 {
+			//			cs.Population[0].Births = cs.Population[0].TotalPopulation() / 1600
+			//			cs.Population[0].Deaths = cs.Population[0].Births
 			//		}
 
 			_, _ = p.Fprintf(w, "\n  Crew/Team________  Units___________\n")
-			//		_, _ = p.Fprintf(w, "  Construction Crew  %16d\n", colony.Population.CNW)
-			//		_, _ = p.Fprintf(w, "  Spy Team           %16d\n", colony.Population.SPY)
+			//		_, _ = p.Fprintf(w, "  Construction Crew  %16d\n", cs.Population[0].CNW)
+			//		_, _ = p.Fprintf(w, "  Spy Team           %16d\n", cs.Population[0].SPY)
 
 			_, _ = p.Fprintf(w, "\n  Changes__________  Population_Units\n")
-			//		_, _ = p.Fprintf(w, "  Births             %16d\n", colony.Population.Births)
-			//		_, _ = p.Fprintf(w, "  Non-Combat Deaths  %16d\n", colony.Population.Deaths)
+			//		_, _ = p.Fprintf(w, "  Births             %16d\n", cs.Population[0].Births)
+			//		_, _ = p.Fprintf(w, "  Non-Combat Deaths  %16d\n", cs.Population[0].Deaths)
+
+			_, _ = p.Fprintf(w, "\n  Components ----------------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "  Item-TL     Quantity          MUs         EMUs  SUs_Required\n")
+			for _, item := range cs.Hull {
+				_, _ = p.Fprintf(w, "  %7s  %11d  %11d  %11d\n", fmt.Sprintf("%s-%d", item.Unit.Code, item.TechLevel), item.QtyOperational, item.MassOperational, int(math.Ceil(item.Unit.EnclosedMass*float64(item.QtyOperational))))
+			}
 
 			availSUs := 0
 			operMUs, operEMUs, operSUs := 0, 0, 0
 			_, _ = p.Fprintf(w, "\nOperational ------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "  Item-TL     Quantity          MUs  Hudnut         EMUs  SUs_Required\n")
-			//		for _, unit := range colony.Operational {
+			//		for _, unit := range cs.Operational {
 			//			mu, emu := unit.MassUnits(), unit.EnclosedMassUnits()
 			//			var sus int
 			//			if unit.Name == "structural" || unit.Name == "light-structural" || unit.Name == "super-light-structural" {
 			//				sus = 0
 			//				availSUs += unit.Qty
 			//			} else {
-			//				switch colony.Kind {
+			//				switch cs.Kind {
 			//				case "open":
 			//					sus = emu * 1
 			//				case "enclosed":
@@ -154,10 +173,10 @@ func (e *Engine) ReportWriter(w io.Writer, spId int) error {
 			storMUs, storEMUs, storSUs := 0, 0, 0
 			_, _ = p.Fprintf(w, "\nStorage ----------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "  Item-TL     Quantity          MUs  Hudnut         EMUs  SUs_Required\n")
-			//		for _, unit := range colony.Storage {
+			//		for _, unit := range cs.Storage {
 			//			mu, emu := unit.MassUnits(), unit.EnclosedMassUnits()
 			//			var sus int
-			//			switch colony.Kind {
+			//			switch cs.Kind {
 			//			case "open":
 			//				sus = emu * 1
 			//			case "enclosed":
@@ -180,7 +199,7 @@ func (e *Engine) ReportWriter(w io.Writer, spId int) error {
 
 			//		//_, _ = p.Fprintf(w, "\nFarming --------------------------------------------------------------------------------------------------------\n")
 			//		//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-			//		//if farm := colony.Units["FRM-1"]; farm != nil {
+			//		//if farm := cs.Units["FRM-1"]; farm != nil {
 			//		//	group, techLevel := 1, 1
 			//		//	qty := farm.Qty * 100 / 4
 			//		//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
@@ -189,7 +208,7 @@ func (e *Engine) ReportWriter(w io.Writer, spId int) error {
 
 			_, _ = p.Fprintf(w, "\nFarming --------------------------------------------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "  ReportGroup  Orders          Farms  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-			//		for _, group := range colony.FarmGroups {
+			//		for _, group := range cs.FarmGroups {
 			//			for _, unit := range group.Units {
 			//				fuelPerTurn := int(math.Ceil(float64(unit.Qty) * 0.5))
 			//				proLabor, uskLabor := 1*unit.Qty, 3*unit.Qty
@@ -200,7 +219,7 @@ func (e *Engine) ReportWriter(w io.Writer, spId int) error {
 
 			//		//_, _ = p.Fprintf(w, "\nMining ---------------------------------------------------------------------------------------------------------\n")
 			//		//_, _ = p.Fprintf(w, "  ReportGroup  Orders        MIN_Qty  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-			//		//if mine := colony.Units["MIN-1"]; mine != nil {
+			//		//if mine := cs.Units["MIN-1"]; mine != nil {
 			//		//	techLevel := 1
 			//		//	var no, qty int
 			//		//	no = 50_000
@@ -219,7 +238,7 @@ func (e *Engine) ReportWriter(w io.Writer, spId int) error {
 
 			_, _ = p.Fprintf(w, "\nMining ---------------------------------------------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "  ReportGroup  Orders          Mines  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-			//		for _, group := range colony.MiningGroups {
+			//		for _, group := range cs.MiningGroups {
 			//			for _, unit := range group.Units {
 			//				fuelPerTurn := int(math.Ceil(float64(unit.Qty) * 0.5))
 			//				proLabor, uskLabor := 1*unit.Qty, 3*unit.Qty
@@ -231,7 +250,7 @@ func (e *Engine) ReportWriter(w io.Writer, spId int) error {
 			//		//_, _ = p.Fprintf(w, "\nProduction -----------------------------------------------------------------------------------------------------\n")
 			//		//_, _ = p.Fprintf(w, "Input ----\n")
 			//		//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL  Ingest/Turn    METS/ReportUnit    NMTS/ReportUnit    METS/Turn    NMTS/Turn   Units/Turn\n")
-			//		//if fact := colony.Units["FCT-1"]; fact != nil {
+			//		//if fact := cs.Units["FCT-1"]; fact != nil {
 			//		//	group, techLevel := 1, 1
 			//		//
 			//		//	// FACT-1 can ingest a maximum of 5 MU of resources per turn
@@ -251,7 +270,7 @@ func (e *Engine) ReportWriter(w io.Writer, spId int) error {
 			//		//
 			//		//_, _ = p.Fprintf(w, "Output ---\n")
 			//		//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-			//		//if fact := colony.Units["FCT-1"]; fact != nil {
+			//		//if fact := cs.Units["FCT-1"]; fact != nil {
 			//		//	group, techLevel := 1, 1
 			//		//	var pro, usk int
 			//		//	if fact.Qty >= 50_000 {
@@ -282,7 +301,7 @@ func (e *Engine) ReportWriter(w io.Writer, spId int) error {
 			_, _ = p.Fprintf(w, "\nProduction -----------------------------------------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "Input ----\n")
 			_, _ = p.Fprintf(w, "  ReportGroup  Orders      Factories  TL  Ingest/Turn    METS/ReportUnit    NMTS/ReportUnit    METS/Turn    NMTS/Turn   Units/Turn\n")
-			//		for _, group := range colony.FactoryGroups {
+			//		for _, group := range cs.FactoryGroups {
 			//			for _, unit := range group.Units {
 			//				u := ReportUnit{Name: "factory", TechLevel: unit.TechLevel, Qty: unit.Qty}
 			//
@@ -300,7 +319,7 @@ func (e *Engine) ReportWriter(w io.Writer, spId int) error {
 
 			_, _ = p.Fprintf(w, "Output ---\n")
 			_, _ = p.Fprintf(w, "  ReportGroup  Orders      Factories  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-			//		for _, group := range colony.FactoryGroups {
+			//		for _, group := range cs.FactoryGroups {
 			//			for _, unit := range group.Units {
 			//				u := ReportUnit{Name: "factory", TechLevel: unit.TechLevel, Qty: unit.Qty}
 			//
@@ -347,6 +366,8 @@ func (e *Engine) ReportWriter(w io.Writer, spId int) error {
 		//
 		//_, _ = p.Fprintf(w, "\nCombat Report ---------------------------------------------------------------------\n")
 		//_, _ = p.Fprintf(w, "  No activity.\n")
+
+		break
 	}
 	return nil
 }

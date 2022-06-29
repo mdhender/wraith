@@ -19,6 +19,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -71,9 +72,10 @@ type Turn struct {
 
 // Player is a User's position in a Game
 type Player struct {
-	Game    *Game
-	Id      int
-	Details []*PlayerDetail
+	Game     *Game
+	Id       int
+	MemberOf *Nation
+	Details  []*PlayerDetail
 }
 
 // PlayerDetail is the handle of the player in the game
@@ -100,8 +102,10 @@ type Nation struct {
 	Research    []*NationResearch
 	Skills      []*NationSkills
 	Player      *Player // player currently controlling the nation
+	CorS        []*ColonyOrShip
 	Colonies    []*ColonyOrShip
 	Ships       []*ColonyOrShip
+	Players     []*Player
 }
 
 // NationDetail is items that can change value during the game.
@@ -144,6 +148,10 @@ type Coordinates struct {
 	X int
 	Y int
 	Z int
+}
+
+func (c Coordinates) String() string {
+	return fmt.Sprintf("%d/%d/%d", c.X, c.Y, c.Z)
 }
 
 // System is a system in the game.
