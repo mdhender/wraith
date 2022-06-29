@@ -18,7 +18,9 @@
 
 package models
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func (t *Turn) String() string {
 	if t.Year == 0 && t.Quarter == 0 {

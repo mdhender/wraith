@@ -67,11 +67,16 @@ func (e *Engine) ReportWriter(w io.Writer, spId int) error {
 		_, _ = p.Fprintf(w, "Game: %-8s   Turn: %s   Nation: %3d    Date: %s\n", e.Game.ShortName, asOfTurn.String(), nation.No, rptDate)
 
 		_, _ = p.Fprintf(w, "\nNation %3d -------------------------------------------------------------------\n", nation.No)
-		_, _ = p.Fprintf(w, "\nPlayer %3d -------------------------------------------------------------------\n", spId)
-		//_, _ = p.Fprintf(w, "  Bureaucracy:   %2d    Biology: %2d    Gravitics: %2d    LifeSupport: %2d\n",
-		//	player.Skills.Bureaucracy, player.Skills.Biology, player.Skills.Gravitics, player.Skills.LifeSupport)
-		//_, _ = p.Fprintf(w, "  Manufacturing: %2d    Mining:  %2d    Military:  %2d    Shields:     %2d\n",
-		//	player.Skills.Manufacturing, player.Skills.Mining, player.Skills.Military, player.Skills.Shields)
+		for _, detail := range nation.Details {
+			_, _ = p.Fprintf(w, "  Name: %-40s  Controlled By: %s\n", detail.Name, detail.ControlledBy.Details[0].Handle)
+		}
+		for _, research := range nation.Research {
+			_, _ = p.Fprintf(w, "     Tech Level: %2d    Research Points: %11d\n", research.TechLevel, research.ResearchPointsPool)
+		}
+		for _, skills := range nation.Skills {
+			_, _ = p.Fprintf(w, "    Bureaucracy: %2d    Biology: %2d    Gravitics: %2d    LifeSupport: %2d\n", skills.Bureaucracy, skills.Biology, skills.Gravitics, skills.LifeSupport)
+			_, _ = p.Fprintf(w, "  Manufacturing: %2d     Mining: %2d     Military: %2d        Shields: %2d\n", skills.Manufacturing, skills.Mining, skills.Military, skills.Shields)
+		}
 
 		for _, colony := range nation.Colonies {
 			_, _ = p.Fprintf(w, "\nColony Activity Report -------------------------------------------------------\n")
@@ -332,16 +337,16 @@ func (e *Engine) ReportWriter(w io.Writer, spId int) error {
 		//		_, _ = p.Fprintf(w, "    Kind: %-13s    Habitability: %2d\n", orbit.Kind, orbit.HabitabilityNumber)
 		//	}
 		//
-		_, _ = p.Fprintf(w, "\nMarket Report ---------------------------------------------------------------------\n")
-		_, _ = p.Fprintf(w, "  News: *** 6 years ago, scientists discovered a signal broadcasting from the 10th\n")
-		_, _ = p.Fprintf(w, "        orbit. 4 years ago, they decoded the message and recovered plans for an\n")
-		_, _ = p.Fprintf(w, "        in-system engine (the \"space-drive\") and a faster-than-light engine\n")
-		_, _ = p.Fprintf(w, "        (the \"hyper-drive\"). Work on both has recently completed.\n")
-		_, _ = p.Fprintf(w, "  News: *** Moments after the hyper-drive was successfully tested in the orbital\n")
-		_, _ = p.Fprintf(w, "        colony, the broadcast from the 10th orbit stopped.\n")
-
-		_, _ = p.Fprintf(w, "\nCombat Report ---------------------------------------------------------------------\n")
-		_, _ = p.Fprintf(w, "  No activity.\n")
+		//_, _ = p.Fprintf(w, "\nMarket Report ---------------------------------------------------------------------\n")
+		//_, _ = p.Fprintf(w, "  News: *** 6 years ago, scientists discovered a signal broadcasting from the 10th\n")
+		//_, _ = p.Fprintf(w, "        orbit. 4 years ago, they decoded the message and recovered plans for an\n")
+		//_, _ = p.Fprintf(w, "        in-system engine (the \"space-drive\") and a faster-than-light engine\n")
+		//_, _ = p.Fprintf(w, "        (the \"hyper-drive\"). Work on both has recently completed.\n")
+		//_, _ = p.Fprintf(w, "  News: *** Moments after the hyper-drive was successfully tested in the orbital\n")
+		//_, _ = p.Fprintf(w, "        colony, the broadcast from the 10th orbit stopped.\n")
+		//
+		//_, _ = p.Fprintf(w, "\nCombat Report ---------------------------------------------------------------------\n")
+		//_, _ = p.Fprintf(w, "  No activity.\n")
 	}
 	return nil
 }

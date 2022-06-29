@@ -25,7 +25,6 @@ import (
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
-	"os"
 	"strings"
 )
 
@@ -66,17 +65,17 @@ var cmdReport = &cobra.Command{
 		}
 		log.Printf("loaded engine version %q\n", e.Version())
 
-		err = e.LoadGame(globalReport.Game)
+		g, err := s.FetchGameByNameAsOf(globalReport.Game, "0000/0")
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded game %q\n", e.Game.ShortName)
+		log.Printf("loaded game %q\n", g.ShortName)
 
-		err = e.ReportWriter(os.Stdout, 1)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("reported game %q\n", e.Game.ShortName)
+		//err = e.ReportWriter(os.Stderr, 1)
+		//if err != nil {
+		//	log.Fatal(err)
+		//}
+		log.Printf("reported game %q\n", g.ShortName)
 
 		return nil
 	},

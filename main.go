@@ -23,9 +23,15 @@ import (
 	"github.com/mdhender/wraith/internal/seeder"
 	"log"
 	"math/rand"
+	"time"
 )
 
 func main() {
+	defer func(started time.Time) {
+		elapsed := time.Now().Sub(started)
+		log.Printf("wraith: total time %v\n", elapsed)
+	}(time.Now())
+
 	// default log format to UTC
 	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
 

@@ -66,17 +66,17 @@ func (s *Store) genGasGiant(star *Star, orbit int) *Planet {
 	if 3 <= orbit && orbit <= 5 {
 		switch rand.Intn(21) {
 		case 0, 1, 2, 3, 4, 5:
-			planet.HabitabilityNo = rand.Intn(1)
+			planet.Details[0].HabitabilityNo = rand.Intn(1)
 		case 6, 7, 8, 9, 10:
-			planet.HabitabilityNo = rand.Intn(1) + rand.Intn(1)
+			planet.Details[0].HabitabilityNo = rand.Intn(1) + rand.Intn(1)
 		case 11, 12, 13, 14:
-			planet.HabitabilityNo = rand.Intn(2) + rand.Intn(1) + rand.Intn(1)
+			planet.Details[0].HabitabilityNo = rand.Intn(2) + rand.Intn(1) + rand.Intn(1)
 		case 15, 16, 17:
-			planet.HabitabilityNo = rand.Intn(2) + rand.Intn(2) + rand.Intn(1) + rand.Intn(1)
+			planet.Details[0].HabitabilityNo = rand.Intn(2) + rand.Intn(2) + rand.Intn(1) + rand.Intn(1)
 		case 18, 19:
-			planet.HabitabilityNo = rand.Intn(3) + rand.Intn(2) + rand.Intn(2) + rand.Intn(1) + rand.Intn(1)
+			planet.Details[0].HabitabilityNo = rand.Intn(3) + rand.Intn(2) + rand.Intn(2) + rand.Intn(1) + rand.Intn(1)
 		case 20:
-			planet.HabitabilityNo = rand.Intn(3) + rand.Intn(3) + rand.Intn(2) + rand.Intn(2) + rand.Intn(1) + rand.Intn(1)
+			planet.Details[0].HabitabilityNo = rand.Intn(3) + rand.Intn(3) + rand.Intn(2) + rand.Intn(2) + rand.Intn(1) + rand.Intn(1)
 		}
 	}
 
@@ -106,8 +106,8 @@ func (s *Store) genGasGiant(star *Star, orbit int) *Planet {
 func (s *Store) genHomeTerrestrial(star *Star, orbit int) *Planet {
 	efftn, endtn := &Turn{}, &Turn{Year: 9999, Quarter: 4}
 
-	planet := &Planet{Star: star, Kind: "terrestrial", OrbitNo: orbit, HomePlanet: true, HabitabilityNo: 25}
-	planet.Details = []*PlanetDetail{{Planet: planet, EffTurn: efftn, EndTurn: endtn}}
+	planet := &Planet{Star: star, Kind: "terrestrial", OrbitNo: orbit, HomePlanet: true}
+	planet.Details = []*PlanetDetail{{Planet: planet, EffTurn: efftn, EndTurn: endtn, HabitabilityNo: 25}}
 
 	nr := &NaturalResource{Planet: planet, Kind: "gold", YieldPct: 0.07, QtyInitial: 300_000}
 	nr.Details = []*NaturalResourceDetail{{NaturalResource: nr, EffTurn: efftn, EndTurn: endtn, QtyRemaining: nr.QtyInitial}}
@@ -167,17 +167,17 @@ func (s *Store) genTerrestrial(star *Star, orbit int) *Planet {
 	if orbit <= 5 {
 		switch rand.Intn(21) {
 		case 0, 1, 2, 3, 4, 5:
-			planet.HabitabilityNo = rand.Intn(3) + rand.Intn(2) + rand.Intn(1)
+			planet.Details[0].HabitabilityNo = rand.Intn(3) + rand.Intn(2) + rand.Intn(1)
 		case 6, 7, 8, 9, 10:
-			planet.HabitabilityNo = rand.Intn(4) + rand.Intn(3) + rand.Intn(2) + rand.Intn(1)
+			planet.Details[0].HabitabilityNo = rand.Intn(4) + rand.Intn(3) + rand.Intn(2) + rand.Intn(1)
 		case 11, 12, 13, 14:
-			planet.HabitabilityNo = rand.Intn(4) + rand.Intn(4) + rand.Intn(3) + rand.Intn(2) + rand.Intn(1)
+			planet.Details[0].HabitabilityNo = rand.Intn(4) + rand.Intn(4) + rand.Intn(3) + rand.Intn(2) + rand.Intn(1)
 		case 15, 16, 17:
-			planet.HabitabilityNo = rand.Intn(5) + rand.Intn(4) + rand.Intn(3) + rand.Intn(2) + rand.Intn(1)
+			planet.Details[0].HabitabilityNo = rand.Intn(5) + rand.Intn(4) + rand.Intn(3) + rand.Intn(2) + rand.Intn(1)
 		case 18, 19:
-			planet.HabitabilityNo = rand.Intn(6) + rand.Intn(5) + rand.Intn(4) + rand.Intn(3) + rand.Intn(2) + rand.Intn(1)
+			planet.Details[0].HabitabilityNo = rand.Intn(6) + rand.Intn(5) + rand.Intn(4) + rand.Intn(3) + rand.Intn(2) + rand.Intn(1)
 		case 20:
-			planet.HabitabilityNo = rand.Intn(7) + rand.Intn(6) + rand.Intn(5) + rand.Intn(4) + rand.Intn(3) + rand.Intn(2) + rand.Intn(1)
+			planet.Details[0].HabitabilityNo = rand.Intn(7) + rand.Intn(6) + rand.Intn(5) + rand.Intn(4) + rand.Intn(3) + rand.Intn(2) + rand.Intn(1)
 		}
 	}
 

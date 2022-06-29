@@ -46,10 +46,18 @@ type Game struct {
 	Name        string
 	Description string
 	CurrentTurn *Turn
-	Nations     []*Nation
-	Players     []*Player
-	Systems     []*System
-	Turns       []*Turn
+	Colonies    map[int]*ColonyOrShip
+	CorS        map[int]*ColonyOrShip
+	Nations     map[int]*Nation
+	Planets     map[int]*Planet
+	Players     map[int]*Player
+	Resources   map[int]*NaturalResource
+	Ships       map[int]*ColonyOrShip
+	Stars       map[int]*Star
+	Systems     map[int]*System
+	Turns       map[string]*Turn
+	Units       map[int]*Unit
+	Users       map[int]*User
 }
 
 // Turn is a single turn in the game
@@ -63,19 +71,19 @@ type Turn struct {
 
 // Player is a User's position in a Game
 type Player struct {
-	Game         *Game
-	Id           int
-	ControlledBy *User
-	SubjectOf    *Player // set if the player is a viceroy or regent
-	Details      []*PlayerDetail
+	Game    *Game
+	Id      int
+	Details []*PlayerDetail
 }
 
 // PlayerDetail is the handle of the player in the game
 type PlayerDetail struct {
-	Player  *Player
-	EffTurn *Turn // turn record becomes active
-	EndTurn *Turn // turn record ceases to be active
-	Handle  string
+	Player       *Player
+	EffTurn      *Turn // turn record becomes active
+	EndTurn      *Turn // turn record ceases to be active
+	Handle       string
+	ControlledBy *User
+	SubjectOf    *Player // set if the player is a viceroy or regent
 }
 
 // Nation is a single nation in the game.
@@ -109,18 +117,17 @@ type NationDetail struct {
 
 // NationSkills are the skills and tech levels of the nation.
 type NationSkills struct {
-	Nation             *Nation
-	EffTurn            *Turn // turn record becomes active
-	EndTurn            *Turn // turn record ceases to be active
-	ResearchPointsPool int   //
-	Biology            int   // not used currently
-	Bureaucracy        int   // not used currently
-	Gravitics          int   // not used currently
-	LifeSupport        int   // not used currently
-	Manufacturing      int   // not used currently
-	Military           int   // not used currently
-	Mining             int   // not used currently
-	Shields            int   // not used currently
+	Nation        *Nation
+	EffTurn       *Turn // turn record becomes active
+	EndTurn       *Turn // turn record ceases to be active
+	Biology       int   // not used currently
+	Bureaucracy   int   // not used currently
+	Gravitics     int   // not used currently
+	LifeSupport   int   // not used currently
+	Manufacturing int   // not used currently
+	Military      int   // not used currently
+	Mining        int   // not used currently
+	Shields       int   // not used currently
 }
 
 // NationResearch is the tech level and research level of the nation.
@@ -163,24 +170,24 @@ type Star struct {
 
 // Planet is a non-empty orbit.
 type Planet struct {
-	Star           *Star
-	Id             int    // unique identifier
-	OrbitNo        int    // 1..10
-	Kind           string // asteroid belt, gas giant, terrestrial
-	HabitabilityNo int
-	HomePlanet     bool
-	Deposits       []*NaturalResource
-	Details        []*PlanetDetail
-	Colonies       []*ColonyOrShip // colonies on or orbiting the planet
-	Ships          []*ColonyOrShip // ships orbiting the planet
+	Star       *Star
+	Id         int    // unique identifier
+	OrbitNo    int    // 1..10
+	Kind       string // asteroid belt, gas giant, terrestrial
+	HomePlanet bool
+	Deposits   []*NaturalResource
+	Details    []*PlanetDetail
+	Colonies   []*ColonyOrShip // colonies on or orbiting the planet
+	Ships      []*ColonyOrShip // ships orbiting the planet
 }
 
 // PlanetDetail contains items that change from turn to turn
 type PlanetDetail struct {
-	Planet       *Planet
-	EffTurn      *Turn   // turn record becomes active
-	EndTurn      *Turn   // turn record ceases to be active
-	ControlledBy *Nation // nation currently controlling the planet
+	Planet         *Planet
+	EffTurn        *Turn   // turn record becomes active
+	EndTurn        *Turn   // turn record ceases to be active
+	ControlledBy   *Nation // nation currently controlling the planet
+	HabitabilityNo int
 }
 
 // NaturalResource is a deposit of fuel, gold, metal, or non-metals on a planet
@@ -206,12 +213,15 @@ type NaturalResourceDetail struct {
 // ColonyOrShip is either a colony or a ship.
 // Ships may change orbits; colonies may not.
 type ColonyOrShip struct {
+	Game       *Game
+	Planet     *Planet
 	Id         int    // unique identifier
 	MSN        int    // manufacturer serial number; in game id for the colony or ship
 	Kind       string // surface colony, enclosed colony, orbital colony, ship
 	HomeColony bool
 	BuiltBy    *Nation
 	Details    []*CSDetail
+	Locations  []*CSLocation
 	Hull       []*CSHull
 	Inventory  []*CSInventory
 	Population []*CSPopulation
@@ -227,10 +237,17 @@ type CSDetail struct {
 	CS           *ColonyOrShip
 	EffTurn      *Turn // turn record becomes active
 	EndTurn      *Turn // turn record ceases to be active
-	Location     *Planet
 	Name         string
 	TechLevel    int
 	ControlledBy *Player
+}
+
+// CSLocation is the location of the colony or ship and may change from turn to turn
+type CSLocation struct {
+	CS       *ColonyOrShip
+	EffTurn  *Turn // turn record becomes active
+	EndTurn  *Turn // turn record ceases to be active
+	Location *Planet
 }
 
 // CSHull is the infrastructure and components of the ship or colony.
@@ -240,6 +257,7 @@ type CSHull struct {
 	EffTurn         *Turn // turn record becomes active
 	EndTurn         *Turn // turn record ceases to be active
 	Unit            *Unit
+	TechLevel       int
 	QtyOperational  int
 	MassOperational int
 	TotalMass       int
@@ -251,6 +269,7 @@ type CSInventory struct {
 	EffTurn         *Turn // turn record becomes active
 	EndTurn         *Turn // turn record ceases to be active
 	Unit            *Unit
+	TechLevel       int
 	QtyOperational  int
 	MassOperational int
 	QtyStowed       int

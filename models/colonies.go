@@ -31,10 +31,15 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 		CS:           c,
 		EffTurn:      effTurn,
 		EndTurn:      endTurn,
-		Location:     planet,
 		TechLevel:    1,
 		Name:         "Not Named",
 		ControlledBy: player,
+	}}
+	c.Locations = []*CSLocation{{
+		CS:       c,
+		EffTurn:  effTurn,
+		EndTurn:  endTurn,
+		Location: planet,
 	}}
 
 	// create hull
@@ -268,10 +273,15 @@ func (s *Store) genHomeOrbitalColony(no int, planet *Planet, player *Player) *Co
 		CS:           c,
 		EffTurn:      effTurn,
 		EndTurn:      endTurn,
-		Location:     planet,
 		TechLevel:    1,
 		Name:         "Not Named",
 		ControlledBy: player,
+	}}
+	c.Locations = []*CSLocation{{
+		CS:       c,
+		EffTurn:  effTurn,
+		EndTurn:  endTurn,
+		Location: planet,
 	}}
 
 	// create hull

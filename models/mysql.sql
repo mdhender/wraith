@@ -16,8 +16,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-drop table if exists resource_dtl;
-
 drop table if exists cors_factory_group_stages;
 drop table if exists cors_factory_group_units;
 drop table if exists cors_factory_group;
@@ -36,14 +34,20 @@ drop table if exists cors_rations;
 drop table if exists cors_inventory;
 drop table if exists cors_hull;
 drop table if exists cors_dtl;
+
+drop table if exists resource_dtl;
+
 drop table if exists cors;
 
 drop table if exists resources;
+
+drop table if exists planet_dtl;
 drop table if exists planets;
 
 drop table if exists stars;
 drop table if exists systems;
 
+drop table if exists nation_research;
 drop table if exists nation_skills;
 drop table if exists nation_dtl;
 drop table if exists nations;
@@ -119,28 +123,28 @@ create table turns
 
 create table players
 (
-    id            int not null auto_increment,
-    game_id       int not null,
-    controlled_by int comment 'user controlling the player',
-    subject_of    int comment 'set if player is regent or viceroy',
+    id      int not null auto_increment,
+    game_id int not null,
     primary key (id),
     foreign key (game_id) references games (id)
+        on delete cascade
+);
+
+create table player_dtl
+(
+    player_id     int         not null,
+    efftn         varchar(6)  not null,
+    endtn         varchar(6)  not null,
+    handle        varchar(32) not null comment 'name in the game',
+    controlled_by int comment 'user controlling the player',
+    subject_of    int comment 'set if player is regent or viceroy',
+    primary key (player_id, efftn),
+    foreign key (player_id) references players (id)
         on delete cascade,
     foreign key (controlled_by) references users (id)
         on delete set null,
     foreign key (subject_of) references players (id)
         on delete set null
-);
-
-create table player_dtl
-(
-    player_id int         not null,
-    efftn     varchar(6)  not null,
-    endtn     varchar(6)  not null,
-    handle    varchar(32) not null comment 'name in the game',
-    primary key (player_id, efftn),
-    foreign key (player_id) references players (id)
-        on delete cascade
 );
 
 
@@ -173,21 +177,32 @@ create table nation_dtl
         on delete set null
 );
 
-create table nation_skills
+create table nation_research
 (
     nation_id            int        not null,
     efftn                varchar(6) not null,
     endtn                varchar(6) not null,
     tech_level           int        not null,
     research_points_pool int        not null,
-    biology              int        not null comment 'not used currently',
-    bureaucracy          int        not null comment 'not used currently',
-    gravitics            int        not null comment 'not used currently',
-    life_support         int        not null comment 'not used currently',
-    manufacturing        int        not null comment 'not used currently',
-    military             int        not null comment 'not used currently',
-    mining               int        not null comment 'not used currently',
-    shields              int        not null comment 'not used currently',
+    primary key (nation_id),
+    unique key (nation_id, efftn),
+    foreign key (nation_id) references nations (id)
+        on delete cascade
+);
+
+create table nation_skills
+(
+    nation_id     int        not null,
+    efftn         varchar(6) not null,
+    endtn         varchar(6) not null,
+    biology       int        not null,
+    bureaucracy   int        not null,
+    gravitics     int        not null,
+    life_support  int        not null,
+    manufacturing int        not null,
+    military      int        not null,
+    mining        int        not null,
+    shields       int        not null,
     primary key (nation_id),
     unique key (nation_id, efftn),
     foreign key (nation_id) references nations (id)
@@ -222,15 +237,28 @@ create table stars
 
 create table planets
 (
-    id              int         not null auto_increment,
-    star_id         int         not null,
-    orbit_no        int         not null comment 'range 1..10',
-    kind            varchar(13) not null comment 'kind of planet',
-    habitability_no int         not null,
-    home_planet     varchar(1)  not null,
+    id          int         not null auto_increment,
+    star_id     int         not null,
+    orbit_no    int         not null comment 'range 1..10',
+    kind        varchar(13) not null comment 'kind of planet',
+    home_planet varchar(1)  not null,
     primary key (id),
     foreign key (star_id) references stars (id)
         on delete cascade
+);
+
+create table planet_dtl
+(
+    planet_id       int        not null,
+    efftn           varchar(6) not null,
+    endtn           varchar(6) not null,
+    controlled_by   int comment 'nation controlling planet',
+    habitability_no int        not null,
+    primary key (planet_id, efftn),
+    foreign key (planet_id) references planets (id)
+        on delete cascade,
+    foreign key (controlled_by) references nations (id)
+        on delete set null
 );
 
 create table resources
@@ -249,15 +277,12 @@ create table resources
 
 create table cors
 (
-    id        int         not null auto_increment,
-    game_id   int         not null,
-    msn       int         not null comment 'unique hull number',
-    kind      varchar(13) not null,
-    planet_id int         not null,
+    id      int         not null auto_increment,
+    game_id int         not null,
+    msn     int         not null comment 'unique hull number',
+    kind    varchar(13) not null,
     primary key (id),
-    unique key (game_id, msn),
-    foreign key (planet_id) references planets (id)
-        on delete cascade
+    unique key (game_id, msn)
 ) comment 'contains colonies and ships';
 
 create table cors_dtl
@@ -266,12 +291,26 @@ create table cors_dtl
     efftn         varchar(6)  not null,
     endtn         varchar(6)  not null,
     name          varchar(32) not null comment 'name of colony or ship',
+    tech_level    int         not null comment 'tech level of colony or ship',
     controlled_by int comment 'player controlling the colony or ship',
     primary key (cors_id, efftn),
     foreign key (cors_id) references cors (id)
         on delete cascade,
     foreign key (controlled_by) references players (id)
         on delete set null
+);
+
+create table cors_loc
+(
+    cors_id   int        not null,
+    efftn     varchar(6) not null,
+    endtn     varchar(6) not null,
+    planet_id int        not null comment 'location of colony or ship',
+    primary key (cors_id, efftn),
+    foreign key (cors_id) references cors (id)
+        on delete cascade,
+    foreign key (planet_id) references planets (id)
+        on delete cascade
 );
 
 create table cors_hull
