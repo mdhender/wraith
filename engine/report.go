@@ -125,15 +125,17 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 			//			cs.Population[0].Deaths = cs.Population[0].Births
 			//		}
 
-			_, _ = p.Fprintf(w, "\n  Crew/Team________  Units___________\n")
+			_, _ = p.Fprintf(w, "\n")
+			_, _ = p.Fprintf(w, "  Crew/Team________  Units___________\n")
 			_, _ = p.Fprintf(w, "  Construction Crew  %16d\n", cs.Population[0].QtyConstructionCrew)
 			_, _ = p.Fprintf(w, "  Spy Team           %16d\n", cs.Population[0].QtySoldier)
-
-			_, _ = p.Fprintf(w, "\n  Changes__________  Population_Units\n")
+			_, _ = p.Fprintf(w, "\n")
+			_, _ = p.Fprintf(w, "  Changes__________  Population_Units\n")
 			_, _ = p.Fprintf(w, "  Births             %16d\n", cs.Population[0].Births)
 			_, _ = p.Fprintf(w, "  Non-Combat Deaths  %16d\n", cs.Population[0].Deaths)
 
-			_, _ = p.Fprintf(w, "\n  Components ----------------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "\n")
+			_, _ = p.Fprintf(w, "  Components ----------------------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "  Item-TL   Operational          MUs         EMUs  SUs_Required\n")
 			muOper, emuOper, suOper := 0, 0, 0
 			for _, item := range cs.Hull {
@@ -159,7 +161,8 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 
 			availSUs := 0
 			muCargo, emuCargo, suCargo := 0, 0, 0
-			_, _ = p.Fprintf(w, "\n  Cargo ---------------------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "\n")
+			_, _ = p.Fprintf(w, "  Cargo ---------------------------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "  Item-TL   Operational        Stowed      Total Qty           MUs          EMUs   SUs_Required\n")
 			for _, item := range cs.Inventory {
 				mu := totalMass(item.Unit, item.QtyOperational, item.QtyStowed)
@@ -181,18 +184,26 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 			}
 			_, _ = p.Fprintf(w, "   Totals  ------------  ------------  -------------  %12d  %12d  %13d\n", muCargo, emuCargo, suCargo)
 
-			_, _ = p.Fprintf(w, "\nFarming --------------------------------------------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Group  Orders          Farms  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
+			_, _ = p.Fprintf(w, "\n")
+			_, _ = p.Fprintf(w, "  Farming --------------------------------------------------------------------------------------------------------\n")
 			for _, group := range cs.Farms {
+				_, _ = p.Fprintf(w, "  Group: %2d  Orders: %s\n", group.No, group.Unit.Code)
 				for _, unit := range group.Units {
 					fuelPerTurn := int(math.Ceil(float64(unit.QtyOperational) * 0.5))
 					proLabor, uskLabor := 1*unit.QtyOperational, 3*unit.QtyOperational
-					_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-						group.No, unit.Unit.Code, unit.QtyOperational, unit.Unit.TechLevel, fuelPerTurn, proLabor, uskLabor, group.Stages[0].QtyStage1, group.Stages[0].QtyStage2, group.Stages[0].QtyStage3)
+					_, _ = p.Fprintf(w, "     Input:  Farms_     Quantity  Professionals    Unskilled    FUEL/Turn\n")
+					_, _ = p.Fprintf(w, "             %6s  %11d  %11d    %11d  %11d\n",
+						unit.Unit.Code, unit.QtyOperational, proLabor, uskLabor, fuelPerTurn)
+				}
+				for _, stage := range group.Stages {
+					_, _ = p.Fprintf(w, "    Output:  Unit__      Stage_1      Stage_2        Stage_3\n")
+					_, _ = p.Fprintf(w, "             %6s  %11d  %11d    %11d\n",
+						group.Unit.Code, stage.QtyStage1, stage.QtyStage2, stage.QtyStage3)
 				}
 			}
 
-			_, _ = p.Fprintf(w, "\nMining ---------------------------------------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "\n")
+			_, _ = p.Fprintf(w, "  Mining ---------------------------------------------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "  Group  Orders          Mines  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
 			for _, group := range cs.Mines {
 				for _, unit := range group.Units {
@@ -202,6 +213,40 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 						group.No, group.Deposit.Unit.Code, unit.QtyOperational, unit.Unit.TechLevel, fuelPerTurn, proLabor, uskLabor, group.Stages[0].QtyStage1, group.Stages[0].QtyStage2, group.Stages[0].QtyStage3)
 				}
 			}
+
+			_, _ = p.Fprintf(w, "\n")
+			_, _ = p.Fprintf(w, "  Production -----------------------------------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "  Input ----\n")
+			_, _ = p.Fprintf(w, "  Group  Orders      Factories  TL  Ingest/Turn    METS/Unit    NMTS/Unit    METS/Turn    NMTS/Turn   Units/Turn\n")
+			for _, group := range cs.Factories {
+				for _, unit := range group.Units {
+					//fuelPerTurn := int(math.Ceil(float64(unit.QtyOperational) * 0.5))
+					u := game.Units[1]
+
+					metsUnit, nmetUnit := 1.0, 1.0 //models.Unit{Name: group.Name}.RawMaterials()
+
+					// quantity is units per turn
+					qty := int(math.Floor(float64(99 /*u.IngestPerTurn()*/))) // / (metsUnit + nmetUnit)))
+					metsTurn := int(metsUnit * float64(qty))
+					nmetTurn := int(nmetUnit * float64(qty))
+
+					_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d    %9.3f    %9.3f  %11d  %11d  %11d\n",
+						group.Id, group.Unit.Code, unit.QtyOperational, u.TechLevel, 0 /*u.IngestPerTurn()*/, metsUnit, nmetUnit, metsTurn, nmetTurn, qty)
+				}
+			}
+
+			_, _ = p.Fprintf(w, "  Output ---\n")
+			_, _ = p.Fprintf(w, "  Group  Orders      Factories  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
+			//		for _, group := range cs.FactoryGroups {
+			//			for _, unit := range group.Units {
+			//				u := ReportUnit{Name: "factory", TechLevel: unit.TechLevel, Qty: unit.Qty}
+			//
+			//				proLabor, uskLabor := u.LaborPerTurn()
+			//
+			//				_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
+			//					group.Id, group.Code(), unit.Qty, unit.TechLevel, u.Qty*u.FuelPerTurn(), proLabor, uskLabor, unit.Stages[0], unit.Stages[1], unit.Stages[2])
+			//			}
+			//		}
 
 			//		//_, _ = p.Fprintf(w, "\nProduction -----------------------------------------------------------------------------------------------------\n")
 			//		//_, _ = p.Fprintf(w, "Input ----\n")
@@ -253,38 +298,6 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 			//		//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
 			//		//		group, "CNGD", fact.Qty, techLevel, int(math.Ceil(float64(fact.Qty)*0.5)), pro, usk, qty, qty, qty)
 			//		//}
-
-			_, _ = p.Fprintf(w, "\nProduction -----------------------------------------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "Input ----\n")
-			_, _ = p.Fprintf(w, "  ReportGroup  Orders      Factories  TL  Ingest/Turn    METS/ReportUnit    NMTS/ReportUnit    METS/Turn    NMTS/Turn   Units/Turn\n")
-			//		for _, group := range cs.FactoryGroups {
-			//			for _, unit := range group.Units {
-			//				u := ReportUnit{Name: "factory", TechLevel: unit.TechLevel, Qty: unit.Qty}
-			//
-			//				metsUnit, nmetUnit := ReportUnit{Name: group.Name}.RawMaterials()
-			//
-			//				// quantity is units per turn
-			//				qty := int(math.Floor(float64(u.IngestPerTurn()) / (metsUnit + nmetUnit)))
-			//				metsTurn := int(metsUnit * float64(qty))
-			//				nmetTurn := int(nmetUnit * float64(qty))
-			//
-			//				_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d    %9.3f    %9.3f  %11d  %11d  %11d\n",
-			//					group.Id, group.Code(), u.Qty, u.TechLevel, u.IngestPerTurn(), metsUnit, nmetUnit, metsTurn, nmetTurn, qty)
-			//			}
-			//		}
-
-			_, _ = p.Fprintf(w, "Output ---\n")
-			_, _ = p.Fprintf(w, "  ReportGroup  Orders      Factories  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-			//		for _, group := range cs.FactoryGroups {
-			//			for _, unit := range group.Units {
-			//				u := ReportUnit{Name: "factory", TechLevel: unit.TechLevel, Qty: unit.Qty}
-			//
-			//				proLabor, uskLabor := u.LaborPerTurn()
-			//
-			//				_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-			//					group.Id, group.Code(), unit.Qty, unit.TechLevel, u.Qty*u.FuelPerTurn(), proLabor, uskLabor, unit.Stages[0], unit.Stages[1], unit.Stages[2])
-			//			}
-			//		}
 
 			_, _ = p.Fprintf(w, "\nEspionage --------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "  No activity.\n")

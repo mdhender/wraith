@@ -190,6 +190,7 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 		EndTurn: endTurn,
 		Deposit: planet.Deposits[0],
 	}
+	qtyUnits, qtyProduced = 1_000, 1_000*100/4 // todo: yield
 	miningGroup.Units = []*MiningGroupUnits{{
 		Group:   miningGroup,
 		EffTurn: effTurn,
@@ -198,14 +199,14 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 			Code:      "MIN-1",
 			TechLevel: 1,
 		},
-		QtyOperational: 1_000,
+		QtyOperational: qtyUnits,
 	}}
 	miningGroup.Stages = []*MiningGroupStages{{
 		Group:     miningGroup,
 		Turn:      effTurn,
-		QtyStage1: 1_000,
-		QtyStage2: 1_000,
-		QtyStage3: 1_000,
+		QtyStage1: qtyProduced,
+		QtyStage2: qtyProduced,
+		QtyStage3: qtyProduced,
 		QtyStage4: 0,
 	}}
 	c.Mines = append(c.Mines, miningGroup)
@@ -217,6 +218,7 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 		EndTurn: endTurn,
 		Deposit: planet.Deposits[1],
 	}
+	qtyUnits, qtyProduced = 50_000, 50_000*100/4
 	miningGroup.Units = []*MiningGroupUnits{{
 		Group:   miningGroup,
 		EffTurn: effTurn,
@@ -225,14 +227,14 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 			Code:      "MIN-1",
 			TechLevel: 1,
 		},
-		QtyOperational: 50_000,
+		QtyOperational: qtyUnits,
 	}}
 	miningGroup.Stages = []*MiningGroupStages{{
 		Group:     miningGroup,
 		Turn:      effTurn,
-		QtyStage1: 1_250_000,
-		QtyStage2: 1_250_000,
-		QtyStage3: 1_250_000,
+		QtyStage1: qtyProduced,
+		QtyStage2: qtyProduced,
+		QtyStage3: qtyProduced,
 		QtyStage4: 0,
 	}}
 	c.Mines = append(c.Mines, miningGroup)
@@ -244,6 +246,7 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 		EndTurn: endTurn,
 		Deposit: planet.Deposits[2],
 	}
+	qtyUnits, qtyProduced = 100_000, 100_000*100/4
 	miningGroup.Units = []*MiningGroupUnits{{
 		Group:   miningGroup,
 		EffTurn: effTurn,
@@ -252,14 +255,14 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 			Code:      "MIN-1",
 			TechLevel: 1,
 		},
-		QtyOperational: 100_000,
+		QtyOperational: qtyUnits,
 	}}
 	miningGroup.Stages = []*MiningGroupStages{{
 		Group:     miningGroup,
 		Turn:      effTurn,
-		QtyStage1: 2_500_000,
-		QtyStage2: 2_500_000,
-		QtyStage3: 2_500_000,
+		QtyStage1: qtyProduced,
+		QtyStage2: qtyProduced,
+		QtyStage3: qtyProduced,
 		QtyStage4: 0,
 	}}
 	c.Mines = append(c.Mines, miningGroup)
@@ -271,6 +274,7 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 		EndTurn: endTurn,
 		Deposit: planet.Deposits[3],
 	}
+	qtyUnits, qtyProduced = 100_000, 100_000*100/4
 	miningGroup.Units = []*MiningGroupUnits{{
 		Group:   miningGroup,
 		EffTurn: effTurn,
@@ -279,14 +283,14 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 			Code:      "MIN-1",
 			TechLevel: 1,
 		},
-		QtyOperational: 100_000,
+		QtyOperational: qtyUnits,
 	}}
 	miningGroup.Stages = []*MiningGroupStages{{
 		Group:     miningGroup,
 		Turn:      effTurn,
-		QtyStage1: 2_500_000,
-		QtyStage2: 2_500_000,
-		QtyStage3: 2_500_000,
+		QtyStage1: qtyProduced,
+		QtyStage2: qtyProduced,
+		QtyStage3: qtyProduced,
 		QtyStage4: 0,
 	}}
 	c.Mines = append(c.Mines, miningGroup)
