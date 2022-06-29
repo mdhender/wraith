@@ -45,10 +45,10 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 	// create hull
 	for _, unit := range []unitValues{
 		{code: "STUN", name: "structural", tl: 0, oq: 87_500_000},
-		{code: "ANM", name: "anti-missile", tl: 1, oq: 25_000},
-		{code: "MSL", name: "missile-launcher", tl: 1, oq: 8_000},
-		{code: "MSS", name: "missile", tl: 1, oq: 240_000},
-		{code: "SNR", name: "sensor", tl: 1, oq: 50},
+		{code: "ANM-1", name: "anti-missile", tl: 1, oq: 25_000},
+		{code: "MSL-1", name: "missile-launcher", tl: 1, oq: 8_000},
+		{code: "MSS-1", name: "missile", tl: 1, oq: 240_000},
+		{code: "SNR-1", name: "sensor", tl: 1, oq: 50},
 	} {
 		c.Hull = append(c.Hull, &CSHull{
 			CS:      c,
@@ -65,19 +65,19 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 
 	// add cargo
 	for _, unit := range []unitValues{
-		{code: "ASC", name: "assault-craft", tl: 1, oq: 6_750, sq: 0},
-		{code: "ASW", name: "assault-weapon", tl: 1, oq: 10_000, sq: 0},
+		{code: "ASC-1", name: "assault-craft", tl: 1, oq: 6_750, sq: 0},
+		{code: "ASW-1", name: "assault-weapon", tl: 1, oq: 10_000, sq: 0},
 		{code: "CNGD", name: "consumer-goods", tl: 0, oq: 0, sq: 2_000_000},
-		{code: "FCT", name: "factory", tl: 1, oq: 275_000, sq: 3_750_000},
+		{code: "FCT-1", name: "factory", tl: 1, oq: 275_000, sq: 3_750_000},
 		{code: "FOOD", name: "food", tl: 0, oq: 0, sq: 7_500_000},
-		{code: "FRM", name: "farm", tl: 1, oq: 170_000, sq: 0},
+		{code: "FRM-1", name: "farm", tl: 1, oq: 170_000, sq: 0},
 		{code: "FUEL", name: "fuel", tl: 0, oq: 0, sq: 5_000_000},
-		{code: "MIN", name: "mine", tl: 1, oq: 100_000, sq: 30_000},
+		{code: "MIN-1", name: "mine", tl: 1, oq: 100_000, sq: 30_000},
 		{code: "MTLS", name: "metallics", tl: 0, oq: 100_000, sq: 0},
 		{code: "MLSP", name: "military-supplies", tl: 0, oq: 2_000_000},
 		{code: "NMTS", name: "non-metallics", tl: 0, oq: 100_000, sq: 0},
 		{code: "STUN", name: "structural", tl: 0, oq: 0, sq: 150_000},
-		{code: "TPT", name: "transport", tl: 1, oq: 5_000, sq: 0},
+		{code: "TPT-1", name: "transport", tl: 1, oq: 5_000, sq: 0},
 	} {
 		c.Inventory = append(c.Inventory, &CSInventory{
 			CS:      c,
@@ -139,7 +139,7 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 		EffTurn: effTurn,
 		EndTurn: endTurn,
 		Unit: &Unit{
-			Code:      "FCT",
+			Code:      "FCT-1",
 			TechLevel: 1,
 		},
 		QtyOperational: 275_000,
@@ -166,7 +166,7 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 		EffTurn: effTurn,
 		EndTurn: endTurn,
 		Unit: &Unit{
-			Code:      "MIN",
+			Code:      "MIN-1",
 			TechLevel: 1,
 		},
 		QtyOperational: 1_000,
@@ -193,7 +193,7 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 		EffTurn: effTurn,
 		EndTurn: endTurn,
 		Unit: &Unit{
-			Code:      "MIN",
+			Code:      "MIN-1",
 			TechLevel: 1,
 		},
 		QtyOperational: 50_000,
@@ -220,7 +220,7 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 		EffTurn: effTurn,
 		EndTurn: endTurn,
 		Unit: &Unit{
-			Code:      "MIN",
+			Code:      "MIN-1",
 			TechLevel: 1,
 		},
 		QtyOperational: 100_000,
@@ -247,7 +247,7 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 		EffTurn: effTurn,
 		EndTurn: endTurn,
 		Unit: &Unit{
-			Code:      "MIN",
+			Code:      "MIN-1",
 			TechLevel: 1,
 		},
 		QtyOperational: 100_000,
@@ -286,8 +286,8 @@ func (s *Store) genHomeOrbitalColony(no int, planet *Planet, player *Player) *Co
 
 	// create hull
 	for _, unit := range []unitValues{
-		{code: "LSP", name: "life-support", tl: 1, oq: 2_000},
-		{code: "SNR", name: "sensor", tl: 1, oq: 5_000},
+		{code: "LSP-1", name: "life-support", tl: 1, oq: 2_000},
+		{code: "SNR-1", name: "sensor", tl: 1, oq: 5_000},
 		{code: "STUN", name: "structural", tl: 0, oq: 45_000_000},
 	} {
 		c.Hull = append(c.Hull, &CSHull{
@@ -308,11 +308,11 @@ func (s *Store) genHomeOrbitalColony(no int, planet *Planet, player *Player) *Co
 		{code: "CNGD", name: "consumer-goods", oq: 0, sq: 2_000},
 		{code: "FOOD", name: "food", tl: 0, oq: 0, sq: 500_000},
 		{code: "FUEL", name: "fuel", tl: 0, oq: 0, sq: 500_000},
-		{code: "HDR", name: "hyper-drive", tl: 1, oq: 0, sq: 500},
+		{code: "HDR-1", name: "hyper-drive", tl: 1, oq: 0, sq: 500},
 		{code: "LTSU", name: "light-structural", tl: 0, oq: 45_000_000, sq: 5_000},
 		{code: "MTLS", name: "metallics", tl: 0, oq: 0, sq: 100_000},
 		{code: "NMTS", name: "non-metallics", tl: 0, oq: 0, sq: 100_000},
-		{code: "SDR", name: "star-drive", tl: 1, oq: 0, sq: 250},
+		{code: "SDR-1", name: "star-drive", tl: 1, oq: 0, sq: 250},
 	} {
 		c.Inventory = append(c.Inventory, &CSInventory{
 			CS:      c,
@@ -372,7 +372,7 @@ func (s *Store) genHomeOrbitalColony(no int, planet *Planet, player *Player) *Co
 		EffTurn: effTurn,
 		EndTurn: endTurn,
 		Unit: &Unit{
-			Code:      "FCT",
+			Code:      "FCT-1",
 			TechLevel: 1,
 		},
 		QtyOperational: 5_000,

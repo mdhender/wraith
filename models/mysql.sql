@@ -68,11 +68,17 @@ drop table if exists units;
 
 create table units
 (
-    id    int         not null auto_increment,
-    code  varchar(5)  not null,
-    name  varchar(25) not null,
-    descr varchar(64) not null,
-    primary key (id)
+    id                     int         not null auto_increment,
+    code                   varchar(6)  not null comment 'code with tech level (if used)',
+    tech_level             int         not null,
+    name                   varchar(25) not null,
+    descr                  varchar(64) not null,
+    mass_per_unit          float       not null comment 'mass (in mass units) of a single unit',
+    volume_per_unit        float       not null comment 'volume (in enclosed mass units) of a single unit',
+    hudnut                 varchar(1)  not null default 'N' comment 'Y if unit can be disassembled for storage',
+    stowed_volume_per_unit float       not null,
+    primary key (id),
+    unique key (code, tech_level)
 );
 
 
@@ -514,61 +520,6 @@ create table resource_dtl
 #     SET NEW.handle_lower = lower(NEW.handle);
 #     SET NEW.email = lower(NEW.email);
 # END;
-
-insert into units (code, name, descr)
-values ('ANM', 'anti-missile', 'anti-missile');
-insert into units (code, name, descr)
-values ('ASC', 'assault-craft', 'assault-craft');
-insert into units (code, name, descr)
-values ('ASW', 'assault-weapon', 'assault-weapon');
-insert into units (code, name, descr)
-values ('AUT', 'automation', 'automation');
-insert into units (code, name, descr)
-values ('CNGD', 'consumer-goods', 'consumer-goods');
-insert into units (code, name, descr)
-values ('ESH', 'energy-shield', 'energy-shield');
-insert into units (code, name, descr)
-values ('EWP', 'energy-weapon', 'energy-weapon');
-insert into units (code, name, descr)
-values ('FCT', 'factory', 'factory');
-insert into units (code, name, descr)
-values ('FOOD', 'food', 'food');
-insert into units (code, name, descr)
-values ('FRM', 'farm', 'farm');
-insert into units (code, name, descr)
-values ('FUEL', 'fuel', 'fuel');
-insert into units (code, name, descr)
-values ('GOLD', 'gold', 'gold');
-insert into units (code, name, descr)
-values ('HDR', 'hyper-drive', 'hyper-drive');
-insert into units (code, name, descr)
-values ('LSP', 'life-support', 'life-support');
-insert into units (code, name, descr)
-values ('LTSU', 'light-structural', 'light-structural');
-insert into units (code, name, descr)
-values ('MIN', 'mine', 'mine');
-insert into units (code, name, descr)
-values ('MLR', 'military-robots', 'military-robots');
-insert into units (code, name, descr)
-values ('MLSP', 'military-supplies', 'military-supplies');
-insert into units (code, name, descr)
-values ('MSS', 'missile', 'missile');
-insert into units (code, name, descr)
-values ('MSL', 'missile-launcher', 'missile-launcher');
-insert into units (code, name, descr)
-values ('MTLS', 'metallics', 'metallics');
-insert into units (code, name, descr)
-values ('NMTS', 'non-metallics', 'non-metallics');
-insert into units (code, name, descr)
-values ('SDR', 'space-drive', 'space-drive');
-insert into units (code, name, descr)
-values ('SNR', 'sensor', 'sensor');
-insert into units (code, name, descr)
-values ('SLSU', 'super-light-structural', 'super-light-structural');
-insert into units (code, name, descr)
-values ('STUN', 'structural', 'structural');
-insert into units (code, name, descr)
-values ('TPT', 'transport', 'transport');
 
 insert into users (handle, hashed_secret)
 values ('nobody', '*nobody*');

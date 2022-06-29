@@ -53,16 +53,18 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 
 	// fetch units
 	game.Units = make(map[int]*Unit)
-	rows, err := tx.Query("select id, code, name, descr from units")
+	rows, err := tx.Query("select id, code, tech_level, name, descr, mass_per_unit, volume_per_unit, hudnut, stowed_volume_per_unit from units")
 	if err != nil {
 		return nil, fmt.Errorf("fetchGameByIdAsOf: %d: units: %w", gameId, err)
 	}
 	for rows.Next() {
+		var hudnut string
 		unit := &Unit{}
-		err := rows.Scan(&unit.Id, &unit.Code, &unit.Name, &unit.Description)
+		err := rows.Scan(&unit.Id, &unit.Code, &unit.TechLevel, &unit.Name, &unit.Description, &unit.MassPerUnit, &unit.VolumePerUnit, &hudnut, &unit.StowedVolumePerUnit)
 		if err != nil {
 			return nil, fmt.Errorf("fetchGameByIdAsOf: %d: units: %w", gameId, err)
 		}
+		unit.Hudnut = hudnut == "Y"
 		game.Units[unit.Id] = unit
 	}
 	log.Printf("fetchGameByIdAsOf: %d: units: fetched %d units\n", gameId, len(game.Units))

@@ -309,6 +309,8 @@ type CSPopulation struct {
 	QtyConstructionCrew int
 	QtySpyTeam          int
 	RebelPct            float64
+	Births              int
+	Deaths              int
 }
 
 // CSRations is the rations rate for the ship or colony.
@@ -415,14 +417,15 @@ type MiningGroupStages struct {
 
 // Unit is a thing in the game.
 type Unit struct {
-	Id           int // unique identifier
-	Code         string
-	TechLevel    int
-	Name         string
-	Description  string
-	Hudnut       bool    // true if unit can be disassembled for storage
-	Mass         float64 // mass (in mass units) of a single unit
-	EnclosedMass float64 // volume (in enclosed mass units) of a single unit
+	Id                  int // unique identifier
+	Code                string
+	TechLevel           int
+	Name                string
+	Description         string
+	MassPerUnit         float64 // mass (in mass units) of a single unit
+	VolumePerUnit       float64 // volume (in enclosed mass units) of a single unit
+	Hudnut              bool    // true if unit can be disassembled for storage
+	StowedVolumePerUnit float64 // half mass if unit is hudnut
 }
 
 // PlayerPosition maps json data into our users and players tables

@@ -109,20 +109,16 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 			colonyKind := fmt.Sprintf("%s COLONY", kind)
 			_, _ = p.Fprintf(w, "  Location: %s #%d    Tech: %2d  %14s: %-22s\n", system.Coords.String(), orbitNo, techLevel, colonyKind, name)
 
-			totalPay := func(pct float64) int {
-				return 0
-			}
-			totalRations := func(pct float64) int {
-				return 0
-			}
-
-			_, _ = p.Fprintf(w, "\n  People ------------------------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Group____________  Population_Units  Pay_____         CNGD/Turn  Ration__         FOOD/Turn\n")
-			_, _ = p.Fprintf(w, "  Professional       %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", cs.Population[0].QtyProfessional, cs.Pay[0].ProfessionalPct*100, totalPay(cs.Pay[0].ProfessionalPct), cs.Rations[0].ProfessionalPct*100, totalRations(cs.Rations[0].ProfessionalPct))
-			_, _ = p.Fprintf(w, "  Soldier            %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", cs.Population[0].QtySoldier, cs.Pay[0].SoldierPct*100, totalPay(cs.Pay[0].SoldierPct), cs.Rations[0].SoldierPct*100, totalRations(cs.Rations[0].SoldierPct))
-			_, _ = p.Fprintf(w, "  Unskilled          %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", cs.Population[0].QtyUnskilled, cs.Pay[0].UnskilledPct*100, totalPay(cs.Pay[0].UnskilledPct), cs.Rations[0].UnskilledPct*100, totalRations(cs.Rations[0].UnskilledPct))
-			_, _ = p.Fprintf(w, "  Unemployed         %16d  %7.3f%%  %16d  %7.3f%%  %16d\n", cs.Population[0].QtyUnemployed, cs.Pay[0].UnemployedPct*100, totalPay(cs.Pay[0].UnemployedPct), cs.Rations[0].UnemployedPct*100, totalRations(cs.Rations[0].UnemployedPct))
-			//_, _ = p.Fprintf(w, "  ----------------   %16d  --------  %16d  --------  %16d\n", cs.Population[0].TotalPopulation(), cs.Population[0].TotalPay(), cs.Population[0].TotalRation())
+			_, _ = p.Fprintf(w, "\n")
+			_, _ = p.Fprintf(w, "  Group____________  Population_Units  Pay_____  Rations_         CNGD/Turn         FOOD/Turn\n")
+			_, _ = p.Fprintf(w, "  Professional       %16d  %7.3f%%  %7.3f%%  %16d  %16d\n", cs.Population[0].QtyProfessional, cs.Pay[0].ProfessionalPct*100, cs.Rations[0].ProfessionalPct*100, totalPay("PRO", cs.Pay[0].ProfessionalPct, cs.Population[0].QtyProfessional), totalRations("PRO", cs.Rations[0].ProfessionalPct, cs.Population[0].QtyProfessional))
+			_, _ = p.Fprintf(w, "  Soldier            %16d  %7.3f%%  %7.3f%%  %16d  %16d\n", cs.Population[0].QtySoldier, cs.Pay[0].SoldierPct*100, cs.Rations[0].SoldierPct*100, totalPay("SLD", cs.Pay[0].SoldierPct, cs.Population[0].QtySoldier), totalRations("SLD", cs.Rations[0].SoldierPct, cs.Population[0].QtySoldier))
+			_, _ = p.Fprintf(w, "  Unskilled          %16d  %7.3f%%  %7.3f%%  %16d  %16d\n", cs.Population[0].QtyUnskilled, cs.Pay[0].UnskilledPct*100, cs.Rations[0].UnskilledPct*100, totalPay("USK", cs.Pay[0].UnskilledPct, cs.Population[0].QtyUnskilled), totalRations("USK", cs.Rations[0].UnskilledPct, cs.Population[0].QtyUnskilled))
+			_, _ = p.Fprintf(w, "  Unemployed         %16d  %7.3f%%  %7.3f%%  %16d  %16d\n", cs.Population[0].QtyUnemployed, cs.Pay[0].UnemployedPct*100, cs.Rations[0].UnemployedPct*100, totalPay("UEM", cs.Pay[0].UnemployedPct, cs.Population[0].QtyUnemployed), totalRations("UEM", cs.Rations[0].UnemployedPct, cs.Population[0].QtyUnemployed))
+			tPop := cs.Population[0].QtyProfessional + cs.Population[0].QtySoldier + cs.Population[0].QtyUnskilled + cs.Population[0].QtyUnemployed
+			tPay := totalPay("PRO", cs.Pay[0].ProfessionalPct, cs.Population[0].QtyProfessional) + totalPay("SLD", cs.Pay[0].SoldierPct, cs.Population[0].QtySoldier) + totalPay("USK", cs.Pay[0].UnskilledPct, cs.Population[0].QtyUnskilled) + totalPay("UEM", cs.Pay[0].UnemployedPct, cs.Population[0].QtyUnemployed)
+			tRations := totalRations("PRO", cs.Rations[0].ProfessionalPct, cs.Population[0].QtyProfessional) + totalRations("SLD", cs.Rations[0].SoldierPct, cs.Population[0].QtySoldier) + totalRations("USK", cs.Rations[0].UnskilledPct, cs.Population[0].QtyUnskilled) + totalRations("UEM", cs.Rations[0].UnemployedPct, cs.Population[0].QtyUnemployed)
+			_, _ = p.Fprintf(w, "  ----------------   %16d  --------  --------  %16d  %16d\n", tPop, tPay, tRations)
 
 			//		if cs.Population[0].Births == 0 && cs.Population[0].Deaths == 0 {
 			//			cs.Population[0].Births = cs.Population[0].TotalPopulation() / 1600
@@ -130,81 +126,60 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 			//		}
 
 			_, _ = p.Fprintf(w, "\n  Crew/Team________  Units___________\n")
-			//		_, _ = p.Fprintf(w, "  Construction Crew  %16d\n", cs.Population[0].CNW)
-			//		_, _ = p.Fprintf(w, "  Spy Team           %16d\n", cs.Population[0].SPY)
+			_, _ = p.Fprintf(w, "  Construction Crew  %16d\n", cs.Population[0].QtyConstructionCrew)
+			_, _ = p.Fprintf(w, "  Spy Team           %16d\n", cs.Population[0].QtySoldier)
 
 			_, _ = p.Fprintf(w, "\n  Changes__________  Population_Units\n")
-			//		_, _ = p.Fprintf(w, "  Births             %16d\n", cs.Population[0].Births)
-			//		_, _ = p.Fprintf(w, "  Non-Combat Deaths  %16d\n", cs.Population[0].Deaths)
+			_, _ = p.Fprintf(w, "  Births             %16d\n", cs.Population[0].Births)
+			_, _ = p.Fprintf(w, "  Non-Combat Deaths  %16d\n", cs.Population[0].Deaths)
 
 			_, _ = p.Fprintf(w, "\n  Components ----------------------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Item-TL     Quantity          MUs         EMUs  SUs_Required\n")
+			_, _ = p.Fprintf(w, "  Item-TL   Operational          MUs         EMUs  SUs_Required\n")
+			muOper, emuOper, suOper := 0, 0, 0
 			for _, item := range cs.Hull {
-				_, _ = p.Fprintf(w, "  %7s  %11d  %11d  %11d\n", fmt.Sprintf("%s-%d", item.Unit.Code, item.TechLevel), item.QtyOperational, item.MassOperational, int(math.Ceil(item.Unit.EnclosedMass*float64(item.QtyOperational))))
+				mu := totalMass(item.Unit, item.QtyOperational, 0)
+				var emu, su int
+				if item.Unit.Code == "STUN" || item.Unit.Code == "LTSU" || item.Unit.Code == "SLSU" {
+					// hull structures shouldn't require emu
+				} else {
+					emu = totalVolume(item.Unit, item.QtyOperational, 0)
+					switch cs.Kind {
+					case "open":
+						su = emu * 1
+					case "enclosed":
+						su = emu * 5
+					case "orbital":
+						su = emu * 10
+					}
+				}
+				muOper, emuOper, suOper = muOper+mu, emuOper+emu, suOper+su
+				_, _ = p.Fprintf(w, "  %7s  %12d  %11d  %11d   %11d\n", item.Unit.Code, item.QtyOperational, mu, emu, su)
 			}
+			_, _ = p.Fprintf(w, "   Totals  ------------  %11d  %11d   %11d\n", muOper, emuOper, suOper)
 
 			availSUs := 0
-			operMUs, operEMUs, operSUs := 0, 0, 0
-			_, _ = p.Fprintf(w, "\nOperational ------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Item-TL     Quantity          MUs  Hudnut         EMUs  SUs_Required\n")
-			//		for _, unit := range cs.Operational {
-			//			mu, emu := unit.MassUnits(), unit.EnclosedMassUnits()
-			//			var sus int
-			//			if unit.Name == "structural" || unit.Name == "light-structural" || unit.Name == "super-light-structural" {
-			//				sus = 0
-			//				availSUs += unit.Qty
-			//			} else {
-			//				switch cs.Kind {
-			//				case "open":
-			//					sus = emu * 1
-			//				case "enclosed":
-			//					sus = emu * 5
-			//				case "orbital":
-			//					sus = emu * 10
-			//				}
-			//			}
-			//			_, _ = p.Fprintf(w, "  %-7s  %11d  %11d  %-6v  %11d  %12d\n", unit.Code(), unit.Qty, mu, unit.Hudnut(), emu, sus)
-			//			operMUs += mu
-			//			operEMUs += emu
-			//			operSUs += sus
-			//		}
-			_, _ = p.Fprintf(w, "  Total                 %11d          %11d  %12d\n", operMUs, operEMUs, operSUs)
-
-			storMUs, storEMUs, storSUs := 0, 0, 0
-			_, _ = p.Fprintf(w, "\nStorage ----------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Item-TL     Quantity          MUs  Hudnut         EMUs  SUs_Required\n")
-			//		for _, unit := range cs.Storage {
-			//			mu, emu := unit.MassUnits(), unit.EnclosedMassUnits()
-			//			var sus int
-			//			switch cs.Kind {
-			//			case "open":
-			//				sus = emu * 1
-			//			case "enclosed":
-			//				sus = emu * 5
-			//			case "orbital":
-			//				sus = emu * 10
-			//			}
-			//			_, _ = p.Fprintf(w, "  %-7s  %11d  %11d  %-6v  %11d  %12d\n", unit.Code(), unit.Qty, mu, unit.Hudnut(), emu, sus)
-			//			storMUs += mu
-			//			storEMUs += emu
-			//			storSUs += sus
-			//		}
-			_, _ = p.Fprintf(w, "  Total                 %11d          %11d  %12d\n", storMUs, storEMUs, storSUs)
-
-			_, _ = p.Fprintf(w, "\nHull -------------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Area_______           EMUs   SUs_Required  SUs_Available\n")
-			_, _ = p.Fprintf(w, "  Operational  %13d  %13d\n", operEMUs, operSUs)
-			_, _ = p.Fprintf(w, "  Storage      %13d  %13d\n", storEMUs, storSUs)
-			_, _ = p.Fprintf(w, "  Total        %13d  %13d  %13d\n", operEMUs+storMUs, operSUs+storSUs, availSUs)
-
-			//		//_, _ = p.Fprintf(w, "\nFarming --------------------------------------------------------------------------------------------------------\n")
-			//		//_, _ = p.Fprintf(w, "  ReportGroup  Orders       Quantity  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-			//		//if farm := cs.Units["FRM-1"]; farm != nil {
-			//		//	group, techLevel := 1, 1
-			//		//	qty := farm.Qty * 100 / 4
-			//		//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-			//		//		group, "FOOD", farm.Qty, techLevel, int(math.Ceil(float64(farm.Qty)*0.5)), 1*farm.Qty, 3*farm.Qty, qty, qty, qty)
-			//		//}
+			muCargo, emuCargo, suCargo := 0, 0, 0
+			_, _ = p.Fprintf(w, "\n  Cargo ---------------------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "  Item-TL   Operational        Stowed      Total Qty           MUs          EMUs   SUs_Required\n")
+			for _, item := range cs.Inventory {
+				mu := totalMass(item.Unit, item.QtyOperational, item.QtyStowed)
+				if item.Unit.Code == "STUN" || item.Unit.Code == "LTSU" || item.Unit.Code == "SLSU" {
+					availSUs += item.QtyOperational
+				}
+				emu, su := totalVolume(item.Unit, item.QtyOperational, item.QtyStowed), 0
+				switch cs.Kind {
+				case "open":
+					su = emu * 1
+				case "enclosed":
+					su = emu * 5
+				case "orbital":
+					su = emu * 10
+				}
+				_, _ = p.Fprintf(w, "  %7s  %12d  %12d  %13d  %12d  %12d  %13d\n",
+					item.Unit.Code, item.QtyOperational, item.QtyStowed, item.QtyOperational+item.QtyStowed, mu, emu, su)
+				muCargo, emuCargo, suCargo = muCargo+mu, emuCargo+emu, suCargo+su
+			}
+			_, _ = p.Fprintf(w, "   Totals  ------------  ------------  -------------  %12d  %12d  %13d\n", muCargo, emuCargo, suCargo)
 
 			_, _ = p.Fprintf(w, "\nFarming --------------------------------------------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "  ReportGroup  Orders          Farms  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
@@ -216,25 +191,6 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 			//					group.Id, group.Code(), unit.Qty, unit.TechLevel, fuelPerTurn, proLabor, uskLabor, unit.Stages[0], unit.Stages[1], unit.Stages[2])
 			//			}
 			//		}
-
-			//		//_, _ = p.Fprintf(w, "\nMining ---------------------------------------------------------------------------------------------------------\n")
-			//		//_, _ = p.Fprintf(w, "  ReportGroup  Orders        MIN_Qty  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
-			//		//if mine := cs.Units["MIN-1"]; mine != nil {
-			//		//	techLevel := 1
-			//		//	var no, qty int
-			//		//	no = 50_000
-			//		//	qty = no * 100 / 4
-			//		//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-			//		//		1, "FUEL", no, techLevel, int(math.Ceil(float64(no)*0.5)), 1*no, 3*no, qty, qty, qty)
-			//		//	no = mine.Qty
-			//		//	qty = no * 100 / 4
-			//		//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-			//		//		2, "METS", no, techLevel, int(math.Ceil(float64(no)*0.5)), 1*no, 3*no, qty, qty, qty)
-			//		//	no = mine.Qty
-			//		//	qty = no * 100 / 4
-			//		//	_, _ = p.Fprintf(w, "  #%4d  %6s  %13d  %2d  %11d  %11d  %11d  %11d  %11d  %11d\n",
-			//		//		3, "NMET", no, techLevel, int(math.Ceil(float64(no)*0.5)), 1*no, 3*no, qty, qty, qty)
-			//		//}
 
 			_, _ = p.Fprintf(w, "\nMining ---------------------------------------------------------------------------------------------------------\n")
 			_, _ = p.Fprintf(w, "  ReportGroup  Orders          Mines  TL    FUEL/Turn    PRO_Labor    USK_Labor      Stage_1      Stage_2      Stage_3\n")
@@ -372,6 +328,54 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 	return nil
 }
 
+func totalMass(unit *models.Unit, oper, stowed int) int {
+	return int(math.Ceil(float64(oper+stowed) * unit.MassPerUnit))
+}
+
+func totalVolume(unit *models.Unit, oper, stowed int) int {
+	return int(math.Ceil(float64(oper)*unit.VolumePerUnit)) + int(math.Ceil(float64(stowed)*unit.StowedVolumePerUnit))
+}
+
+// totalPay assumes that the base rates are per unit of population
+//  PROFESSIONAL      0.375 CONSUMER GOODS
+//  SOLDIER           0.250 CONSUMER GOODS
+//  UNSKILLED WORKER  0.125 CONSUMER GOODS
+//  UNEMPLOYABLE      0.000 CONSUMER GOODS
+func totalPay(code string, pct float64, qty int) int {
+	switch code {
+	case "PRO":
+		return int(math.Ceil((0.375 * pct) * float64(qty)))
+	case "SLD":
+		return int(math.Ceil((0.250 * pct) * float64(qty)))
+	case "USK":
+		return int(math.Ceil((0.125 * pct) * float64(qty)))
+	case "UEM":
+		return 0
+	default:
+		panic(fmt.Sprintf("assert(ReportPopUnit.Code != %q)", code))
+	}
+}
+
+// totalRations assumes that base rates are per unit of population
+//  PROFESSIONAL      0.250 FOOD
+//  SOLDIER           0.250 FOOD
+//  UNSKILLED WORKER  0.250 FOOD
+//  UNEMPLOYABLE      0.250 FOOD
+func totalRations(code string, pct float64, qty int) int {
+	switch code {
+	case "PRO":
+		return int(math.Ceil((0.25 * pct) * (float64(qty))))
+	case "SLD":
+		return int(math.Ceil((0.25 * pct) * (float64(qty))))
+	case "USK":
+		return int(math.Ceil((0.25 * pct) * (float64(qty))))
+	case "UEM":
+		return int(math.Ceil((0.25 * pct) * (float64(qty))))
+	default:
+		panic(fmt.Sprintf("assert(ReportPopUnit.Code != %q)", code))
+	}
+}
+
 //type ReportStore struct {
 //	Game struct {
 //		Id   string `json:"id"`
@@ -391,48 +395,6 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 //	Qty    int     `json:"qty,omitempty"`
 //	Pay    float64 `json:"pay,omitempty"`
 //	Ration float64 `json:"ration,omitempty"`
-//}
-//
-//// TotalPay assumes that the base rates are per unit of population
-////  PROFESSIONAL      0.375 CONSUMER GOODS
-////  SOLDIER           0.250 CONSUMER GOODS
-////  UNSKILLED WORKER  0.125 CONSUMER GOODS
-////  UNEMPLOYABLE      0.000 CONSUMER GOODS
-//func (p *ReportPopUnit) TotalPay() int {
-//	if p == nil {
-//		return 0
-//	}
-//	switch p.Code {
-//	case "PRO":
-//		return int(math.Ceil((0.375 * p.Pay) * float64(p.Qty)))
-//	case "SLD":
-//		return int(math.Ceil((0.250 * p.Pay) * float64(p.Qty)))
-//	case "USK":
-//		return int(math.Ceil((0.125 * p.Pay) * float64(p.Qty)))
-//	case "UEM":
-//		return 0
-//	default:
-//		panic(fmt.Sprintf("assert(ReportPopUnit.Code != %q)", p.Code))
-//	}
-//}
-//
-//// TotalRation assumes that base ration is 0.25 food units per unit of population
-//func (p *ReportPopUnit) TotalRation() int {
-//	if p == nil {
-//		return 0
-//	}
-//	switch p.Code {
-//	case "PRO":
-//		return int(math.Ceil((0.25 * p.Ration) * (float64(p.Qty))))
-//	case "SLD":
-//		return int(math.Ceil((0.25 * p.Ration) * (float64(p.Qty))))
-//	case "USK":
-//		return int(math.Ceil((0.25 * p.Ration) * (float64(p.Qty))))
-//	case "UEM":
-//		return int(math.Ceil((0.25 * p.Ration) * (float64(p.Qty))))
-//	default:
-//		panic(fmt.Sprintf("assert(ReportPopUnit.Code != %q)", p.Code))
-//	}
 //}
 //
 //type ReportUnit struct {
