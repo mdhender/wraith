@@ -29,12 +29,13 @@ import (
 )
 
 type Store struct {
-	db         *sql.DB
-	version    string
-	dateFormat string
-	endOfTime  time.Time
-	ctx        context.Context
-	units      map[string]*Unit
+	db          *sql.DB
+	version     string
+	dateFormat  string
+	endOfTime   time.Time
+	ctx         context.Context
+	unitsByCode map[string]*Unit
+	unitsById   map[int]*Unit
 }
 
 func Open(cfg *config.Global) (*Store, error) {

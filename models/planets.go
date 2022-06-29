@@ -32,13 +32,13 @@ func (s *Store) genAsteroidBelt(star *Star, orbit int) *Planet {
 
 		switch rand.Intn(21) {
 		case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10:
-			nr.Kind, nr.YieldPct, nr.QtyInitial = "metallic", 0.75+float64(rand.Intn(25))/100, rand.Intn(100)*1_000_000
+			nr.Unit, nr.YieldPct, nr.QtyInitial = s.lookupUnit(s.lookupUnitIdByCode("MTLS")), 0.75+float64(rand.Intn(25))/100, rand.Intn(100)*1_000_000
 		case 11, 12, 13, 14, 15, 16, 17:
-			nr.Kind, nr.YieldPct, nr.QtyInitial = "non-metallic", 0.50+float64(rand.Intn(25))/100, rand.Intn(100)*1_000_000
+			nr.Unit, nr.YieldPct, nr.QtyInitial = s.lookupUnit(s.lookupUnitIdByCode("NMTS")), 0.50+float64(rand.Intn(25))/100, rand.Intn(100)*1_000_000
 		case 18, 19:
-			nr.Kind, nr.YieldPct, nr.QtyInitial = "fuel", 0.10+float64(rand.Intn(35))/100, rand.Intn(100)*1_000_000
+			nr.Unit, nr.YieldPct, nr.QtyInitial = s.lookupUnit(s.lookupUnitIdByCode("FUEL")), 0.10+float64(rand.Intn(35))/100, rand.Intn(100)*1_000_000
 		case 20:
-			nr.Kind, nr.YieldPct, nr.QtyInitial = "gold", 0.01+float64(rand.Intn(5))/100, rand.Intn(30)*100_000
+			nr.Unit, nr.YieldPct, nr.QtyInitial = s.lookupUnit(s.lookupUnitIdByCode("GOLD")), 0.01+float64(rand.Intn(5))/100, rand.Intn(30)*100_000
 		}
 		if nr.QtyInitial < 100_000 {
 			nr.QtyInitial = 100_000
@@ -86,11 +86,11 @@ func (s *Store) genGasGiant(star *Star, orbit int) *Planet {
 
 		switch rand.Intn(21) {
 		case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15:
-			nr.Kind, nr.YieldPct, nr.QtyInitial = "metallic", 0.75+float64(rand.Intn(25))/100, rand.Intn(100)*1_000_000
+			nr.Unit, nr.YieldPct, nr.QtyInitial = s.lookupUnit(s.lookupUnitIdByCode("MTLS")), 0.75+float64(rand.Intn(25))/100, rand.Intn(100)*1_000_000
 		case 16, 17, 18, 19:
-			nr.Kind, nr.YieldPct, nr.QtyInitial = "non-metallic", 0.50+float64(rand.Intn(25))/100, rand.Intn(100)*1_000_000
+			nr.Unit, nr.YieldPct, nr.QtyInitial = s.lookupUnit(s.lookupUnitIdByCode("NMTS")), 0.50+float64(rand.Intn(25))/100, rand.Intn(100)*1_000_000
 		case 20:
-			nr.Kind, nr.YieldPct, nr.QtyInitial = "fuel", 0.10+float64(rand.Intn(35))/100, rand.Intn(100)*1_000_000
+			nr.Unit, nr.YieldPct, nr.QtyInitial = s.lookupUnit(s.lookupUnitIdByCode("FUEL")), 0.10+float64(rand.Intn(35))/100, rand.Intn(100)*1_000_000
 		}
 		if nr.QtyInitial < 100_000 {
 			nr.QtyInitial = 100_000
@@ -104,24 +104,28 @@ func (s *Store) genGasGiant(star *Star, orbit int) *Planet {
 }
 
 func (s *Store) genHomeTerrestrial(star *Star, orbit int) *Planet {
+	fuel := s.lookupUnit(s.lookupUnitIdByCode("FUEL"))
+	gold := s.lookupUnit(s.lookupUnitIdByCode("GOLD"))
+	metallic := s.lookupUnit(s.lookupUnitIdByCode("MTLS"))
+	nonMetallic := s.lookupUnit(s.lookupUnitIdByCode("NMTS"))
 	efftn, endtn := &Turn{}, &Turn{Year: 9999, Quarter: 4}
 
 	planet := &Planet{Star: star, Kind: "terrestrial", OrbitNo: orbit, HomePlanet: true}
 	planet.Details = []*PlanetDetail{{Planet: planet, EffTurn: efftn, EndTurn: endtn, HabitabilityNo: 25}}
 
-	nr := &NaturalResource{Planet: planet, Kind: "gold", YieldPct: 0.07, QtyInitial: 300_000}
+	nr := &NaturalResource{Planet: planet, Unit: gold, YieldPct: 0.07, QtyInitial: 300_000}
 	nr.Details = []*NaturalResourceDetail{{NaturalResource: nr, EffTurn: efftn, EndTurn: endtn, QtyRemaining: nr.QtyInitial}}
 	planet.Deposits = append(planet.Deposits, nr)
 
-	nr = &NaturalResource{Planet: planet, Kind: "fuel", YieldPct: 0.25, QtyInitial: 99_999_999}
+	nr = &NaturalResource{Planet: planet, Unit: fuel, YieldPct: 0.25, QtyInitial: 99_999_999}
 	nr.Details = []*NaturalResourceDetail{{NaturalResource: nr, EffTurn: efftn, EndTurn: endtn, QtyRemaining: nr.QtyInitial}}
 	planet.Deposits = append(planet.Deposits, nr)
 
-	nr = &NaturalResource{Planet: planet, Kind: "non-metallic", YieldPct: 0.25, QtyInitial: 99_999_999}
+	nr = &NaturalResource{Planet: planet, Unit: nonMetallic, YieldPct: 0.25, QtyInitial: 99_999_999}
 	nr.Details = []*NaturalResourceDetail{{NaturalResource: nr, EffTurn: efftn, EndTurn: endtn, QtyRemaining: nr.QtyInitial}}
 	planet.Deposits = append(planet.Deposits, nr)
 
-	nr = &NaturalResource{Planet: planet, Kind: "metallic", YieldPct: 0.25, QtyInitial: 99_999_999}
+	nr = &NaturalResource{Planet: planet, Unit: metallic, YieldPct: 0.25, QtyInitial: 99_999_999}
 	nr.Details = []*NaturalResourceDetail{{NaturalResource: nr, EffTurn: efftn, EndTurn: endtn, QtyRemaining: nr.QtyInitial}}
 	planet.Deposits = append(planet.Deposits, nr)
 
@@ -129,7 +133,7 @@ func (s *Store) genHomeTerrestrial(star *Star, orbit int) *Planet {
 	for i := len(planet.Deposits); i < 8; i++ {
 		yield, qty = yield*0.9, qty*8/10
 
-		nr := &NaturalResource{Planet: planet, Kind: "fuel", YieldPct: 1 - yield, QtyInitial: qty}
+		nr := &NaturalResource{Planet: planet, Unit: fuel, YieldPct: 1 - yield, QtyInitial: qty}
 		nr.Details = []*NaturalResourceDetail{{NaturalResource: nr, EffTurn: efftn, EndTurn: endtn, QtyRemaining: nr.QtyInitial}}
 
 		planet.Deposits = append(planet.Deposits, nr)
@@ -139,7 +143,7 @@ func (s *Store) genHomeTerrestrial(star *Star, orbit int) *Planet {
 	for i := len(planet.Deposits); i < 22; i++ {
 		yield, qty = yield*0.9, qty*8/10
 
-		nr := &NaturalResource{Planet: planet, Kind: "non-metallic", YieldPct: 1 - yield, QtyInitial: qty}
+		nr := &NaturalResource{Planet: planet, Unit: nonMetallic, YieldPct: 1 - yield, QtyInitial: qty}
 		nr.Details = []*NaturalResourceDetail{{NaturalResource: nr, EffTurn: efftn, EndTurn: endtn, QtyRemaining: nr.QtyInitial}}
 
 		planet.Deposits = append(planet.Deposits, nr)
@@ -149,7 +153,7 @@ func (s *Store) genHomeTerrestrial(star *Star, orbit int) *Planet {
 	for i := len(planet.Deposits); i < 40; i++ {
 		yield, qty = yield*0.9, qty*9/10
 
-		nr := &NaturalResource{Planet: planet, Kind: "metallic", YieldPct: 1 - yield, QtyInitial: qty}
+		nr := &NaturalResource{Planet: planet, Unit: metallic, YieldPct: 1 - yield, QtyInitial: qty}
 		nr.Details = []*NaturalResourceDetail{{NaturalResource: nr, EffTurn: efftn, EndTurn: endtn, QtyRemaining: nr.QtyInitial}}
 
 		planet.Deposits = append(planet.Deposits, nr)
@@ -186,13 +190,13 @@ func (s *Store) genTerrestrial(star *Star, orbit int) *Planet {
 		nr.Details = []*NaturalResourceDetail{{NaturalResource: nr, EffTurn: efftn, EndTurn: endtn}}
 		switch rand.Intn(21) {
 		case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10:
-			nr.Kind, nr.YieldPct, nr.QtyInitial = "metallic", 0.75+float64(rand.Intn(25))/100, rand.Intn(100)*1_000_000
+			nr.Unit, nr.YieldPct, nr.QtyInitial = s.lookupUnit(s.lookupUnitIdByCode("MTLS")), 0.75+float64(rand.Intn(25))/100, rand.Intn(100)*1_000_000
 		case 11, 12, 13, 14, 15, 16, 17:
-			nr.Kind, nr.YieldPct, nr.QtyInitial = "non-metallic", 0.50+float64(rand.Intn(25))/100, rand.Intn(100)*1_000_000
+			nr.Unit, nr.YieldPct, nr.QtyInitial = s.lookupUnit(s.lookupUnitIdByCode("NMTS")), 0.50+float64(rand.Intn(25))/100, rand.Intn(100)*1_000_000
 		case 18, 19:
-			nr.Kind, nr.YieldPct, nr.QtyInitial = "fuel", 0.10+float64(rand.Intn(35))/100, rand.Intn(100)*1_000_000
+			nr.Unit, nr.YieldPct, nr.QtyInitial = s.lookupUnit(s.lookupUnitIdByCode("FUEL")), 0.10+float64(rand.Intn(35))/100, rand.Intn(100)*1_000_000
 		case 20:
-			nr.Kind, nr.YieldPct, nr.QtyInitial = "gold", 0.01+float64(rand.Intn(5))/100, rand.Intn(30)*100_000
+			nr.Unit, nr.YieldPct, nr.QtyInitial = s.lookupUnit(s.lookupUnitIdByCode("GOLD")), 0.01+float64(rand.Intn(5))/100, rand.Intn(30)*100_000
 		}
 		if nr.QtyInitial < 100_000 {
 			nr.QtyInitial = 100_000

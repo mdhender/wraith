@@ -203,7 +203,7 @@ type NaturalResource struct {
 	Planet     *Planet
 	Id         int     // unique identifier
 	No         int     // number of deposit on planet
-	Kind       string  // fuel, gold, metallic, non-metallic
+	Unit       *Unit   // fuel, gold, metallic, non-metallic
 	QtyInitial int     // in mass units
 	YieldPct   float64 // percentage of each mass unit that yields units
 	Details    []*NaturalResourceDetail
@@ -361,13 +361,16 @@ type FarmGroup struct {
 	CS      *ColonyOrShip
 	Id      int // unique identifier
 	No      int
-	EffTurn *Turn // turn record becomes active
-	EndTurn *Turn // turn record ceases to be active
+	EffTurn *Turn             // turn record becomes active
+	EndTurn *Turn             // turn record ceases to be active
+	Unit    *Unit             // unit being farmed
+	Units   []*FarmGroupUnits // farm units in the group
+	Stages  []*FarmGroupStages
 }
 
 // FarmGroupUnits is the number of farms working together in the group
 type FarmGroupUnits struct {
-	Group          *FactoryGroup
+	Group          *FarmGroup
 	EffTurn        *Turn // turn record becomes active
 	EndTurn        *Turn // turn record ceases to be active
 	Unit           *Unit // farm unit

@@ -57,8 +57,13 @@ func (s *Store) genNation(no int, planet *Planet, player *Player, position *Play
 		Shields:       1,
 	}}
 
-	n.Colonies = append(n.Colonies, s.genHomeOpenColony(1, planet, player))
-	n.Colonies = append(n.Colonies, s.genHomeOrbitalColony(2, planet, player))
+	cs := s.genHomeOpenColony(1, planet, player)
+	n.CorS = append(n.CorS, cs)
+	n.Colonies = append(n.Colonies, cs)
+
+	cs = s.genHomeOrbitalColony(2, planet, player)
+	n.CorS = append(n.CorS, cs)
+	n.Colonies = append(n.Colonies, cs)
 
 	return n
 }

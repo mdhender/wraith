@@ -52,24 +52,37 @@ func (s *Store) CreateUnit(code, name, descr string, usesTech bool) error {
 	return tx.Commit()
 }
 
-func (s *Store) lookupUnitIdByCode(code string) int {
-	if s.units == nil {
-		units := make(map[string]*Unit)
-		rows, err := s.db.Query("select id, code, name, descr from units")
-		if err != nil {
-			return 0
-		}
-		for rows.Next() {
-			unit := &Unit{}
-			err := rows.Scan(&unit.Id, &unit.Code, &unit.Name, &unit.Description)
-			if err != nil {
-				break
-			}
-			units[unit.Code] = unit
-		}
-		s.units = units
+func (s *Store) loadUnits() {
+	byId, byCode := make(map[int]*Unit), make(map[string]*Unit)
+	rows, err := s.db.Query("select id, code, tech_level, name, descr, mass_per_unit, volume_per_unit, hudnut, stowed_volume_per_unit from units")
+	if err != nil {
+		return
 	}
-	if u, ok := s.units[code]; ok {
+	for rows.Next() {
+		var hudnut string
+		unit := &Unit{}
+		err := rows.Scan(&unit.Id, &unit.Code, &unit.TechLevel, &unit.Name, &unit.Description, &unit.MassPerUnit, &unit.VolumePerUnit, &hudnut, &unit.StowedVolumePerUnit)
+		if err != nil {
+			break
+		}
+		unit.Hudnut = hudnut == "Y"
+		byId[unit.Id], byCode[unit.Code] = unit, unit
+	}
+	s.unitsById, s.unitsByCode = byId, byCode
+}
+
+func (s *Store) lookupUnit(id int) *Unit {
+	if s.unitsById == nil {
+		s.loadUnits()
+	}
+	return s.unitsById[id]
+}
+
+func (s *Store) lookupUnitIdByCode(code string) int {
+	if s.unitsByCode == nil {
+		s.loadUnits()
+	}
+	if u, ok := s.unitsByCode[code]; ok {
 		return u.Id
 	}
 	return 0

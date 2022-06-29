@@ -249,7 +249,7 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 	game.Resources = make(map[int]*NaturalResource)
 	rows, err = tx.Query(`
 		select pl.id,
-			   r.id, r.deposit_no, r.kind, r.qty_initial, r.yield_pct,
+			   r.id, r.deposit_no, r.unit_id, r.qty_initial, r.yield_pct,
 			   rd.remaining_qty, ifnull(rd.controlled_by, 0)
 		from systems sy, stars st, planets pl, resources r, resource_dtl rd
 		where sy.game_id = ?
@@ -264,16 +264,15 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 	var resource *NaturalResource
 	numDeposits := 0
 	for rows.Next() {
-		var planetId, resourceId, depositNo, qtyInitial, qtyRemaining, controlledById int
+		var planetId, resourceId, depositNo, qtyInitial, qtyRemaining, controlledById, unitId int
 		var yieldPct float64
-		var kind string
 
-		err := rows.Scan(&planetId, &resourceId, &depositNo, &kind, &qtyInitial, &yieldPct, &qtyRemaining, &controlledById)
+		err := rows.Scan(&planetId, &resourceId, &depositNo, &unitId, &qtyInitial, &yieldPct, &qtyRemaining, &controlledById)
 		if err != nil {
 			return nil, fmt.Errorf("fetchGameByIdAsOf: %d: systems: resources: %w", gameId, err)
 		}
 		if resource == nil || resource.Id != resourceId {
-			resource = &NaturalResource{Planet: game.Planets[planetId], Id: resourceId, No: depositNo, Kind: kind, QtyInitial: qtyInitial, YieldPct: yieldPct}
+			resource = &NaturalResource{Planet: game.Planets[planetId], Id: resourceId, No: depositNo, Unit: game.Units[unitId], QtyInitial: qtyInitial, YieldPct: yieldPct}
 			game.Resources[resource.Id] = resource
 		}
 		detail := &NaturalResourceDetail{NaturalResource: resource, QtyRemaining: qtyRemaining}
@@ -334,6 +333,8 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 			TechLevel:    cdtlTechLevel,
 			ControlledBy: game.Players[controlledById],
 		}}
+		cors.Factories = []*FactoryGroup{{}}
+		cors.Farms = []*FarmGroup{{}}
 		cors.Locations = []*CSLocation{{
 			CS:       cors,
 			Location: game.Planets[clocPlanetId],
@@ -373,6 +374,106 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 	log.Printf("fetchGameByIdAsOf: %d: cors: fetched %8d colonies\n", gameId, len(game.Colonies))
 	log.Printf("fetchGameByIdAsOf: %d: cors: fetched %8d ships\n", gameId, len(game.Ships))
 	log.Printf("fetchGameByIdAsOf: %d: cors: elapsed %v\n", gameId, time.Now().Sub(started))
+
+	// fetch farm groups
+	rows, err = tx.Query(`
+		select cors.id,
+			   fg.id, fg.group_no, fg.unit_id,
+			   fs.qty_stage_1, fs.qty_stage_2, fs.qty_stage_3, fs.qty_stage_4,
+			   fu.unit_id, fu.qty_operational
+		from cors, cors_farm_group fg, cors_farm_group_stages fs, cors_farm_group_units fu
+		where cors.game_id = ?
+		  and fg.cors_id = cors.id
+		  and (fs.farm_group_id = fg.id and fs.turn = ?)
+		  and (fu.farm_group_id = fg.id and fu.efftn <= ? and ? < fu.endtn)
+		order by cors.id, fg.group_no`, gameId, asOfTurn, asOfTurn, asOfTurn)
+	if err != nil {
+		return nil, fmt.Errorf("fetchGameByIdAsOf: %d: farmGroup: %w", gameId, err)
+	}
+	var cs *ColonyOrShip
+	var farmGroup *FarmGroup
+	for rows.Next() {
+		var corsId, groupId, groupNo, groupUnitId int
+		var qtyStage1, qtyStage2, qtyStage3, qtyStage4 int
+		var unitId, qtyOperational int
+		err := rows.Scan(&corsId, &groupId, &groupNo, &groupUnitId, &qtyStage1, &qtyStage2, &qtyStage3, &qtyStage4, &unitId, &qtyOperational)
+		if err != nil {
+			return nil, fmt.Errorf("fetchGameByIdAsOf: %d: farmGroup: %w", gameId, err)
+		}
+		if cs == nil || cs.Id != corsId {
+			cs = game.CorS[corsId]
+			farmGroup = &FarmGroup{
+				CS:   cs,
+				Id:   groupId,
+				No:   groupNo,
+				Unit: game.Units[groupUnitId],
+			}
+			farmGroup.Stages = []*FarmGroupStages{{
+				Group:     farmGroup,
+				QtyStage1: qtyStage1,
+				QtyStage2: qtyStage2,
+				QtyStage3: qtyStage3,
+				QtyStage4: qtyStage4,
+			}}
+			cs.Farms = append(cs.Farms, farmGroup)
+		}
+		farmGroup.Units = append(farmGroup.Units, &FarmGroupUnits{
+			Group:          farmGroup,
+			Unit:           game.Units[unitId],
+			QtyOperational: qtyOperational,
+		})
+	}
+
+	// fetch mine groups
+	rows, err = tx.Query(`
+		select cors.id,
+			   fg.id, fg.group_no, fg.resource_id,
+			   fs.qty_stage_1, fs.qty_stage_2, fs.qty_stage_3, fs.qty_stage_4,
+			   fu.unit_id, fu.qty_operational
+		from cors, cors_mining_group fg, cors_mining_group_stages fs, cors_mining_group_units fu
+		where cors.game_id = ?
+		  and fg.cors_id = cors.id
+		  and (fs.mining_group_id = fg.id and fs.turn = ?)
+		  and (fu.mining_group_id = fg.id and fu.efftn <= ? and ? < fu.endtn)
+		order by cors.id, fg.group_no`, gameId, asOfTurn, asOfTurn, asOfTurn)
+	if err != nil {
+		return nil, fmt.Errorf("fetchGameByIdAsOf: %d: mineGroup: %w", gameId, err)
+	}
+	var mineGroup *MiningGroup
+	for rows.Next() {
+		var corsId, groupId, groupNo, groupResourceId int
+		var qtyStage1, qtyStage2, qtyStage3, qtyStage4 int
+		var unitId, qtyOperational int
+		err := rows.Scan(&corsId, &groupId, &groupNo, &groupResourceId, &qtyStage1, &qtyStage2, &qtyStage3, &qtyStage4, &unitId, &qtyOperational)
+		if err != nil {
+			return nil, fmt.Errorf("fetchGameByIdAsOf: %d: mineGroup: %w", gameId, err)
+		}
+		if cs == nil || cs.Id != corsId {
+			cs = game.CorS[corsId]
+			mineGroup = nil
+		}
+		if mineGroup == nil || mineGroup.Id != groupId {
+			mineGroup = &MiningGroup{
+				CS:      cs,
+				Id:      groupId,
+				No:      groupNo,
+				Deposit: game.Resources[groupResourceId],
+			}
+			mineGroup.Stages = []*MiningGroupStages{{
+				Group:     mineGroup,
+				QtyStage1: qtyStage1,
+				QtyStage2: qtyStage2,
+				QtyStage3: qtyStage3,
+				QtyStage4: qtyStage4,
+			}}
+			cs.Mines = append(cs.Mines, mineGroup)
+		}
+		mineGroup.Units = append(mineGroup.Units, &MiningGroupUnits{
+			Group:          mineGroup,
+			Unit:           game.Units[unitId],
+			QtyOperational: qtyOperational,
+		})
+	}
 
 	// cross link nations and colonies or ships
 	numLinks, numNulls, numShips, numColonies := 0, 0, 0, 0

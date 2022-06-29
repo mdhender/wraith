@@ -81,7 +81,6 @@ create table units
     unique key (code, tech_level)
 );
 
-
 create table users
 (
     id            int         not null auto_increment,
@@ -284,15 +283,17 @@ create table planet_dtl
 
 create table resources
 (
-    id          int         not null auto_increment,
-    planet_id   int         not null,
-    deposit_no  int         not null,
-    kind        varchar(14) not null comment 'natural resource produced from deposit',
-    qty_initial int         not null,
-    yield_pct   float       not null comment 'range 0..1',
+    id          int   not null auto_increment,
+    planet_id   int   not null,
+    deposit_no  int   not null,
+    unit_id     int   not null comment 'natural resource produced from deposit',
+    qty_initial int   not null,
+    yield_pct   float not null comment 'range 0..1',
     primary key (id),
     unique key (planet_id, deposit_no),
     foreign key (planet_id) references planets (id)
+        on delete cascade,
+    foreign key (unit_id) references units (id)
         on delete cascade
 );
 
@@ -412,13 +413,12 @@ create table cors_pay
 
 create table cors_factory_group
 (
-    id         int        not null auto_increment,
-    cors_id    int        not null,
-    group_no   int        not null,
-    efftn      varchar(6) not null,
-    endtn      varchar(6) not null,
-    unit_id    int        not null comment 'unit being manufactured',
-    tech_level int        not null comment 'tech level of unit being manufactured',
+    id       int        not null auto_increment,
+    cors_id  int        not null,
+    group_no int        not null,
+    efftn    varchar(6) not null,
+    endtn    varchar(6) not null,
+    unit_id  int        not null comment 'unit being manufactured',
     primary key (id),
     unique key (cors_id, group_no, efftn),
     foreign key (cors_id) references cors (id)
@@ -433,9 +433,8 @@ create table cors_factory_group_units
     efftn            varchar(6) not null,
     endtn            varchar(6) not null,
     unit_id          int        not null,
-    tech_level       int        not null,
     qty_operational  int        not null,
-    primary key (factory_group_id, efftn, unit_id, tech_level),
+    primary key (factory_group_id, efftn, unit_id),
     foreign key (factory_group_id) references cors_factory_group (id)
         on delete cascade,
     foreign key (unit_id) references units (id)
@@ -446,12 +445,59 @@ create table cors_factory_group_stages
 (
     factory_group_id int        not null,
     turn             varchar(6) not null,
+    unit_id          int        not null comment 'unit in the stage',
     qty_stage_1      int        not null,
     qty_stage_2      int        not null,
     qty_stage_3      int        not null,
     qty_stage_4      int        not null,
     primary key (factory_group_id, turn),
     foreign key (factory_group_id) references cors_factory_group (id)
+        on delete cascade,
+    foreign key (unit_id) references units (id)
+        on delete cascade
+);
+
+create table cors_farm_group
+(
+    id       int        not null auto_increment,
+    cors_id  int        not null,
+    group_no int        not null,
+    efftn    varchar(6) not null,
+    endtn    varchar(6) not null,
+    unit_id  int        not null comment 'unit being produced by farm',
+    primary key (id),
+    unique key (cors_id, group_no, efftn),
+    foreign key (cors_id) references cors (id)
+        on delete cascade
+);
+
+create table cors_farm_group_units
+(
+    farm_group_id   int        not null,
+    efftn           varchar(6) not null,
+    endtn           varchar(6) not null,
+    unit_id         int        not null,
+    qty_operational int,
+    primary key (farm_group_id, efftn),
+    foreign key (farm_group_id) references cors_farm_group (id)
+        on delete cascade,
+    foreign key (unit_id) references units (id)
+        on delete cascade
+);
+
+create table cors_farm_group_stages
+(
+    farm_group_id int        not null,
+    turn          varchar(6) not null,
+    unit_id       int        not null comment 'unit in the stage',
+    qty_stage_1   int        not null,
+    qty_stage_2   int        not null,
+    qty_stage_3   int        not null,
+    qty_stage_4   int        not null,
+    primary key (farm_group_id, turn),
+    foreign key (farm_group_id) references cors_farm_group (id)
+        on delete cascade,
+    foreign key (unit_id) references units (id)
         on delete cascade
 );
 
@@ -477,7 +523,6 @@ create table cors_mining_group_units
     efftn           varchar(6) not null,
     endtn           varchar(6) not null,
     unit_id         int        not null,
-    tech_level      int        not null,
     qty_operational int,
     primary key (mining_group_id, efftn),
     foreign key (mining_group_id) references cors_mining_group (id)
@@ -490,12 +535,15 @@ create table cors_mining_group_stages
 (
     mining_group_id int        not null,
     turn            varchar(6) not null,
+    unit_id         int        not null comment 'unit in the stage',
     qty_stage_1     int        not null,
     qty_stage_2     int        not null,
     qty_stage_3     int        not null,
     qty_stage_4     int        not null,
     primary key (mining_group_id, turn),
     foreign key (mining_group_id) references cors_mining_group (id)
+        on delete cascade,
+    foreign key (unit_id) references units (id)
         on delete cascade
 );
 

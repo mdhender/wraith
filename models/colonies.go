@@ -127,6 +127,7 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 		UnemployedPct:   1.0,
 	}}
 
+	//		{code: "FRM-1", name: "farm", tl: 1, oq: 170_000, sq: 0},
 	factoryGroup := &FactoryGroup{
 		CS:      c,
 		No:      1,
@@ -153,6 +154,34 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 		QtyStage4: 0,
 	}}
 	c.Factories = append(c.Factories, factoryGroup)
+
+	farmGroup := &FarmGroup{
+		CS:      c,
+		No:      1,
+		EffTurn: effTurn,
+		EndTurn: endTurn,
+		Unit:    &Unit{Code: "FOOD"},
+	}
+	qtyUnits, qtyProduced := 170_000, 170_000*100/4
+	farmGroup.Units = []*FarmGroupUnits{{
+		Group:   farmGroup,
+		EffTurn: effTurn,
+		EndTurn: endTurn,
+		Unit: &Unit{
+			Code:      "FRM-1",
+			TechLevel: 1,
+		},
+		QtyOperational: qtyUnits,
+	}}
+	farmGroup.Stages = []*FarmGroupStages{{
+		Group:     farmGroup,
+		Turn:      effTurn,
+		QtyStage1: qtyProduced,
+		QtyStage2: qtyProduced,
+		QtyStage3: qtyProduced,
+		QtyStage4: 0,
+	}}
+	c.Farms = append(c.Farms, farmGroup)
 
 	miningGroup := &MiningGroup{
 		CS:      c,
