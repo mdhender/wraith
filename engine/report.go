@@ -58,9 +58,9 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 	rptDate := time.Now().Format("2006/01/02")
 
 	for _, nation := range game.Nations {
-		if nation.Details[0].Name != "Yinshei" {
-			continue
-		}
+		//if nation.Details[0].Name != "Yinshei" {
+		//	continue
+		//}
 
 		_, _ = p.Fprintf(w, "Status Report\n")
 		_, _ = p.Fprintf(w, "Game: %-8s   Turn: %s   Nation: %3d    Date: %s\n", game.ShortName, asOfTurn.String(), nation.No, rptDate)
@@ -243,40 +243,39 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 			_, _ = p.Fprintf(w, "  No activity.\n")
 		}
 
-		//	orbits := []ReportOrbit{
-		//		{Id: 1, Kind: "terrestrial", HabitabilityNumber: 0},
-		//		{Id: 2, Kind: "terrestrial", HabitabilityNumber: 0},
-		//		{Id: 3, Kind: "terrestrial", HabitabilityNumber: 25},
-		//		{Id: 4, Kind: "terrestrial", HabitabilityNumber: 0},
-		//		{Id: 5, Kind: "asteroid belt", HabitabilityNumber: 0},
-		//		{Id: 6, Kind: "gas giant", HabitabilityNumber: 0},
-		//		{Id: 7, Kind: "gas giant", HabitabilityNumber: 0},
-		//		{Id: 8, Kind: "terrestrial", HabitabilityNumber: 0},
-		//		{Id: 9, Kind: "terrestrial", HabitabilityNumber: 0},
-		//		{Id: 10, Kind: "asteroid belt", HabitabilityNumber: 0},
-		//	}
-		_, _ = p.Fprintf(w, "\nSurvey Report ----------------------------------------------------------------\n")
-		//	for _, orbit := range orbits {
-		//		name, controlledBy := "NOT NAMED", "N/A"
-		//		if orbit.Id == 3 {
-		//			name, controlledBy = "My Homeworld", "SP018"
-		//		}
-		//		_, _ = p.Fprintf(w, "  ReportSystem %s %-3s   %-24s    Controlled By: %s\n", "0/0/0", fmt.Sprintf("#%d", orbit.Id), name, controlledBy)
-		//		_, _ = p.Fprintf(w, "    Kind: %-13s    Habitability: %2d\n", orbit.Kind, orbit.HabitabilityNumber)
-		//	}
-		//
-		//_, _ = p.Fprintf(w, "\nMarket Report ---------------------------------------------------------------------\n")
-		//_, _ = p.Fprintf(w, "  News: *** 6 years ago, scientists discovered a signal broadcasting from the 10th\n")
-		//_, _ = p.Fprintf(w, "        orbit. 4 years ago, they decoded the message and recovered plans for an\n")
-		//_, _ = p.Fprintf(w, "        in-system engine (the \"space-drive\") and a faster-than-light engine\n")
-		//_, _ = p.Fprintf(w, "        (the \"hyper-drive\"). Work on both has recently completed.\n")
-		//_, _ = p.Fprintf(w, "  News: *** Moments after the hyper-drive was successfully tested in the orbital\n")
-		//_, _ = p.Fprintf(w, "        colony, the broadcast from the 10th orbit stopped.\n")
-		//
-		//_, _ = p.Fprintf(w, "\nCombat Report ---------------------------------------------------------------------\n")
-		//_, _ = p.Fprintf(w, "  No activity.\n")
+		_, _ = p.Fprintf(w, "\n")
+		_, _ = p.Fprintf(w, "\nSurveys ----------------------------------------------------------------------\n")
+		starMap := make(map[int]*models.Star)
+		for _, cs := range nation.CorS {
+			starMap[cs.Planet.Star.Id] = cs.Planet.Star
+		}
+		for _, star := range starMap {
+			_, _ = p.Fprintf(w, "  System:: %-13s\n", fmt.Sprintf("%s%s", star.System.Coords.String(), star.Sequence))
+			for _, planet := range star.Orbits {
+				if planet == nil {
+					continue
+				}
+				_, _ = p.Fprintf(w, "   Planet: %-13s    Kind: %-32s  Controlled By: %s\n", fmt.Sprintf("%s%s#%d", star.System.Coords.String(), star.Sequence, planet.OrbitNo), planet.Kind, "?")
+				if planet.Details[0].HabitabilityNo != 0 {
+					_, _ = p.Fprintf(w, "             HabNo: %2d\n", planet.Details[0].HabitabilityNo)
+				}
+				for _, r := range planet.Deposits {
+					qtyRemaining := r.Details[0].QtyRemaining
+					_, _ = p.Fprintf(w, "           Deposit: %2d %-6s %12d MUs remaining\n", r.No, r.Unit.Code, qtyRemaining)
+				}
+			}
+		}
 
-		break
+		_, _ = p.Fprintf(w, "\nMarket Report ---------------------------------------------------------------------\n")
+		_, _ = p.Fprintf(w, "  News: *** 6 years ago, scientists discovered a signal broadcasting from the 10th\n")
+		_, _ = p.Fprintf(w, "        orbit. 4 years ago, they decoded the message and recovered plans for an\n")
+		_, _ = p.Fprintf(w, "        in-system engine (the \"space-drive\") and a faster-than-light engine\n")
+		_, _ = p.Fprintf(w, "        (the \"hyper-drive\"). Work on both has recently completed.\n")
+		_, _ = p.Fprintf(w, "  News: *** Moments after the hyper-drive was successfully tested in the orbital\n")
+		_, _ = p.Fprintf(w, "        colony, the broadcast from the 10th orbit stopped.\n")
+
+		_, _ = p.Fprintf(w, "\nCombat Report ---------------------------------------------------------------------\n")
+		_, _ = p.Fprintf(w, "  No activity.\n")
 	}
 	return nil
 }

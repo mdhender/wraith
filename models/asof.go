@@ -273,6 +273,7 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 		}
 		if resource == nil || resource.Id != resourceId {
 			resource = &NaturalResource{Planet: game.Planets[planetId], Id: resourceId, No: depositNo, Unit: game.Units[unitId], QtyInitial: qtyInitial, YieldPct: yieldPct}
+			resource.Planet.Deposits = append(resource.Planet.Deposits, resource)
 			game.Resources[resource.Id] = resource
 		}
 		detail := &NaturalResourceDetail{NaturalResource: resource, QtyRemaining: qtyRemaining}

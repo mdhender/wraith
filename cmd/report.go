@@ -72,7 +72,11 @@ var cmdReport = &cobra.Command{
 		}
 		log.Printf("loaded game %q\n", g.ShortName)
 
-		err = e.ReportWriter(g, os.Stderr)
+		fd, err := os.OpenFile("D:\\wraith\\testdata\\report.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 666)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = e.ReportWriter(g, fd)
 		if err != nil {
 			log.Fatal(err)
 		}
