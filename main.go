@@ -32,8 +32,8 @@ func main() {
 		log.Printf("wraith: total time %v\n", elapsed)
 	}(time.Now())
 
-	// default log format to UTC
-	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
+	//// default log format to UTC
+	//log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
 
 	// seed the default PRNG source.
 	if seed, err := seeder.Seed(); err != nil {
