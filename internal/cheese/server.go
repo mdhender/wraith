@@ -126,6 +126,10 @@ func (s *server) serve() error {
 		r.Use(jwtauth.Authenticator)
 
 		r.Route("/api", func(r chi.Router) {
+			r.Get("/claims", func(w http.ResponseWriter, r *http.Request) {
+				_, claims, _ := jwtauth.FromContext(r.Context())
+				_, _ = w.Write([]byte(fmt.Sprintf("%s: %s: claims[user_id] %q", r.Method, r.URL.Path, claims["user_id"])))
+			})
 			r.Get("/report/game/{game}/nation/{nation}/turn/{year}/{quarter}", func(w http.ResponseWriter, r *http.Request) {
 				game, nation, year, quarter := chi.URLParam(r, "game"), chi.URLParam(r, "nation"), chi.URLParam(r, "year"), chi.URLParam(r, "quarter")
 				_, _ = w.Write([]byte(fmt.Sprintf("%s: %s: game %q nation %q year %q quarter %q", r.Method, r.URL.Path, game, nation, year, quarter)))
@@ -141,10 +145,6 @@ func (s *server) serve() error {
 			yearParam := chi.URLParam(r, "year")
 			quarterParam := chi.URLParam(r, "quarter")
 			_, _ = w.Write([]byte(fmt.Sprintf("%s: %s: game %q nation %q year %q quarter %q", r.Method, r.URL.Path, gameParam, nationParam, yearParam, quarterParam)))
-		})
-		r.Get("/ui/security", func(w http.ResponseWriter, r *http.Request) {
-			_, claims, _ := jwtauth.FromContext(r.Context())
-			_, _ = w.Write([]byte(fmt.Sprintf("%s: %s: claims[user_id] %q", r.Method, r.URL.Path, claims["user_id"])))
 		})
 		r.Get("/ui/panic", func(http.ResponseWriter, *http.Request) {
 			panic("foo")
@@ -311,6 +311,10 @@ func (s *server) loginPostHandler(cookieName string, token string) http.HandlerF
 		}
 		log.Printf("server: %s: %s: fetchUsersByCredentials: %q\n", r.Method, r.URL.Path, u.Handle)
 
+		claims := map[string]interface{}{"user_id": u.Handle}
+		jwtauth.SetExpiryIn(claims, time.Second*7*24*60*60)
+		_, tokenString, _ := jwtauth.New("HS256", s.key, nil).Encode(claims)
+
 		switch contentType {
 		case "application/json":
 			//log.Printf("server: %s %q: json: success: username %q password %q\n", r.Method, r.URL.Path, input.Username, input.Password)
@@ -323,7 +327,7 @@ func (s *server) loginPostHandler(cookieName string, token string) http.HandlerF
 				} `json:"data,omitempty"`
 			}
 			response.Links.Self = r.URL.Path
-			response.Data.Token = "value"
+			response.Data.Token = tokenString
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(response)
 			return
@@ -332,7 +336,7 @@ func (s *server) loginPostHandler(cookieName string, token string) http.HandlerF
 			http.SetCookie(w, &http.Cookie{
 				Name:     cookieName,
 				Path:     "/",
-				Value:    token,
+				Value:    tokenString,
 				MaxAge:   14 * 24 * 60 * 60,
 				HttpOnly: true,
 			})
@@ -343,7 +347,7 @@ func (s *server) loginPostHandler(cookieName string, token string) http.HandlerF
 			http.SetCookie(w, &http.Cookie{
 				Name:     cookieName,
 				Path:     "/",
-				Value:    token,
+				Value:    tokenString,
 				MaxAge:   14 * 24 * 60 * 60,
 				HttpOnly: true,
 			})
