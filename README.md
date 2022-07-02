@@ -57,3 +57,9 @@ FWIW, this is my starter:
     
     [Install]
     WantedBy=multi-user.target
+
+
+## MariaDB dump?
+    PS C:\Program Files\MariaDB 10.5\bin> .\mysqldump.exe -u wraith --password=whisper --skip-set-charset --default-character-set=utf8mb4 wraith -r D:\wraith\testdata\data-dump.sql
+
+    $ mysql -u wraith --password=whisper wraith < /tmp/data-dump.sql

@@ -31,6 +31,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 )
@@ -40,16 +41,19 @@ type server struct {
 	debug  bool
 	key    []byte
 	store  *models.Store
-	claims map[string]interface{}
+	claims map[string]*models.Claim
 }
 
 func Serve(addr string, key []byte, store *models.Store) error {
 	s := server{addr: addr, key: key, store: store}
-	s.claims = make(map[string]interface{})
-	s.claims["mdhender"] = struct{ UserId string }{UserId: "mdhender"}
 
-	//// fetch users
-	//store.VerifyUserByCredentials()
+	// fetch user claims
+	log.Printf("cheese.Serve: todo: needs game and date logic\n")
+	claims, err := s.store.FetchClaims("0000/0")
+	if err != nil {
+		return err
+	}
+	s.claims = claims
 
 	return s.serve()
 }
@@ -121,7 +125,8 @@ func (s *server) serve() error {
 	// protected routes
 	r.Group(func(r chi.Router) {
 		// pull, verify, and validate JWT tokens from cookie or bearer token
-		r.Use(jwtauth.Verifier(tokenAuth))
+		//r.Use(jwtauth.Verifier(tokenAuth))
+		r.Use(s.myVerifier(tokenAuth))
 
 		// Handle valid / invalid tokens.
 		// In this example, we use the provided authenticator middleware, but you can write your own very easily.
@@ -130,8 +135,26 @@ func (s *server) serve() error {
 
 		r.Route("/api", func(r chi.Router) {
 			r.Get("/claims", func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write([]byte("<body><code><pre>"))
+				_, _ = w.Write([]byte(fmt.Sprintf("%s: %s:\n", r.Method, r.URL.Path)))
 				_, claims, _ := jwtauth.FromContext(r.Context())
-				_, _ = w.Write([]byte(fmt.Sprintf("%s: %s: claims[user_id] %q", r.Method, r.URL.Path, claims["user_id"])))
+				userId, ok := claims["user_id"].(string)
+				if !ok {
+					log.Printf("%s: %s: claims[%q] is not a string\n", "user_id")
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+				claim, ok := s.claims[strings.ToLower(userId)]
+				if !ok {
+					log.Printf("%s: %s: fetchClaims: %q: not ok\n", r.Method, r.URL.Path, strings.ToLower(userId))
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+
+				_, _ = w.Write([]byte(fmt.Sprintf("claim.User %q\n", claim.User)))
+				_, _ = w.Write([]byte(fmt.Sprintf("claim.NationNo %d\n", claim.NationNo)))
+				_, _ = w.Write([]byte(fmt.Sprintf("claims.Player %q\n", claim.Player)))
+				_, _ = w.Write([]byte("</pre></code></body>"))
 			})
 			r.Get("/panic", func(http.ResponseWriter, *http.Request) {
 				panic("panic")
@@ -145,6 +168,34 @@ func (s *server) serve() error {
 		r.Route("/ui", func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte("yay!"))
+			})
+			r.Get("/games/{game}/current-report", func(w http.ResponseWriter, r *http.Request) {
+				_, claims, _ := jwtauth.FromContext(r.Context())
+				claim, ok := s.claims[strings.ToLower(claims["user_id"].(string))]
+				if !ok {
+					log.Printf("%s: %s: fetchClaims: not ok\n", r.Method, r.URL.Path)
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+
+				game := chi.URLParam(r, "game")
+				year := 0
+				quarter := 0
+				e, err := engine.Open(s.store)
+				if err != nil {
+					log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+				bw := bytes.NewBuffer([]byte(fmt.Sprintf("<body><h1>Nation %d</h1><code><pre>", claim.NationNo)))
+				err = e.Report(bw, game, claim.NationNo, year, quarter)
+				if err != nil {
+					log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+				bw.Write([]byte("</pre></code></body>"))
+				_, _ = w.Write(bw.Bytes())
 			})
 			r.Get("/games/{game}/nations/{nation}/turn/{year}/{quarter}/report", func(w http.ResponseWriter, r *http.Request) {
 				game, pNation, pYear, pQuarter := chi.URLParam(r, "game"), chi.URLParam(r, "nation"), chi.URLParam(r, "year"), chi.URLParam(r, "quarter")
@@ -172,7 +223,6 @@ func (s *server) serve() error {
 					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 					return
 				}
-				log.Printf("%s: %s: loaded engine version %q\n", r.Method, r.URL.Path, e.Version())
 				bw := bytes.NewBuffer([]byte(fmt.Sprintf("<body><h1>Nation %d</h1><code><pre>", nationNo)))
 				err = e.Report(bw, game, nationNo, year, quarter)
 				if err != nil {
@@ -346,7 +396,8 @@ func (s *server) loginPostHandler(cookieName string, token string) http.HandlerF
 		}
 		log.Printf("server: %s: %s: fetchUsersByCredentials: %q\n", r.Method, r.URL.Path, u.Handle)
 
-		claims := map[string]interface{}{"user_id": u.Handle}
+		claims := map[string]interface{}{"user_id": strings.ToLower(u.Handle)}
+
 		jwtauth.SetExpiryIn(claims, time.Second*7*24*60*60)
 		_, tokenString, _ := jwtauth.New("HS256", s.key, nil).Encode(claims)
 
@@ -391,5 +442,22 @@ func (s *server) loginPostHandler(cookieName string, token string) http.HandlerF
 		}
 
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func (s *server) myVerifier(ja *jwtauth.JWTAuth) func(http.Handler) http.Handler {
+	return s.myVerify(ja, jwtauth.TokenFromHeader, jwtauth.TokenFromCookie)
+}
+
+func (s *server) myVerify(ja *jwtauth.JWTAuth, findTokenFns ...func(r *http.Request) string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		hfn := func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			token, err := jwtauth.VerifyRequest(ja, r, findTokenFns...)
+			ctx = jwtauth.NewContext(ctx, token, err)
+
+			next.ServeHTTP(w, r.WithContext(ctx))
+		}
+		return http.HandlerFunc(hfn)
 	}
 }
