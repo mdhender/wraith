@@ -117,7 +117,7 @@ func (s *server) serve() error {
 
 	// protected routes
 	r.Group(func(r chi.Router) {
-		// Seek, verify and validate JWT tokens
+		// pull, verify, and validate JWT tokens from cookie or bearer token
 		r.Use(jwtauth.Verifier(tokenAuth))
 
 		// Handle valid / invalid tokens.
@@ -130,24 +130,23 @@ func (s *server) serve() error {
 				_, claims, _ := jwtauth.FromContext(r.Context())
 				_, _ = w.Write([]byte(fmt.Sprintf("%s: %s: claims[user_id] %q", r.Method, r.URL.Path, claims["user_id"])))
 			})
+			r.Get("/panic", func(http.ResponseWriter, *http.Request) {
+				panic("panic")
+			})
 			r.Get("/report/game/{game}/nation/{nation}/turn/{year}/{quarter}", func(w http.ResponseWriter, r *http.Request) {
 				game, nation, year, quarter := chi.URLParam(r, "game"), chi.URLParam(r, "nation"), chi.URLParam(r, "year"), chi.URLParam(r, "quarter")
 				_, _ = w.Write([]byte(fmt.Sprintf("%s: %s: game %q nation %q year %q quarter %q", r.Method, r.URL.Path, game, nation, year, quarter)))
 			})
 		})
 
-		r.Get("/ui", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte("yay!"))
-		})
-		r.Get("/ui/games/{game}/nations/{nation}/turn/{year}/{quarter}/report", func(w http.ResponseWriter, r *http.Request) {
-			gameParam := chi.URLParam(r, "game")
-			nationParam := chi.URLParam(r, "nation")
-			yearParam := chi.URLParam(r, "year")
-			quarterParam := chi.URLParam(r, "quarter")
-			_, _ = w.Write([]byte(fmt.Sprintf("%s: %s: game %q nation %q year %q quarter %q", r.Method, r.URL.Path, gameParam, nationParam, yearParam, quarterParam)))
-		})
-		r.Get("/ui/panic", func(http.ResponseWriter, *http.Request) {
-			panic("foo")
+		r.Route("/ui", func(r chi.Router) {
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write([]byte("yay!"))
+			})
+			r.Get("/games/{game}/nations/{nation}/turn/{year}/{quarter}/report", func(w http.ResponseWriter, r *http.Request) {
+				game, nation, year, quarter := chi.URLParam(r, "game"), chi.URLParam(r, "nation"), chi.URLParam(r, "year"), chi.URLParam(r, "quarter")
+				_, _ = w.Write([]byte(fmt.Sprintf("%s: %s: game %q nation %q year %q quarter %q", r.Method, r.URL.Path, game, nation, year, quarter)))
+			})
 		})
 	})
 
