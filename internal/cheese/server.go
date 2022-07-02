@@ -169,6 +169,57 @@ func (s *server) serve() error {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte("yay!"))
 			})
+			r.Get("/games/{game}/cluster", func(w http.ResponseWriter, r *http.Request) {
+				pGameName, x, y, z := chi.URLParam(r, "game"), 0, 0, 0
+				game, err := s.store.LookupGameByName(pGameName)
+				if err != nil {
+					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+					return
+				}
+				b, err := s.store.FetchClusterByGameOrigin(game.Id)
+				if err != nil {
+					log.Printf("%s: %s: fetchCluster: %d: %v\n", r.Method, r.URL.Path, game.Id, err)
+					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+					return
+				}
+				_, _ = w.Write([]byte(fmt.Sprintf("<body><h1>Cluster Map: Origin %d/%d/%d</h1>", x, y, z)))
+				_, _ = w.Write(b)
+				_, _ = w.Write([]byte("</body>"))
+			})
+			r.Get("/games/{game}/cluster/{x}/{y}/{z}", func(w http.ResponseWriter, r *http.Request) {
+				game, err := s.store.LookupGameByName(chi.URLParam(r, "game"))
+				if err != nil {
+					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+					return
+				}
+				x, err := strconv.Atoi(chi.URLParam(r, "x"))
+				if err != nil {
+					log.Printf("%s: %s: x: %v\n", r.Method, r.URL.Path, err)
+					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+					return
+				}
+				y, err := strconv.Atoi(chi.URLParam(r, "y"))
+				if err != nil {
+					log.Printf("%s: %s: y: %v\n", r.Method, r.URL.Path, err)
+					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+					return
+				}
+				z, err := strconv.Atoi(chi.URLParam(r, "z"))
+				if err != nil {
+					log.Printf("%s: %s: z: %v\n", r.Method, r.URL.Path, err)
+					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+					return
+				}
+				b, err := s.store.FetchClusterByGame(game.Id, x, y, z)
+				if err != nil {
+					log.Printf("%s: %s: fetchCluster: %d: %v\n", r.Method, r.URL.Path, game.Id, err)
+					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+					return
+				}
+				_, _ = w.Write([]byte(fmt.Sprintf("<body><h1>Cluster Map: Origin %d/%d/%d</h1>", x, y, z)))
+				_, _ = w.Write(b)
+				_, _ = w.Write([]byte("</body>"))
+			})
 			r.Get("/games/{game}/current-report", func(w http.ResponseWriter, r *http.Request) {
 				_, claims, _ := jwtauth.FromContext(r.Context())
 				claim, ok := s.claims[strings.ToLower(claims["user_id"].(string))]
@@ -198,7 +249,6 @@ func (s *server) serve() error {
 				_, _ = w.Write(bw.Bytes())
 			})
 			r.Get("/games/{game}/nations/{nation}/turn/{year}/{quarter}/report", func(w http.ResponseWriter, r *http.Request) {
-
 				_, claims, _ := jwtauth.FromContext(r.Context())
 				claim, ok := s.claims[strings.ToLower(claims["user_id"].(string))]
 				if !ok {
