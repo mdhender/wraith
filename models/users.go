@@ -63,6 +63,17 @@ func (s *Store) UpdateUserSecret(id int, secret string) error {
 	return s.updateUserSecret(id, secret)
 }
 
+func (s *Store) FetchUserByCredentials(handle, secret string) (*User, error) {
+	if s.db == nil {
+		return nil, ErrNoConnection
+	}
+	u, err := s.fetchUserByCredentials(handle, secret)
+	if err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+
 func (s *Store) createUser(displayHandle, handle, email, secret string) error {
 	now := time.Now()
 
@@ -143,6 +154,29 @@ func (s *Store) fetchUser(id int) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return &u, nil
+}
+
+func (s *Store) fetchUserByCredentials(handle, secret string) (*User, error) {
+	now := time.Now()
+	u, up := User{}, UserProfile{}
+
+	row := s.db.QueryRow(`
+		select id, hashed_secret, users.handle, user_profile.handle, user_profile.email
+		from users, user_profile
+		where users.handle = ?
+		  and user_profile.user_id = users.id
+		  and (user_profile.effdt <= ? and ? < user_profile.enddt)`, strings.ToLower(handle), now, now)
+	var hashedSecret string
+	err := row.Scan(&u.Id, &hashedSecret, &u.Handle, &up.Handle, &up.Email)
+	if err != nil {
+		return nil, err
+	} else if bcrypt.CompareHashAndPassword([]byte(hashedSecret), []byte(secret)) != nil {
+		return nil, ErrUnauthorized
+	}
+
+	u.Profiles = []*UserProfile{&up}
 
 	return &u, nil
 }
