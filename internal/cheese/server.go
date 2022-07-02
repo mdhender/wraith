@@ -198,13 +198,27 @@ func (s *server) serve() error {
 				_, _ = w.Write(bw.Bytes())
 			})
 			r.Get("/games/{game}/nations/{nation}/turn/{year}/{quarter}/report", func(w http.ResponseWriter, r *http.Request) {
-				game, pNation, pYear, pQuarter := chi.URLParam(r, "game"), chi.URLParam(r, "nation"), chi.URLParam(r, "year"), chi.URLParam(r, "quarter")
+
+				_, claims, _ := jwtauth.FromContext(r.Context())
+				claim, ok := s.claims[strings.ToLower(claims["user_id"].(string))]
+				if !ok {
+					log.Printf("%s: %s: fetchClaims: not ok\n", r.Method, r.URL.Path)
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+				pNation := chi.URLParam(r, "nation")
 				nationNo, err := strconv.Atoi(pNation)
 				if err != nil {
 					log.Printf("%s: %s: nation: %v\n", r.Method, r.URL.Path, err)
 					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 					return
+				} else if nationNo != claim.NationNo {
+					log.Printf("%s: %s: nation: claim.NationNo %d: nationNo %d\n", r.Method, r.URL.Path, claim.NationNo, nationNo)
+					http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+					return
 				}
+
+				game, pYear, pQuarter := chi.URLParam(r, "game"), chi.URLParam(r, "year"), chi.URLParam(r, "quarter")
 				year, err := strconv.Atoi(pYear)
 				if err != nil {
 					log.Printf("%s: %s: year: %v\n", r.Method, r.URL.Path, err)
