@@ -128,15 +128,15 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 			_, _ = p.Fprintf(w, "\n")
 			_, _ = p.Fprintf(w, "  Crew/Team________  Units___________\n")
 			_, _ = p.Fprintf(w, "  Construction Crew  %16d\n", cs.Population[0].QtyConstructionCrew)
-			_, _ = p.Fprintf(w, "  Spy Team           %16d\n", cs.Population[0].QtySoldier)
+			_, _ = p.Fprintf(w, "  Spy Team           %16d\n", cs.Population[0].QtySpyTeam)
 			_, _ = p.Fprintf(w, "\n")
 			_, _ = p.Fprintf(w, "  Changes__________  Population_Units\n")
 			_, _ = p.Fprintf(w, "  Births             %16d\n", cs.Population[0].Births)
 			_, _ = p.Fprintf(w, "  Non-Combat Deaths  %16d\n", cs.Population[0].Deaths)
 
 			_, _ = p.Fprintf(w, "\n")
-			_, _ = p.Fprintf(w, "  Components ----------------------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Item-TL   Operational          MUs         EMUs  SUs_Required\n")
+			_, _ = p.Fprintf(w, "  Hull and Systems ----------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "  Item-TL   Operational          MUs         EMUs  Volume\n")
 			muOper, emuOper, suOper := 0, 0, 0
 			for _, item := range cs.Hull {
 				mu := totalMass(item.Unit, item.QtyOperational, 0)
@@ -162,8 +162,8 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 			availSUs := 0
 			muCargo, emuCargo, suCargo := 0, 0, 0
 			_, _ = p.Fprintf(w, "\n")
-			_, _ = p.Fprintf(w, "  Cargo ---------------------------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Item-TL   Operational        Stowed      Total Qty           MUs          EMUs   SUs_Required\n")
+			_, _ = p.Fprintf(w, "  Cargo and Supplies --------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "  Item-TL   Operational        Stowed      Total Qty           MUs          EMUs   Volume\n")
 			for _, item := range cs.Inventory {
 				mu := totalMass(item.Unit, item.QtyOperational, item.QtyStowed)
 				if item.Unit.Code == "STUN" || item.Unit.Code == "LTSU" || item.Unit.Code == "SLSU" {
@@ -221,7 +221,7 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 			}
 
 			_, _ = p.Fprintf(w, "\n")
-			_, _ = p.Fprintf(w, "  Production -----------------------------------------------------------------------------------------------------\n")
+			_, _ = p.Fprintf(w, "  Factory --------------------------------------------------------------------------------------------------------\n")
 			for _, group := range cs.Factories {
 				_, _ = p.Fprintf(w, "  Group: %2d  Produces: %s\n", group.No, group.Unit.Code)
 				for _, unit := range group.Units {

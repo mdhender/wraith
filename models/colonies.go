@@ -113,7 +113,7 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 		QtyUnskilled:        6_000_000,
 		QtyUnemployed:       5_900_000,
 		QtyConstructionCrew: 2_000,
-		QtySpyTeam:          3,
+		QtySpyTeam:          25,
 		RebelPct:            0.0125,
 	}}
 
