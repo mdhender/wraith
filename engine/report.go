@@ -28,36 +28,27 @@ import (
 	"time"
 )
 
-func (e *Engine) Report(spId int) error {
-	panic("!")
-	//// run the report for just the one nation
-	//for _, n := range e.game.Nations {
-	//	if n.No != spId {
-	//		continue
-	//	}
-	//	log.Printf("reporting for %d %q (%d)\n", n.No, n.Name, n.Id)
-	//
-	//	//reportFile := filepath.Clean(filepath.Join(n.Store, "report.txt"))
-	//	//log.Printf("reporting for %d %q (%q)\n", n.Id, n.Name, reportFile)
-	//
-	//	//w, err := os.OpenFile(reportFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
-	//	//if err != nil {
-	//	//	return err
-	//	//}
-	//
-	//	return e.ReportWriter(os.Stdout, spId)
-	//}
-	//
-	//return nil
+func (e *Engine) Report(w io.Writer, game string, nation, year, quarter int) error {
+	g, err := e.r.FetchGameByNameAsOf(game, fmt.Sprintf("%04d/%d", year, quarter))
+	if err != nil {
+		return err
+	}
+	//log.Printf("loaded game %q\n", g.ShortName)
+	return e.ReportWriter(g, nation, w)
 }
 
-func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
+func (e *Engine) ReportWriter(game *models.Game, nationNo int, w io.Writer) error {
 	p := message.NewPrinter(language.English)
 
 	asOfTurn := game.CurrentTurn
 	rptDate := time.Now().Format("2006/01/02")
 
+	found := false
 	for _, nation := range game.Nations {
+		if nation.No != nationNo {
+			continue
+		}
+		found = true
 		//if nation.Details[0].Name != "Yinshei" {
 		//	continue
 		//}
@@ -277,6 +268,11 @@ func (e *Engine) ReportWriter(game *models.Game, w io.Writer) error {
 		_, _ = p.Fprintf(w, "\nCombat Report ---------------------------------------------------------------------\n")
 		_, _ = p.Fprintf(w, "  No activity.\n")
 	}
+
+	if !found {
+		_, _ = p.Fprintf(w, "No data found for Nation %d\n", nationNo)
+	}
+
 	return nil
 }
 

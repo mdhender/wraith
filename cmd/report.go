@@ -76,7 +76,7 @@ var cmdReport = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = e.ReportWriter(g, fd)
+		err = e.ReportWriter(g, 1, fd)
 		if err != nil {
 			log.Fatal(err)
 		}

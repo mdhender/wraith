@@ -19,15 +19,18 @@
 package cheese
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/jwtauth/v5"
+	"github.com/mdhender/wraith/engine"
 	"github.com/mdhender/wraith/models"
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 	"unicode/utf8"
 )
@@ -144,8 +147,41 @@ func (s *server) serve() error {
 				_, _ = w.Write([]byte("yay!"))
 			})
 			r.Get("/games/{game}/nations/{nation}/turn/{year}/{quarter}/report", func(w http.ResponseWriter, r *http.Request) {
-				game, nation, year, quarter := chi.URLParam(r, "game"), chi.URLParam(r, "nation"), chi.URLParam(r, "year"), chi.URLParam(r, "quarter")
-				_, _ = w.Write([]byte(fmt.Sprintf("%s: %s: game %q nation %q year %q quarter %q", r.Method, r.URL.Path, game, nation, year, quarter)))
+				game, pNation, pYear, pQuarter := chi.URLParam(r, "game"), chi.URLParam(r, "nation"), chi.URLParam(r, "year"), chi.URLParam(r, "quarter")
+				nationNo, err := strconv.Atoi(pNation)
+				if err != nil {
+					log.Printf("%s: %s: nation: %v\n", r.Method, r.URL.Path, err)
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+				year, err := strconv.Atoi(pYear)
+				if err != nil {
+					log.Printf("%s: %s: year: %v\n", r.Method, r.URL.Path, err)
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+				quarter, err := strconv.Atoi(pQuarter)
+				if err != nil {
+					log.Printf("%s: %s: quarter: %v\n", r.Method, r.URL.Path, err)
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+				e, err := engine.Open(s.store)
+				if err != nil {
+					log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+				log.Printf("%s: %s: loaded engine version %q\n", r.Method, r.URL.Path, e.Version())
+				bw := bytes.NewBuffer([]byte(fmt.Sprintf("<body><h1>Nation %d</h1><code><pre>", nationNo)))
+				err = e.Report(bw, game, nationNo, year, quarter)
+				if err != nil {
+					log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+				bw.Write([]byte("</pre></code></body>"))
+				_, _ = w.Write(bw.Bytes())
 			})
 		})
 	})

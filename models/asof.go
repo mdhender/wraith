@@ -21,14 +21,12 @@ package models
 import (
 	"database/sql"
 	"fmt"
-	"log"
-	"time"
 )
 
 // fetch game by id and turn
 func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
-	now := time.Now()
-	started := now
+	//now := time.Now()
+	//started := now
 
 	// get a transaction with a deferred rollback in case things fail
 	tx, err := s.db.BeginTx(s.ctx, nil)
@@ -49,7 +47,7 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 		return nil, fmt.Errorf("fetchGameByIdAsOf: %d: game: %w", gameId, ErrNoDataFound)
 	}
 	game.CurrentTurn = turn
-	log.Printf("fetchGameByIdAsOf: %d: game: elapsed %v\n", gameId, time.Now().Sub(started))
+	//log.Printf("fetchGameByIdAsOf: %d: game: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	// fetch units
 	game.Units = make(map[int]*Unit)
@@ -67,8 +65,8 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 		unit.Hudnut = hudnut == "Y"
 		game.Units[unit.Id] = unit
 	}
-	log.Printf("fetchGameByIdAsOf: %d: units: fetched %d units\n", gameId, len(game.Units))
-	log.Printf("fetchGameByIdAsOf: %d: units: elapsed %v\n", gameId, time.Now().Sub(started))
+	//log.Printf("fetchGameByIdAsOf: %d: units: fetched %d units\n", gameId, len(game.Units))
+	//log.Printf("fetchGameByIdAsOf: %d: units: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	// fetch users
 	game.Users = make(map[int]*User)
@@ -84,8 +82,8 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 		}
 		game.Users[user.Id] = user
 	}
-	log.Printf("fetchGameByIdAsOf: %d: users: fetched %d users\n", gameId, len(game.Users))
-	log.Printf("fetchGameByIdAsOf: %d: users: elapsed %v\n", gameId, time.Now().Sub(started))
+	//log.Printf("fetchGameByIdAsOf: %d: users: fetched %d users\n", gameId, len(game.Users))
+	//log.Printf("fetchGameByIdAsOf: %d: users: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	// fetch players as of the turn
 	game.Players = make(map[int]*Player)
@@ -134,8 +132,8 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 		detail.Player = player
 		player.Details = append(player.Details, detail)
 	}
-	log.Printf("fetchGameByIdAsOf: %d: players: fetched %d players\n", gameId, len(game.Players))
-	log.Printf("fetchGameByIdAsOf: %d: players: elapsed %v\n", gameId, time.Now().Sub(started))
+	//log.Printf("fetchGameByIdAsOf: %d: players: fetched %d players\n", gameId, len(game.Players))
+	//log.Printf("fetchGameByIdAsOf: %d: players: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	// fetch nations as of the turn
 	game.Nations = make(map[int]*Nation)
@@ -172,8 +170,8 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 		detail.ControlledBy = game.Players[controlledById]
 		game.Nations[nation.Id] = nation
 	}
-	log.Printf("fetchGameByIdAsOf: %d: nations: fetched %d nations\n", gameId, len(game.Nations))
-	log.Printf("fetchGameByIdAsOf: %d: nations: elapsed %v\n", gameId, time.Now().Sub(started))
+	//log.Printf("fetchGameByIdAsOf: %d: nations: fetched %d nations\n", gameId, len(game.Nations))
+	//log.Printf("fetchGameByIdAsOf: %d: nations: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	// cross link nations and players
 	rows, err = tx.Query("select nation_id, player_id from nation_player where nation_id in (select id from nations where game_id = ?) order by player_id", gameId)
@@ -192,8 +190,8 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 		player.MemberOf = nation
 		nation.Players = append(nation.Players, player)
 	}
-	log.Printf("fetchGameByIdAsOf: %d: memberOf: fetched %d players\n", gameId, numPlayers)
-	log.Printf("fetchGameByIdAsOf: %d: memberOf: elapsed %v\n", gameId, time.Now().Sub(started))
+	//log.Printf("fetchGameByIdAsOf: %d: memberOf: fetched %d players\n", gameId, numPlayers)
+	//log.Printf("fetchGameByIdAsOf: %d: memberOf: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	// fetch systems, stars, and planets
 	game.Systems, game.Stars, game.Planets = make(map[int]*System), make(map[int]*Star), make(map[int]*Planet)
@@ -241,10 +239,10 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 		}
 		game.Planets[planet.Id] = planet
 	}
-	log.Printf("fetchGameByIdAsOf: %d: systems: fetched %8d systems\n", gameId, len(game.Systems))
-	log.Printf("fetchGameByIdAsOf: %d: systems: fetched %8d stars\n", gameId, len(game.Stars))
-	log.Printf("fetchGameByIdAsOf: %d: systems: fetched %8d planets\n", gameId, len(game.Planets))
-	log.Printf("fetchGameByIdAsOf: %d: systems: elapsed %v\n", gameId, time.Now().Sub(started))
+	//log.Printf("fetchGameByIdAsOf: %d: systems: fetched %8d systems\n", gameId, len(game.Systems))
+	//log.Printf("fetchGameByIdAsOf: %d: systems: fetched %8d stars\n", gameId, len(game.Stars))
+	//log.Printf("fetchGameByIdAsOf: %d: systems: fetched %8d planets\n", gameId, len(game.Planets))
+	//log.Printf("fetchGameByIdAsOf: %d: systems: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	game.Resources = make(map[int]*NaturalResource)
 	rows, err = tx.Query(`
@@ -283,9 +281,9 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 		numDeposits++
 		resource.Details = append(resource.Details, detail)
 	}
-	log.Printf("fetchGameByIdAsOf: %d: systems: fetched %8d resources\n", gameId, len(game.Resources))
-	log.Printf("fetchGameByIdAsOf: %d: systems: fetched %8d deposits\n", gameId, numDeposits)
-	log.Printf("fetchGameByIdAsOf: %d: systems: elapsed %v\n", gameId, time.Now().Sub(started))
+	//log.Printf("fetchGameByIdAsOf: %d: systems: fetched %8d resources\n", gameId, len(game.Resources))
+	//log.Printf("fetchGameByIdAsOf: %d: systems: fetched %8d deposits\n", gameId, numDeposits)
+	//log.Printf("fetchGameByIdAsOf: %d: systems: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	// fetch colonies and ships
 	game.CorS, game.Colonies, game.Ships = make(map[int]*ColonyOrShip), make(map[int]*ColonyOrShip), make(map[int]*ColonyOrShip)
@@ -369,10 +367,10 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 			game.Colonies[cors.Id] = cors
 		}
 	}
-	log.Printf("fetchGameByIdAsOf: %d: cors: fetched %8d cors\n", gameId, len(game.CorS))
-	log.Printf("fetchGameByIdAsOf: %d: cors: fetched %8d colonies\n", gameId, len(game.Colonies))
-	log.Printf("fetchGameByIdAsOf: %d: cors: fetched %8d ships\n", gameId, len(game.Ships))
-	log.Printf("fetchGameByIdAsOf: %d: cors: elapsed %v\n", gameId, time.Now().Sub(started))
+	//log.Printf("fetchGameByIdAsOf: %d: cors: fetched %8d cors\n", gameId, len(game.CorS))
+	//log.Printf("fetchGameByIdAsOf: %d: cors: fetched %8d colonies\n", gameId, len(game.Colonies))
+	//log.Printf("fetchGameByIdAsOf: %d: cors: fetched %8d ships\n", gameId, len(game.Ships))
+	//log.Printf("fetchGameByIdAsOf: %d: cors: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	var cs *ColonyOrShip
 
@@ -544,11 +542,11 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 		numLinks++
 		nation.CorS = append(nation.CorS, cors)
 	}
-	log.Printf("fetchGameByIdAsOf: %d: cors: linked  %8d cors\n", gameId, numLinks)
-	log.Printf("fetchGameByIdAsOf: %d: cors: linked  %8d colonies\n", gameId, numColonies)
-	log.Printf("fetchGameByIdAsOf: %d: cors: linked  %8d ships\n", gameId, numShips)
-	log.Printf("fetchGameByIdAsOf: %d: cors: linked  %8d nulls\n", gameId, numNulls)
-	log.Printf("fetchGameByIdAsOf: %d: cors: elapsed %v\n", gameId, time.Now().Sub(started))
+	//log.Printf("fetchGameByIdAsOf: %d: cors: linked  %8d cors\n", gameId, numLinks)
+	//log.Printf("fetchGameByIdAsOf: %d: cors: linked  %8d colonies\n", gameId, numColonies)
+	//log.Printf("fetchGameByIdAsOf: %d: cors: linked  %8d ships\n", gameId, numShips)
+	//log.Printf("fetchGameByIdAsOf: %d: cors: linked  %8d nulls\n", gameId, numNulls)
+	//log.Printf("fetchGameByIdAsOf: %d: cors: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	// sort cors
 	for _, nation := range game.Nations {
@@ -562,7 +560,7 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 			}
 		}
 	}
-	log.Printf("fetchGameByIdAsOf: %d: cors: elapsed %v\n", gameId, time.Now().Sub(started))
+	//log.Printf("fetchGameByIdAsOf: %d: cors: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	// fetch cors hulls
 	rows, err = tx.Query(`
@@ -593,8 +591,8 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 		}
 		hull.CS.Hull = append(hull.CS.Hull, hull)
 	}
-	log.Printf("fetchGameByIdAsOf: %d: cors: fetched %8d hulls\n", gameId, numHulls)
-	log.Printf("fetchGameByIdAsOf: %d: cors: elapsed %v\n", gameId, time.Now().Sub(started))
+	//log.Printf("fetchGameByIdAsOf: %d: cors: fetched %8d hulls\n", gameId, numHulls)
+	//log.Printf("fetchGameByIdAsOf: %d: cors: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	// fetch cors inventory
 	rows, err = tx.Query(`
@@ -624,8 +622,10 @@ func (s *Store) fetchGameByIdAsOf(gameId int, asOfTurn string) (*Game, error) {
 		}
 		inventory.CS.Inventory = append(inventory.CS.Inventory, inventory)
 	}
-	log.Printf("fetchGameByIdAsOf: %d: cors: fetched %8d inventories\n", gameId, numInventory)
-	log.Printf("fetchGameByIdAsOf: %d: cors: elapsed %v\n", gameId, time.Now().Sub(started))
+	//log.Printf("fetchGameByIdAsOf: %d: cors: fetched %8d inventories\n", gameId, numInventory)
+	//log.Printf("fetchGameByIdAsOf: %d: cors: elapsed %v\n", gameId, time.Now().Sub(started))
+
+	//log.Printf("fetchGameByIdAsOf: %d: elapsed %v\n", gameId, time.Now().Sub(started))
 
 	return game, nil
 }
