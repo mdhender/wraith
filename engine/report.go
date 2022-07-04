@@ -42,6 +42,7 @@ func (e *Engine) ReportWriter(game *models.Game, nationNo int, w io.Writer) erro
 
 	asOfTurn := game.CurrentTurn
 	rptDate := time.Now().Format("2006/01/02")
+	showSUs := game == nil
 
 	found := false
 	for _, nation := range game.Nations {
@@ -127,11 +128,11 @@ func (e *Engine) ReportWriter(game *models.Game, nationNo int, w io.Writer) erro
 
 			_, _ = p.Fprintf(w, "\n")
 			_, _ = p.Fprintf(w, "  Hull and Systems ----------------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Item-TL   Operational          MUs         EMUs  Volume\n")
-			muOper, emuOper, suOper := 0, 0, 0
+			_, _ = p.Fprintf(w, "  Item-TL   Operational  Mass_______  Volume_____  Fuel_Cost__\n")
+			muOper, emuOper, suOper, fuOper := 0, 0, 0, 0
 			for _, item := range cs.Hull {
 				mu := totalMass(item.Unit, item.QtyOperational, 0)
-				var emu, su int
+				var emu, su, fuelCost int
 				if item.Unit.Code == "STUN" || item.Unit.Code == "LTSU" || item.Unit.Code == "SLSU" {
 					// hull structures shouldn't require emu
 				} else {
@@ -145,16 +146,23 @@ func (e *Engine) ReportWriter(game *models.Game, nationNo int, w io.Writer) erro
 						su = emu * 10
 					}
 				}
-				muOper, emuOper, suOper = muOper+mu, emuOper+emu, suOper+su
-				_, _ = p.Fprintf(w, "  %7s  %12d  %11d  %11d   %11d\n", item.Unit.Code, item.QtyOperational, mu, emu, su)
+				muOper, emuOper, suOper, fuOper = muOper+mu, emuOper+emu, suOper+su, fuOper+fuelCost
+				_, _ = p.Fprintf(w, "  %7s  %12d  %11d  %11d  %11d\n", item.Unit.Code, item.QtyOperational, mu, emu, fuelCost)
+				if showSUs {
+					_, _ = p.Fprintf(w, "  %7s  %12d  %11d  %11d  %11d  %11d\n", item.Unit.Code, item.QtyOperational, mu, emu, fuelCost, su)
+				}
 			}
-			_, _ = p.Fprintf(w, "   Totals  ------------  %11d  %11d   %11d\n", muOper, emuOper, suOper)
+			_, _ = p.Fprintf(w, "  -------  ------------  -----------  -----------  -----------\n")
+			_, _ = p.Fprintf(w, "   Totals  ------------  %11d  %11d  %11d\n", muOper, emuOper, fuOper)
+			if showSUs {
+				_, _ = p.Fprintf(w, "   Totals  ------------  %11d  %11d  %11d  %11d\n", muOper, emuOper, fuOper, suOper)
+			}
 
 			availSUs := 0
 			muCargo, emuCargo, suCargo := 0, 0, 0
 			_, _ = p.Fprintf(w, "\n")
 			_, _ = p.Fprintf(w, "  Cargo and Supplies --------------------------------------------------------------------------\n")
-			_, _ = p.Fprintf(w, "  Item-TL   Operational        Stowed      Total Qty           MUs          EMUs   Volume\n")
+			_, _ = p.Fprintf(w, "  Item-TL   Active_____  Stowed______  Total_Qty____  Mass________  Volume______\n")
 			for _, item := range cs.Inventory {
 				mu := totalMass(item.Unit, item.QtyOperational, item.QtyStowed)
 				if item.Unit.Code == "STUN" || item.Unit.Code == "LTSU" || item.Unit.Code == "SLSU" {
@@ -169,11 +177,19 @@ func (e *Engine) ReportWriter(game *models.Game, nationNo int, w io.Writer) erro
 				case "orbital":
 					su = emu * 10
 				}
-				_, _ = p.Fprintf(w, "  %7s  %12d  %12d  %13d  %12d  %12d  %13d\n",
-					item.Unit.Code, item.QtyOperational, item.QtyStowed, item.QtyOperational+item.QtyStowed, mu, emu, su)
+				_, _ = p.Fprintf(w, "  %7s  %12d  %12d  %13d  %12d  %12d\n",
+					item.Unit.Code, item.QtyOperational, item.QtyStowed, item.QtyOperational+item.QtyStowed, mu, emu)
+				if showSUs {
+					_, _ = p.Fprintf(w, "  %7s  %12d  %12d  %13d  %12d  %12d  %13d\n",
+						item.Unit.Code, item.QtyOperational, item.QtyStowed, item.QtyOperational+item.QtyStowed, mu, emu, su)
+				}
 				muCargo, emuCargo, suCargo = muCargo+mu, emuCargo+emu, suCargo+su
 			}
-			_, _ = p.Fprintf(w, "   Totals  ------------  ------------  -------------  %12d  %12d  %13d\n", muCargo, emuCargo, suCargo)
+			_, _ = p.Fprintf(w, "  -------  ------------  ------------  -------------  ------------  ------------\n")
+			_, _ = p.Fprintf(w, "   Totals  ------------  ------------  -------------  %12d  %12d\n", muCargo, emuCargo)
+			if showSUs {
+				_, _ = p.Fprintf(w, "   Totals  ------------  ------------  -------------  %12d  %12d  %13d\n", muCargo, emuCargo, suCargo)
+			}
 
 			_, _ = p.Fprintf(w, "\n")
 			_, _ = p.Fprintf(w, "  Farming --------------------------------------------------------------------------------------------------------\n")
@@ -219,7 +235,7 @@ func (e *Engine) ReportWriter(game *models.Game, nationNo int, w io.Writer) erro
 					fuelPerTurn := int(math.Ceil(float64(unit.QtyOperational) * 0.5))
 					proLabor, uskLabor := 1*unit.QtyOperational, 3*unit.QtyOperational
 					_, _ = p.Fprintf(w, "     Input:  Facts_     Quantity  Professionals    Unskilled    METS/Turn    NMTS/Turn    FUEL/Turn\n")
-					_, _ = p.Fprintf(w, "             %6s  %11d  %11d    %11d            ?            ?  %11d\n",
+					_, _ = p.Fprintf(w, "             %6s  %11d  %11d    %11d          TBD          TBD  %11d\n",
 						unit.Unit.Code, unit.QtyOperational, proLabor, uskLabor, fuelPerTurn)
 				}
 				for _, stage := range group.Stages {
@@ -241,15 +257,17 @@ func (e *Engine) ReportWriter(game *models.Game, nationNo int, w io.Writer) erro
 			starMap[cs.Planet.Star.Id] = cs.Planet.Star
 		}
 		for _, star := range starMap {
-			_, _ = p.Fprintf(w, "  System:: %-13s\n", fmt.Sprintf("%s%s", star.System.Coords.String(), star.Sequence))
+			_, _ = p.Fprintf(w, "  System:: %-13s\n", star.System.Coords.String())
+			_, _ = p.Fprintf(w, "    Star:: %s\n", star.Sequence)
 			for _, planet := range star.Orbits {
 				if planet == nil {
 					continue
 				}
-				_, _ = p.Fprintf(w, "   Planet: %-13s    Kind: %-32s  Controlled By: %s\n", fmt.Sprintf("%s%s#%d", star.System.Coords.String(), star.Sequence, planet.OrbitNo), planet.Kind, "?")
-				if planet.Details[0].HabitabilityNo != 0 {
-					_, _ = p.Fprintf(w, "             HabNo: %2d\n", planet.Details[0].HabitabilityNo)
+				var habNo string
+				if planet.Details[0].HabitabilityNo > 0 {
+					habNo = fmt.Sprintf("Habitability: %2d", planet.Details[0].HabitabilityNo)
 				}
+				_, _ = p.Fprintf(w, "   Planet: %-13s    Kind: %-14s   %-17s   Controlled By: %s\n", fmt.Sprintf("%s%s#%d", star.System.Coords.String(), star.Sequence, planet.OrbitNo), planet.Kind, habNo, "TBD")
 				for _, r := range planet.Deposits {
 					qtyRemaining := r.Details[0].QtyRemaining
 					_, _ = p.Fprintf(w, "           Deposit: %2d %-6s %12d MUs remaining\n", r.No, r.Unit.Code, qtyRemaining)
