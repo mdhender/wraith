@@ -182,7 +182,10 @@ func (s *server) serve() error {
 				}
 
 				_, _ = w.Write([]byte(fmt.Sprintf("<body><h1>Howdy, %s</h1>", claim.User)))
-				_, _ = w.Write([]byte(`<p><a href="/ui/games/PT-1/current-report">Current Report</a></p>`))
+				_, _ = w.Write([]byte(`<ul>`))
+				_, _ = w.Write([]byte(`<li><a href="/ui/games/PT-1/current-report">Current Report</a></li>`))
+				_, _ = w.Write([]byte(`<li><a href="https://wraith.dev/docs/index.html">Documentation</a></li>`))
+				_, _ = w.Write([]byte(`</ul>`))
 				_, _ = w.Write([]byte(fmt.Sprintf("<p>Nation No %d</p>", claim.NationNo)))
 				_, _ = w.Write([]byte(fmt.Sprintf("<p>Player %q</p>", claim.Player)))
 			})
