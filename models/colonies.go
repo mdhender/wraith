@@ -72,7 +72,7 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 		{code: "FOOD", name: "food", tl: 0, oq: 0, sq: 7_500_000},
 		{code: "FRM-1", name: "farm", tl: 1, oq: 170_000, sq: 0},
 		{code: "FUEL", name: "fuel", tl: 0, oq: 0, sq: 5_000_000},
-		{code: "MIN-1", name: "mine", tl: 1, oq: 100_000, sq: 30_000},
+		{code: "MIN-1", name: "mine", tl: 1, oq: 251_000, sq: 100_000},
 		{code: "MTLS", name: "metallics", tl: 0, oq: 100_000, sq: 0},
 		{code: "MLSP", name: "military-supplies", tl: 0, oq: 2_000_000},
 		{code: "NMTS", name: "non-metallics", tl: 0, oq: 100_000, sq: 0},

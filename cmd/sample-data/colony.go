@@ -95,7 +95,7 @@ func GenHomeOpenColony(id int) *Colony {
 	c.Inventory = append(c.Inventory, &Inventory{Code: "FRM", Name: "farm", TechLevel: 1, OperationalQty: 170_000})
 	c.Inventory = append(c.Inventory, &Inventory{Code: "MTLS", Name: "metallics", OperationalQty: 100_000})
 	c.Inventory = append(c.Inventory, &Inventory{Code: "MLSP", Name: "military-supplies", OperationalQty: 2_000_000})
-	c.Inventory = append(c.Inventory, &Inventory{Code: "MIN", Name: "mine", TechLevel: 1, OperationalQty: 100_000})
+	c.Inventory = append(c.Inventory, &Inventory{Code: "MIN", Name: "mine", TechLevel: 1, OperationalQty: 351_000})
 	c.Inventory = append(c.Inventory, &Inventory{Code: "MSS", Name: "missile", TechLevel: 1, OperationalQty: 240_000})
 	c.Inventory = append(c.Inventory, &Inventory{Code: "MSL", Name: "missile-launcher", TechLevel: 1, OperationalQty: 8_000})
 	c.Inventory = append(c.Inventory, &Inventory{Code: "NMTS", Name: "non-metallics", OperationalQty: 100_000})
