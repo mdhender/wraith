@@ -212,7 +212,7 @@ func (e *Engine) ReportWriter(game *models.Game, nationNo int, w io.Writer) erro
 			_, _ = p.Fprintf(w, "\n")
 			_, _ = p.Fprintf(w, "  Mining ---------------------------------------------------------------------------------------------------------\n")
 			for _, group := range cs.Mines {
-				_, _ = p.Fprintf(w, "  Group: %2d  Produces: %s\n", group.No, group.Deposit.Unit.Code)
+				_, _ = p.Fprintf(w, "  Group: %2d   Deposit: DP%-3d   Produces: %s   \n", group.No, group.Deposit.No, group.Deposit.Unit.Code)
 				for _, unit := range group.Units {
 					fuelPerTurn := int(math.Ceil(float64(unit.QtyOperational) * 0.5))
 					proLabor, uskLabor := 1*unit.QtyOperational, 3*unit.QtyOperational
@@ -270,7 +270,7 @@ func (e *Engine) ReportWriter(game *models.Game, nationNo int, w io.Writer) erro
 				_, _ = p.Fprintf(w, "   Planet: %-13s    Kind: %-14s   %-17s   Controlled By: %s\n", fmt.Sprintf("%s%s#%d", star.System.Coords.String(), star.Sequence, planet.OrbitNo), planet.Kind, habNo, "TBD")
 				for _, r := range planet.Deposits {
 					qtyRemaining := r.Details[0].QtyRemaining
-					_, _ = p.Fprintf(w, "           Deposit: %2d %-6s %12d MUs remaining\n", r.No, r.Unit.Code, qtyRemaining)
+					_, _ = p.Fprintf(w, "           Deposit: %2d   %-6s   Yield: %7.3f%%   MUs remaining: %12d\n", r.No, r.Unit.Code, r.YieldPct*100, qtyRemaining)
 				}
 			}
 		}
