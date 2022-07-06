@@ -15,8 +15,7 @@
     <td>Z</td>
     <td>Number of Stars</td>
     <td>Distance from {{.X}}/{{.Y}}/{{.Z}}</td>
-    <td>Link</td>
-    <td>Link</td>
+    <td align="center">Link</td>
   </thead>
   {{range .Systems}}
   <tr>
@@ -25,8 +24,13 @@
     <td align="right">&nbsp;&nbsp;{{.Z}}&nbsp;</td>
     <td align="right">{{.QtyStars}}&nbsp;</td>
     <td align="right">{{.Distance}}&nbsp;</td>
-    <td align="center"><a href="{{.URL}}">&nbsp;🔗&nbsp;</a></td>
-    <td align="center"><a href="{{.URL}}" target="_blank">&nbsp;↗&nbsp;</a></td>
+    <td align="center">
+      &nbsp;&nbsp;
+      <a href="{{.URL}}">&nbsp;🔗&nbsp;</a>
+      &nbsp;&nbsp;&nbsp;
+      <a href="{{.URL}}" target="_blank" title="open in new tab">&nbsp;↗&nbsp;</a>
+      &nbsp;&nbsp;
+    </td>
   </tr>
   {{end}}
 </table>
