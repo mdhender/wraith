@@ -30,7 +30,9 @@ import (
 	"github.com/mdhender/wraith/models"
 	"io"
 	"log"
+	"math"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -119,9 +121,9 @@ func (s *server) serve() error {
 		r.Post("/ui/login", s.loginPostHandler(tokenCookie, tokenString))
 		//r.Get("/ui/login/{handle}/{secret}", s.loginGetHandleSecretHandler(tokenCookie, tokenString))
 
-		r.Get("/ui/logout", s.handleLogout(tokenCookie))
-		r.Post("/ui/logout", s.handleLogout(tokenCookie))
-		r.Put("/ui/logout", s.handleLogout(tokenCookie))
+		r.Get("/ui/logout", s.logoutHandler(tokenCookie))
+		r.Post("/ui/logout", s.logoutHandler(tokenCookie))
+		r.Put("/ui/logout", s.logoutHandler(tokenCookie))
 	})
 
 	// protected routes
@@ -169,57 +171,8 @@ func (s *server) serve() error {
 
 		r.Route("/ui", func(r chi.Router) {
 			r.Get("/", s.homeGetHandler(s.templates))
-			r.Get("/games/{game}/cluster", func(w http.ResponseWriter, r *http.Request) {
-				pGameName, x, y, z := chi.URLParam(r, "game"), 0, 0, 0
-				game, err := s.store.LookupGameByName(pGameName)
-				if err != nil {
-					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-					return
-				}
-				b, err := s.store.FetchClusterByGameOrigin(game.Id)
-				if err != nil {
-					log.Printf("%s: %s: fetchCluster: %d: %v\n", r.Method, r.URL.Path, game.Id, err)
-					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-					return
-				}
-				_, _ = w.Write([]byte(fmt.Sprintf("<body><h1>Cluster Map: Origin %d/%d/%d</h1>", x, y, z)))
-				_, _ = w.Write(b)
-				_, _ = w.Write([]byte("</body>"))
-			})
-			r.Get("/games/{game}/cluster/{x}/{y}/{z}", func(w http.ResponseWriter, r *http.Request) {
-				game, err := s.store.LookupGameByName(chi.URLParam(r, "game"))
-				if err != nil {
-					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-					return
-				}
-				x, err := strconv.Atoi(chi.URLParam(r, "x"))
-				if err != nil {
-					log.Printf("%s: %s: x: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-					return
-				}
-				y, err := strconv.Atoi(chi.URLParam(r, "y"))
-				if err != nil {
-					log.Printf("%s: %s: y: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-					return
-				}
-				z, err := strconv.Atoi(chi.URLParam(r, "z"))
-				if err != nil {
-					log.Printf("%s: %s: z: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-					return
-				}
-				b, err := s.store.FetchClusterByGame(game.Id, x, y, z)
-				if err != nil {
-					log.Printf("%s: %s: fetchCluster: %d: %v\n", r.Method, r.URL.Path, game.Id, err)
-					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-					return
-				}
-				_, _ = w.Write([]byte(fmt.Sprintf("<body><h1>Cluster Map: Origin %d/%d/%d</h1>", x, y, z)))
-				_, _ = w.Write(b)
-				_, _ = w.Write([]byte("</body>"))
-			})
+			r.Get("/games/{game}/cluster", s.clusterGetHandler(s.templates))
+			r.Get("/games/{game}/cluster/{x}/{y}/{z}", s.clusterGetHandler(s.templates))
 			r.Get("/games/{game}/current-report", func(w http.ResponseWriter, r *http.Request) {
 				_, claims, _ := jwtauth.FromContext(r.Context())
 				claim, ok := s.claims[strings.ToLower(claims["user_id"].(string))]
@@ -305,15 +258,65 @@ func (s *server) serve() error {
 	return http.ListenAndServe(s.addr, r)
 }
 
-func (s *server) handleLogout(cookieName string) http.HandlerFunc {
+func (s *server) clusterGetHandler(templates string) http.HandlerFunc {
+	t := osk.New(templates, "cluster_list.html")
 	return func(w http.ResponseWriter, r *http.Request) {
-		http.SetCookie(w, &http.Cookie{
-			Name:     cookieName,
-			Path:     "/",
-			MaxAge:   -1,
-			HttpOnly: true,
-		})
-		w.WriteHeader(http.StatusNoContent)
+		pGameName := chi.URLParam(r, "game")
+		game, err := s.store.LookupGameByName(pGameName)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+		x, _ := strconv.Atoi(chi.URLParam(r, "x"))
+		y, _ := strconv.Atoi(chi.URLParam(r, "y"))
+		z, _ := strconv.Atoi(chi.URLParam(r, "z"))
+
+		systems, err := s.store.FetchSystemScanByGame(game.Id)
+		if err != nil {
+			log.Printf("%s: %s: game %d: %v\n", r.Method, r.URL.Path, game.Id, err)
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+
+		scans := make(UIScans, len(systems), len(systems))
+		for i, sys := range systems {
+			dx, dy, dz := sys.X-x, sys.Y-y, sys.Z-z
+			scans[i] = &UIScan{
+				Distance: math.Sqrt(float64(dx*dx + dy*dy + dz*dz)),
+				X:        sys.X,
+				Y:        sys.Y,
+				Z:        sys.Z,
+				QtyStars: sys.QtyStars,
+			}
+		}
+		sort.Sort(scans)
+
+		type row struct {
+			X, Y, Z, QtyStars int
+			Distance          string
+			URL               string
+		}
+		clusterList := struct {
+			X, Y, Z int // origin
+			Systems []row
+		}{
+			X:       x,
+			Y:       y,
+			Z:       z,
+			Systems: make([]row, len(scans), len(scans)),
+		}
+		for i, scan := range scans {
+			clusterList.Systems[i] = row{
+				X:        scan.X,
+				Y:        scan.Y,
+				Z:        scan.Z,
+				QtyStars: scan.QtyStars,
+				Distance: fmt.Sprintf("%.3f ly", scan.Distance),
+				URL:      fmt.Sprintf("/ui/games/PT-1/cluster/%d/%d/%d", scan.X, scan.Y, scan.Z),
+			}
+		}
+
+		t.Handle(w, r, clusterList)
 	}
 }
 
@@ -510,6 +513,18 @@ func (s *server) loginPostHandler(cookieName string, token string) http.HandlerF
 		}
 
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func (s *server) logoutHandler(cookieName string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{
+			Name:     cookieName,
+			Path:     "/",
+			MaxAge:   -1, // delete cookie
+			HttpOnly: true,
+		})
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

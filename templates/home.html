@@ -8,9 +8,18 @@
 {{with . }}
 <h1>Howdy, {{.User}}</h1>
 <ul>
-  <li><a href="/ui/games/PT-1/current-report">Current Report</a></li>
-  <li><a href="/ui/units">Units Summary</a></li>
-  <li><a href="https://wraith.dev/docs/index.html">Documentation</a></li>
+  <li>
+    <a href="/ui/games/PT-1/current-report" target="_blank">Current Report ↗</a>
+  </li>
+  <li>
+    <a href="/ui/games/PT-1/cluster" target="_blank">Cluster Summary ↗</a>
+  </li>
+  <li>
+    <a href="/ui/units" target="_blank">Units Summary ↗</a>
+  </li>
+  <li>
+    <a href="https://wraith.dev/docs/index.html">Documentation ↗</a>
+  </li>
 </ul>
 <p>You are registered as player "{{.Player}} in game "PT-1." Your nation number is that game is {{.NationNo}}.</p>
 {{else}}

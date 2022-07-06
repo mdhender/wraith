@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wraith Reactor :: Cluster</title>
+</head>
+<body>
+<h1>Cluster List</h1>
+
+<table border="1">
+  <thead>
+  <tr>
+    <td>X</td>
+    <td>Y</td>
+    <td>Z</td>
+    <td>Number of Stars</td>
+    <td>Distance from {{.X}}/{{.Y}}/{{.Z}}</td>
+    <td>Link</td>
+    <td>Link</td>
+  </thead>
+  {{range .Systems}}
+  <tr>
+    <td align="right">&nbsp;&nbsp;{{.X}}&nbsp;</td>
+    <td align="right">&nbsp;&nbsp;{{.Y}}&nbsp;</td>
+    <td align="right">&nbsp;&nbsp;{{.Z}}&nbsp;</td>
+    <td align="right">{{.QtyStars}}&nbsp;</td>
+    <td align="right">{{.Distance}}&nbsp;</td>
+    <td align="center"><a href="{{.URL}}">&nbsp;🔗&nbsp;</a></td>
+    <td align="center"><a href="{{.URL}}" target="_blank">&nbsp;↗&nbsp;</a></td>
+  </tr>
+  {{end}}
+</table>
+</body>
+</html>

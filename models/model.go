@@ -150,6 +150,20 @@ type Coordinates struct {
 	Z int
 }
 
+func (c Coordinates) Less(d Coordinates) bool {
+	if c.X < d.X {
+		return true
+	} else if c.X > d.X {
+		return false
+	}
+	if c.Y < d.Y {
+		return true
+	} else if c.Y > d.Y {
+		return false
+	}
+	return c.Z < d.Z
+}
+
 func (c Coordinates) String() string {
 	return fmt.Sprintf("%d/%d/%d", c.X, c.Y, c.Z)
 }
@@ -163,6 +177,12 @@ type System struct {
 	HomeSystem bool
 	Ring       int // ring is light years from the origin
 	Stars      []*Star
+}
+
+// SystemScan is useful
+type SystemScan struct {
+	X, Y, Z  int
+	QtyStars int
 }
 
 // Star is a stellar system in the game.

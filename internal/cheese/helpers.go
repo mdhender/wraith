@@ -16,25 +16,43 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-package models
+package cheese
 
-import (
-	"fmt"
-)
+type UIScan struct {
+	X, Y, Z  int
+	QtyStars int
+	Distance float64
+}
+type UIScans []*UIScan
 
-func (s *Store) FetchSystemScanByGame(gameId int) ([]*SystemScan, error) {
-	var scans []*SystemScan
-	rows, err := s.db.Query(`select x, y, z, qty_stars from systems where game_id = ?`, gameId)
-	if err != nil {
-		return nil, fmt.Errorf("fetchSystemScanByGame: %d: %w", gameId, err)
+// Len implements the sort.Sort interface
+func (u UIScans) Len() int {
+	return len(u)
+}
+
+// Less implements the sort.Sort interface
+func (u UIScans) Less(i, j int) bool {
+	if u[i].Distance < u[j].Distance {
+		return true
+	} else if u[i].Distance > u[j].Distance {
+		return false
 	}
-	for rows.Next() {
-		var x, y, z, n int
-		err := rows.Scan(&x, &y, &z, &n)
-		if err != nil {
-			return nil, fmt.Errorf("fetchSystemScanByGame: %d: %w", gameId, err)
-		}
-		scans = append(scans, &SystemScan{X: x, Y: y, Z: z, QtyStars: n})
+
+	if u[i].X < u[j].X {
+		return true
+	} else if u[i].X > u[j].X {
+		return false
 	}
-	return scans, nil
+
+	if u[i].Y < u[j].Y {
+		return true
+	} else if u[i].Y > u[j].Y {
+		return false
+	}
+	return u[i].Z < u[j].Z
+}
+
+// Swap implements the sort.Sort interface
+func (u UIScans) Swap(i, j int) {
+	u[i], u[j] = u[j], u[i]
 }
