@@ -169,29 +169,6 @@ func (s *server) serve() error {
 
 		r.Route("/ui", func(r chi.Router) {
 			r.Get("/", s.homeGetHandler(s.templates))
-			r.Get("/2", func(w http.ResponseWriter, r *http.Request) {
-				_, claims, _ := jwtauth.FromContext(r.Context())
-				userId, ok := claims["user_id"].(string)
-				if !ok {
-					log.Printf("%s: %s: claims[%q] is not a string\n", r.Method, r.URL.Path, "user_id")
-					_, _ = w.Write([]byte("<body><h1>Sorry, but the user id lookup failed</h1></body>"))
-					return
-				}
-				claim, ok := s.claims[strings.ToLower(userId)]
-				if !ok {
-					log.Printf("%s: %s: fetchClaims: %q: not ok\n", r.Method, r.URL.Path, strings.ToLower(userId))
-					_, _ = w.Write([]byte("<body><h1>Sorry, but the claims lookup failed</h1></body>"))
-					return
-				}
-
-				_, _ = w.Write([]byte(fmt.Sprintf("<body><h1>Howdy, %s</h1>", claim.User)))
-				_, _ = w.Write([]byte(`<ul>`))
-				_, _ = w.Write([]byte(`<li><a href="/ui/games/PT-1/current-report">Current Report</a></li>`))
-				_, _ = w.Write([]byte(`<li><a href="https://wraith.dev/docs/index.html">Documentation</a></li>`))
-				_, _ = w.Write([]byte(`</ul>`))
-				_, _ = w.Write([]byte(fmt.Sprintf("<p>Nation No %d</p>", claim.NationNo)))
-				_, _ = w.Write([]byte(fmt.Sprintf("<p>Player %q</p>", claim.Player)))
-			})
 			r.Get("/games/{game}/cluster", func(w http.ResponseWriter, r *http.Request) {
 				pGameName, x, y, z := chi.URLParam(r, "game"), 0, 0, 0
 				game, err := s.store.LookupGameByName(pGameName)
@@ -320,6 +297,7 @@ func (s *server) serve() error {
 				bw.Write([]byte("</pre></code></body>"))
 				_, _ = w.Write(bw.Bytes())
 			})
+			r.Get("/units", s.unitsGetHandler(s.templates))
 		})
 	})
 
@@ -532,6 +510,14 @@ func (s *server) loginPostHandler(cookieName string, token string) http.HandlerF
 		}
 
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func (s *server) unitsGetHandler(templates string) http.HandlerFunc {
+	units := s.store.FetchUnits()
+	t := osk.New(templates, "units.html")
+	return func(w http.ResponseWriter, r *http.Request) {
+		t.Handle(w, r, units)
 	}
 }
 

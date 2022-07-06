@@ -52,6 +52,39 @@ func (s *Store) CreateUnit(code, name, descr string, usesTech bool) error {
 	return tx.Commit()
 }
 
+func (s *Store) FetchUnits() []*Unit {
+	if s.unitsById == nil {
+		s.loadUnits()
+	}
+	var units []*Unit
+	for _, u := range s.unitsById {
+		units = append(units, &Unit{
+			Id:                  u.Id,
+			Code:                u.Code,
+			TechLevel:           u.TechLevel,
+			Name:                u.Name,
+			Description:         u.Description,
+			MassPerUnit:         u.MassPerUnit,
+			VolumePerUnit:       u.VolumePerUnit,
+			Hudnut:              u.Hudnut,
+			StowedVolumePerUnit: u.StowedVolumePerUnit,
+		})
+	}
+	for i := 0; i < len(units); i++ {
+		for j := i + 1; j < len(units); j++ {
+			if units[i].Code[:4] < units[j].Code[:4] {
+				continue
+			} else if units[i].Code[:4] == units[j].Code[:4] {
+				if units[i].TechLevel < units[j].TechLevel {
+					continue
+				}
+			}
+			units[i], units[j] = units[j], units[i]
+		}
+	}
+	return units
+}
+
 func (s *Store) loadUnits() {
 	byId, byCode := make(map[int]*Unit), make(map[string]*Unit)
 	rows, err := s.db.Query("select id, code, tech_level, name, descr, mass_per_unit, volume_per_unit, hudnut, stowed_volume_per_unit from units")
