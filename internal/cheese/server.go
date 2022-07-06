@@ -271,17 +271,17 @@ func (s *server) clusterGetHandler(templates string) http.HandlerFunc {
 		y, _ := strconv.Atoi(chi.URLParam(r, "y"))
 		z, _ := strconv.Atoi(chi.URLParam(r, "z"))
 
-		systems, err := s.store.FetchSystemScanByGame(game.Id)
+		systems, err := s.store.FetchClusterListByGame(game.Id)
 		if err != nil {
 			log.Printf("%s: %s: game %d: %v\n", r.Method, r.URL.Path, game.Id, err)
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
 
-		scans := make(UIScans, len(systems), len(systems))
+		scans := make(ClusterList, len(systems), len(systems))
 		for i, sys := range systems {
 			dx, dy, dz := sys.X-x, sys.Y-y, sys.Z-z
-			scans[i] = &UIScan{
+			scans[i] = &ClusterListItem{
 				Distance: math.Sqrt(float64(dx*dx + dy*dy + dz*dz)),
 				X:        sys.X,
 				Y:        sys.Y,

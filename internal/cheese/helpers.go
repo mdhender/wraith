@@ -18,20 +18,21 @@
 
 package cheese
 
-type UIScan struct {
+type ClusterList []*ClusterListItem
+
+type ClusterListItem struct {
 	X, Y, Z  int
 	QtyStars int
 	Distance float64
 }
-type UIScans []*UIScan
 
 // Len implements the sort.Sort interface
-func (u UIScans) Len() int {
+func (u ClusterList) Len() int {
 	return len(u)
 }
 
 // Less implements the sort.Sort interface
-func (u UIScans) Less(i, j int) bool {
+func (u ClusterList) Less(i, j int) bool {
 	if u[i].Distance < u[j].Distance {
 		return true
 	} else if u[i].Distance > u[j].Distance {
@@ -49,10 +50,11 @@ func (u UIScans) Less(i, j int) bool {
 	} else if u[i].Y > u[j].Y {
 		return false
 	}
+
 	return u[i].Z < u[j].Z
 }
 
 // Swap implements the sort.Sort interface
-func (u UIScans) Swap(i, j int) {
+func (u ClusterList) Swap(i, j int) {
 	u[i], u[j] = u[j], u[i]
 }

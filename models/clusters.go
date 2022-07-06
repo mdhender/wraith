@@ -22,7 +22,7 @@ import (
 	"fmt"
 )
 
-func (s *Store) FetchSystemScanByGame(gameId int) ([]*SystemScan, error) {
+func (s *Store) FetchClusterListByGame(gameId int) ([]*SystemScan, error) {
 	var scans []*SystemScan
 	rows, err := s.db.Query(`select x, y, z, qty_stars from systems where game_id = ?`, gameId)
 	if err != nil {
