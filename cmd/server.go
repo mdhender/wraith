@@ -36,6 +36,7 @@ var globalServer struct {
 	GameFile  string
 	JwtFile   string
 	JwtKey    string
+	Templates string
 }
 
 var cmdServer = &cobra.Command{
@@ -51,6 +52,10 @@ var cmdServer = &cobra.Command{
 			return errors.New("missing jwt signing key")
 		}
 
+		if globalServer.Templates = strings.TrimSpace(globalServer.Templates); globalServer.Templates == "" {
+			globalServer.Templates = "."
+		}
+
 		cfg, err := config.LoadGlobal(globalBase.ConfigFile)
 		if err != nil {
 			log.Fatal(err)
@@ -64,7 +69,7 @@ var cmdServer = &cobra.Command{
 		log.Printf("loaded store version %q\n", s.Version())
 
 		key := []byte(globalServer.JwtKey)
-		if err := cheese.Serve(net.JoinHostPort(globalServer.Host, globalServer.Port), key, s); err != nil {
+		if err := cheese.Serve(net.JoinHostPort(globalServer.Host, globalServer.Port), key, s, globalServer.Templates); err != nil {
 			log.Fatal(err)
 		}
 
@@ -83,6 +88,7 @@ func init() {
 	_ = cmdServer.MarkFlagRequired("jwt")
 	cmdServer.Flags().StringVar(&globalServer.JwtKey, "jwt-key", "", "jwt signing key")
 	_ = cmdServer.MarkFlagRequired("jwt-key")
+	cmdServer.Flags().StringVar(&globalServer.Templates, "templates", "", "path to web templates")
 
 	cmdBase.AddCommand(cmdServer)
 }

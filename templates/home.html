@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wraith Reactor :: Home</title>
+</head>
+<body>
+{{with . }}
+<h1>Howdy, {{.User}}</h1>
+<ul>
+  <li><a href="/ui/games/PT-1/current-report">Current Report</a></li>
+  <li><a href="https://wraith.dev/docs/index.html">Documentation</a></li>
+</ul>
+<p>Nation No {{.NationNo}}</p>
+<p>Player {{.Player}}</p>
+{{else}}
+<h1>Something went wrong...</h1>
+<p>
+  The claims lookup failed.
+  Please try to log in again.
+  If the problem persists, please contact the game manager for assistance.
+</p>
+{{end}}
+</body>
+</html>

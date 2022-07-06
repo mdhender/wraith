@@ -26,6 +26,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/mdhender/wraith/engine"
+	"github.com/mdhender/wraith/internal/osk"
 	"github.com/mdhender/wraith/models"
 	"io"
 	"log"
@@ -37,15 +38,16 @@ import (
 )
 
 type server struct {
-	addr   string
-	debug  bool
-	key    []byte
-	store  *models.Store
-	claims map[string]*models.Claim
+	addr      string
+	debug     bool
+	key       []byte
+	store     *models.Store
+	claims    map[string]*models.Claim
+	templates string
 }
 
-func Serve(addr string, key []byte, store *models.Store) error {
-	s := server{addr: addr, key: key, store: store}
+func Serve(addr string, key []byte, store *models.Store, templates string) error {
+	s := server{addr: addr, key: key, store: store, templates: templates}
 
 	// fetch user claims
 	log.Printf("cheese.Serve: todo: needs game and date logic\n")
@@ -113,7 +115,7 @@ func (s *server) serve() error {
 			_, _ = w.Write([]byte(tokenString))
 		})
 
-		r.Get("/ui/login", s.loginGetHandler(tokenCookie, tokenString))
+		r.Get("/ui/login", s.loginGetHandler(s.templates, tokenCookie, tokenString))
 		r.Post("/ui/login", s.loginPostHandler(tokenCookie, tokenString))
 		//r.Get("/ui/login/{handle}/{secret}", s.loginGetHandleSecretHandler(tokenCookie, tokenString))
 
@@ -166,7 +168,8 @@ func (s *server) serve() error {
 		})
 
 		r.Route("/ui", func(r chi.Router) {
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.Get("/", s.homeGetHandler(s.templates))
+			r.Get("/2", func(w http.ResponseWriter, r *http.Request) {
 				_, claims, _ := jwtauth.FromContext(r.Context())
 				userId, ok := claims["user_id"].(string)
 				if !ok {
@@ -336,29 +339,32 @@ func (s *server) handleLogout(cookieName string) http.HandlerFunc {
 	}
 }
 
-func (s *server) loginGetHandler(cookieName string, token string) http.HandlerFunc {
+func (s *server) homeGetHandler(templates string) http.HandlerFunc {
+	t := osk.New(templates, "home.html")
 	return func(w http.ResponseWriter, r *http.Request) {
-		//log.Printf("server: %s: %s\n", r.Method, r.URL.Path)
-		w.Header().Set("Content-Type", "text/html")
-		// delete any existing cookie
+		var claim *models.Claim
+		_, claims, _ := jwtauth.FromContext(r.Context())
+		if userId, ok := claims["user_id"].(string); !ok {
+			log.Printf("%s: %s: claims[%q]: not a string\n", r.Method, r.URL.Path, "user_id")
+		} else if claim, ok = s.claims[strings.ToLower(userId)]; !ok {
+			log.Printf("%s: %s: claims[%q]: not ok\n", r.Method, r.URL.Path, strings.ToLower(userId))
+		}
+
+		t.Handle(w, r, claim)
+	}
+}
+
+func (s *server) loginGetHandler(templates, cookieName, token string) http.HandlerFunc {
+	t := osk.New(templates, "login.html")
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("server: %s: %s\n", r.Method, r.URL.Path)
 		http.SetCookie(w, &http.Cookie{
 			Name:     cookieName,
 			Path:     "/",
-			Value:    token,
-			MaxAge:   -1,
+			MaxAge:   -1, // delete any existing cookie
 			HttpOnly: true,
 		})
-		page := `<body>
-				<h1>Wraith Reactor</h1>
-				<form action="/ui/login"" method="post">
-					<table>
-						<tr><td align="right">Username&nbsp;</td><td><input type="text" name="username"></td></tr>
-						<tr><td align="right">Password&nbsp;</td><td><input type="password" name="password"></td></tr>
-						<tr><td>&nbsp;</td><td align="right"><input type="submit" value="Login"></td></tr>
-					</table>
-				</form>
-			</body>`
-		_, _ = w.Write([]byte(page))
+		t.ServeHTTP(w, r)
 	}
 }
 
