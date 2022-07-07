@@ -250,6 +250,9 @@ func (s *server) serve() error {
 				bw.Write([]byte("</pre></code></body>"))
 				_, _ = w.Write(bw.Bytes())
 			})
+			r.Get("/games/{game}/orders", s.ordersGetRedirect())
+			r.Get("/games/{game}/orders/{year}/{quarter}", s.ordersGetHandler(s.templates))
+			r.Post("/games/{game}/orders/{year}/{quarter}", s.ordersPostHandler())
 			r.Get("/units", s.unitsGetHandler(s.templates))
 		})
 	})
@@ -261,6 +264,14 @@ func (s *server) serve() error {
 func (s *server) clusterGetHandler(templates string) http.HandlerFunc {
 	t := osk.New(templates, "cluster_list.html")
 	return func(w http.ResponseWriter, r *http.Request) {
+		_, claims, _ := jwtauth.FromContext(r.Context())
+		if _, ok := s.claims[strings.ToLower(claims["user_id"].(string))]; !ok {
+			log.Printf("%s: %s: fetchClusterListByGame: not ok\n", r.Method, r.URL.Path)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		// todo: use claim to fetch game
+
 		pGameName := chi.URLParam(r, "game")
 		game, err := s.store.LookupGameByName(pGameName)
 		if err != nil {
@@ -525,6 +536,167 @@ func (s *server) logoutHandler(cookieName string) http.HandlerFunc {
 			HttpOnly: true,
 		})
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func (s *server) ordersGetHandler(templates string) http.HandlerFunc {
+	t := osk.New(templates, "order_entry.html")
+
+	type orderEntry struct {
+		Game       string
+		Year       string
+		Quarter    string
+		NationNo   int
+		Rows, Cols int
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		var claim *models.Claim
+		_, claims, _ := jwtauth.FromContext(r.Context())
+		if userId, ok := claims["user_id"].(string); !ok {
+			log.Printf("%s: %s: claims[%q]: not a string\n", r.Method, r.URL.Path, "user_id")
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		} else if claim, ok = s.claims[strings.ToLower(userId)]; !ok {
+			log.Printf("%s: %s: claims[%q]: not ok\n", r.Method, r.URL.Path, strings.ToLower(userId))
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		pGameName := chi.URLParam(r, "game")
+		game, err := s.store.LookupGameByName(pGameName)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+
+		oe := orderEntry{
+			Game:     game.ShortName,
+			Year:     chi.URLParam(r, "year"),
+			Quarter:  chi.URLParam(r, "quarter"),
+			NationNo: claim.NationNo,
+			Rows:     5,
+			Cols:     80,
+		}
+		if oe.Year == "" || oe.Quarter == "" {
+			oe.Year = "0000" //fmt.Sprintf("%04d", game.CurrentTurn.Year)
+			oe.Quarter = "0" //fmt.Sprintf("%d", game.CurrentTurn.Quarter)
+			http.Redirect(w, r, "/ui/games/PT-1/orders/0000/0", http.StatusTemporaryRedirect)
+		} else if oe.Quarter == "" {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		t.Handle(w, r, oe)
+	}
+}
+
+func (s *server) ordersGetRedirect() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, claims, _ := jwtauth.FromContext(r.Context())
+		userId, ok := claims["user_id"].(string)
+		if !ok {
+			log.Printf("%s: %s: claims[%q]: not a string\n", r.Method, r.URL.Path, "user_id")
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		} else if _, ok = s.claims[strings.ToLower(userId)]; !ok {
+			log.Printf("%s: %s: claims[%q]: not ok\n", r.Method, r.URL.Path, strings.ToLower(userId))
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		pGameName := chi.URLParam(r, "game")
+		t, err := s.store.FetchCurrentTurn(userId, pGameName)
+		if err != nil {
+			log.Printf("%s: %s: %+v\n", r.Method, r.URL.Path, err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		http.Redirect(w, r, fmt.Sprintf("/ui/games/%s/orders/%04d/%d", pGameName, t.Year, t.Quarter), http.StatusTemporaryRedirect)
+	}
+}
+
+func (s *server) ordersPostHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("%s: %s: entered\n", r.Method, r.URL.Path)
+
+		_, claims, _ := jwtauth.FromContext(r.Context())
+		userId, ok := claims["user_id"].(string)
+		if !ok {
+			log.Printf("%s: %s: claims[%q]: not a string\n", r.Method, r.URL.Path, "user_id")
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		} else if _, ok = s.claims[strings.ToLower(userId)]; !ok {
+			log.Printf("%s: %s: claims[%q]: not ok\n", r.Method, r.URL.Path, strings.ToLower(userId))
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		pGameName, pYear, pQuarter := chi.URLParam(r, "game"), chi.URLParam(r, "year"), chi.URLParam(r, "quarter")
+		t, err := s.store.FetchCurrentTurn(userId, pGameName)
+		if err != nil {
+			log.Printf("%s: %s: %+v\n", r.Method, r.URL.Path, err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		currentTurn := pYear + "/" + pQuarter
+		if currentTurn != t.String() {
+			log.Printf("%s: %s: not current turn: %q %q\n", r.Method, r.URL.Path, currentTurn, t.String())
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		if err := r.ParseForm(); err != nil {
+			log.Printf("%s: %s: %+v\n", r.Method, r.URL.Path, err)
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+		//log.Printf("server: %s %q: %v\n", r.Method, r.URL.Path, r.PostForm)
+		var input struct {
+			orders string
+		}
+		for k, v := range r.Form {
+			switch k {
+			case "orders":
+				if len(v) != 1 {
+					log.Printf("%s: %s: too many forms.orders: %d\n", r.Method, r.URL.Path, len(v))
+					http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+					return
+				} else if len(v[0]) < 1 || len(v[0]) > 64*1024 {
+					log.Printf("%s: %s: invalid orders length: %d\n", r.Method, r.URL.Path, len(input.orders))
+					http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+					return
+				} else if !utf8.ValidString(v[0]) || len(v[0]) < 1 || len(v[0]) > 64*1024 {
+					log.Printf("%s: %s: invalid utf-8 string\n", r.Method, r.URL.Path)
+					http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+					return
+				}
+				input.orders = v[0]
+			}
+		}
+
+		if len(input.orders) == 0 {
+			log.Printf("%s: %s: invalid orders length: %d\n", r.Method, r.URL.Path, len(input.orders))
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		//date := time.Now().UTC().Format(time.RFC3339)
+		//input.orders = fmt.Sprintf(";; %s T%d %s\n\n", u.SpeciesId, turnNumber, date) + input.orders
+
+		//ordersFile := fmt.Sprintf("sp%02d.t%d.orders.txt", u.Species.No, s.data.Store.Turn)
+		//fullOrdersFile := filepath.Join(uploads, ordersFile)
+		//
+		//log.Printf("server: %s %q: species %s turn %d orders %s\n", r.Method, r.URL.Path, u.SpeciesId, turnNumber, ordersFile)
+		//if err := ioutil.WriteFile(fullOrdersFile, []byte(input.orders), 0644); err != nil {
+		//	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		//	return
+		//}
+
+		//log.Printf("%s: %s: \n%s\n", r.Method, r.URL.Path, input.orders)
+
+		http.Redirect(w, r, r.URL.Path, http.StatusSeeOther)
+		return
 	}
 }
 

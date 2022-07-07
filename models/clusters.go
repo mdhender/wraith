@@ -26,13 +26,13 @@ func (s *Store) FetchClusterListByGame(gameId int) ([]*SystemScan, error) {
 	var scans []*SystemScan
 	rows, err := s.db.Query(`select x, y, z, qty_stars from systems where game_id = ?`, gameId)
 	if err != nil {
-		return nil, fmt.Errorf("fetchSystemScanByGame: %d: %w", gameId, err)
+		return nil, fmt.Errorf("fetchClusterListByGame: %d: %w", gameId, err)
 	}
 	for rows.Next() {
 		var x, y, z, n int
 		err := rows.Scan(&x, &y, &z, &n)
 		if err != nil {
-			return nil, fmt.Errorf("fetchSystemScanByGame: %d: %w", gameId, err)
+			return nil, fmt.Errorf("fetchClusterListByGame: %d: %w", gameId, err)
 		}
 		scans = append(scans, &SystemScan{X: x, Y: y, Z: z, QtyStars: n})
 	}

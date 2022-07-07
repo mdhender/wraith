@@ -28,3 +28,22 @@ func (t *Turn) String() string {
 	}
 	return fmt.Sprintf("%04d/%d", t.Year, t.Quarter)
 }
+
+func (s *Store) FetchCurrentTurn(userHandle, gameName string) (*Turn, error) {
+	row := s.db.QueryRow(`
+		select no, year, quarter, start_dt, end_dt
+		from games
+			join turns on games.id = turns.game_id and turn = current_turn
+			join users on users.handle = ?
+			join player_dtl pd on
+				users.id = pd.controlled_by
+					and (pd.efftn <= games.current_turn and games.current_turn < pd.endtn)
+		where games.short_name = ?`, userHandle, gameName)
+	var t Turn
+	err := row.Scan(&t.No, &t.Year, &t.Quarter, &t.StartDt, &t.EndDt)
+	if err != nil {
+		return nil, fmt.Errorf("fetchCurrentTurn: %q %q: %w", gameName, userHandle, err)
+	}
+
+	return &t, nil
+}

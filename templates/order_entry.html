@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wraith Reactor :: Order Entry</title>
+</head>
+<body>
+
+<h2>Turn {{.Year}}/{{.Quarter}} Orders -- Upload Form </h2>
+
+<p>
+  Please be wary.
+  This will overwrite any orders files that exist for this turn.
+</p>
+
+<form action="/ui/games/PT-1/orders/{{.Year}}/{{.Quarter}}" method="post">
+  <label>
+    <textarea autofocus placeholder="paste your orders here" rows="{{.Rows}}" cols="{{.Cols}}" name="orders" autocomplete="off" spellcheck="false" autocorrect="off"></textarea>
+  </label>
+  <br/>
+  <input type="submit" value="Upload">
+</form>
+
+</body>
+</html>
