@@ -698,7 +698,7 @@ func (s *server) ordersPostHandler() http.HandlerFunc {
 
 		ordersFile := filepath.Join(s.store.OrdersPath(), fmt.Sprintf("%s.%s.%s.%d.txt", pGameName, chi.URLParam(r, "year"), chi.URLParam(r, "quarter"), claim.NationNo))
 		date := time.Now().UTC().Format(time.RFC3339)
-		orders := fmt.Sprintf(";; %s %s\n\n", currentTurn, date) + input.orders
+		orders := fmt.Sprintf(";; %s %d %s %s\n\n", pGameName, claim.NationNo, currentTurn, date) + input.orders + "\n"
 		if err := os.WriteFile(ordersFile, []byte(orders), 0644); err != nil {
 			log.Printf("%s: %s: writeFile %q: %v\n", r.Method, r.URL.Path, ordersFile, err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
