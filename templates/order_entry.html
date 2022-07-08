@@ -15,7 +15,7 @@
 
 <form action="/ui/games/PT-1/orders/{{.Year}}/{{.Quarter}}" method="post">
   <label>
-    <textarea autofocus placeholder="paste your orders here" rows="{{.Rows}}" cols="{{.Cols}}" name="orders" autocomplete="off" spellcheck="false" autocorrect="off"></textarea>
+    <textarea autofocus placeholder="paste your orders here" rows="{{.Rows}}" cols="{{.Cols}}" name="orders" autocomplete="off" spellcheck="false" autocorrect="off">{{.Orders}}</textarea>
   </label>
   <br/>
   <input type="submit" value="Upload">

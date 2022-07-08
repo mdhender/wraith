@@ -25,6 +25,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/mdhender/wraith/storage/config"
 	"log"
+	"path/filepath"
 	"time"
 )
 
@@ -34,6 +35,7 @@ type Store struct {
 	dateFormat  string
 	endOfTime   time.Time
 	ctx         context.Context
+	ordersPath  string
 	unitsByCode map[string]*Unit
 	unitsById   map[int]*Unit
 }
@@ -52,10 +54,11 @@ func Open(cfg *config.Global) (*Store, error) {
 	db.SetMaxIdleConns(maxConns)
 
 	return &Store{
-		db:        db,
-		version:   "0.1.0",
-		endOfTime: time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC),
-		ctx:       context.Background(),
+		db:         db,
+		version:    "0.1.0",
+		endOfTime:  time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC),
+		ctx:        context.Background(),
+		ordersPath: filepath.Clean(cfg.OrdersPath),
 	}, nil
 }
 
@@ -67,6 +70,10 @@ func (s *Store) Close() {
 		log.Printf("%+v\n", err)
 	}
 	s.db = nil
+}
+
+func (s *Store) OrdersPath() string {
+	return s.ordersPath
 }
 
 func (s *Store) Ping() error {

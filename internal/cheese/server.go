@@ -32,6 +32,8 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -548,8 +550,11 @@ func (s *server) ordersGetHandler(templates string) http.HandlerFunc {
 		Quarter    string
 		NationNo   int
 		Rows, Cols int
+		Orders     string
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("%s: %s: ordersPath %q\n", r.Method, r.URL.Path, s.store.OrdersPath())
+
 		var claim *models.Claim
 		_, claims, _ := jwtauth.FromContext(r.Context())
 		if userId, ok := claims["user_id"].(string); !ok {
@@ -577,6 +582,7 @@ func (s *server) ordersGetHandler(templates string) http.HandlerFunc {
 			Rows:     5,
 			Cols:     80,
 		}
+
 		if oe.Year == "" || oe.Quarter == "" {
 			oe.Year = "0000" //fmt.Sprintf("%04d", game.CurrentTurn.Year)
 			oe.Quarter = "0" //fmt.Sprintf("%d", game.CurrentTurn.Quarter)
@@ -584,6 +590,11 @@ func (s *server) ordersGetHandler(templates string) http.HandlerFunc {
 		} else if oe.Quarter == "" {
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
+		}
+
+		ordersFile := filepath.Join(s.store.OrdersPath(), fmt.Sprintf("%s.%s.%s.%d.txt", game.ShortName, chi.URLParam(r, "year"), chi.URLParam(r, "quarter"), claim.NationNo))
+		if b, err := os.ReadFile(ordersFile); err == nil {
+			oe.Orders = string(b)
 		}
 
 		t.Handle(w, r, oe)
@@ -626,7 +637,9 @@ func (s *server) ordersPostHandler() http.HandlerFunc {
 			log.Printf("%s: %s: claims[%q]: not a string\n", r.Method, r.URL.Path, "user_id")
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
-		} else if _, ok = s.claims[strings.ToLower(userId)]; !ok {
+		}
+		claim, ok := s.claims[strings.ToLower(userId)]
+		if !ok {
 			log.Printf("%s: %s: claims[%q]: not ok\n", r.Method, r.URL.Path, strings.ToLower(userId))
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
@@ -681,19 +694,16 @@ func (s *server) ordersPostHandler() http.HandlerFunc {
 			return
 		}
 
-		//date := time.Now().UTC().Format(time.RFC3339)
-		//input.orders = fmt.Sprintf(";; %s T%d %s\n\n", u.SpeciesId, turnNumber, date) + input.orders
+		log.Printf("%s: %s: ordersPath %q\n", r.Method, r.URL.Path, s.store.OrdersPath())
 
-		//ordersFile := fmt.Sprintf("sp%02d.t%d.orders.txt", u.Species.No, s.data.Store.Turn)
-		//fullOrdersFile := filepath.Join(uploads, ordersFile)
-		//
-		//log.Printf("server: %s %q: species %s turn %d orders %s\n", r.Method, r.URL.Path, u.SpeciesId, turnNumber, ordersFile)
-		//if err := ioutil.WriteFile(fullOrdersFile, []byte(input.orders), 0644); err != nil {
-		//	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		//	return
-		//}
-
-		//log.Printf("%s: %s: \n%s\n", r.Method, r.URL.Path, input.orders)
+		ordersFile := filepath.Join(s.store.OrdersPath(), fmt.Sprintf("%s.%s.%s.%d.txt", pGameName, chi.URLParam(r, "year"), chi.URLParam(r, "quarter"), claim.NationNo))
+		date := time.Now().UTC().Format(time.RFC3339)
+		orders := fmt.Sprintf(";; %s %s\n\n", currentTurn, date) + input.orders
+		if err := os.WriteFile(ordersFile, []byte(orders), 0644); err != nil {
+			log.Printf("%s: %s: writeFile %q: %v\n", r.Method, r.URL.Path, ordersFile, err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
 
 		http.Redirect(w, r, r.URL.Path, http.StatusSeeOther)
 		return

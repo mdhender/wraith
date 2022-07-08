@@ -34,6 +34,7 @@ var globalBootstrap struct {
 	// database configuration
 	User       string
 	Password   string
+	OrdersPath string
 	Schema     string
 	SchemaFile string
 }
@@ -55,6 +56,9 @@ This includes the configuration file and starting data.`,
 		if globalBootstrap.Password == "" {
 			return errors.New("missing database password")
 		}
+		if globalBootstrap.OrdersPath == "" {
+			return errors.New("missing orders path")
+		}
 		if globalBootstrap.Schema == "" {
 			return errors.New("missing database schema name")
 		}
@@ -62,7 +66,7 @@ This includes the configuration file and starting data.`,
 			return errors.New("missing schema generation file name")
 		}
 
-		cfg, err := config.CreateGlobal(globalBase.ConfigFile, globalBootstrap.User, globalBootstrap.Password, globalBootstrap.Schema, globalBootstrap.SchemaFile, globalBootstrap.Force)
+		cfg, err := config.CreateGlobal(globalBase.ConfigFile, globalBootstrap.User, globalBootstrap.Password, globalBootstrap.Schema, globalBootstrap.SchemaFile, globalBootstrap.OrdersPath, globalBootstrap.Force)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -84,6 +88,8 @@ func init() {
 	_ = cmdBootstrap.MarkFlagRequired("user")
 	cmdBootstrap.Flags().StringVar(&globalBootstrap.Password, "password", "", "database password for user")
 	_ = cmdBootstrap.MarkFlagRequired("password")
+	cmdBootstrap.Flags().StringVar(&globalBootstrap.OrdersPath, "orders-path", "", "path to orders files")
+	_ = cmdBootstrap.MarkFlagRequired("orders-path")
 	cmdBootstrap.Flags().StringVar(&globalBootstrap.Schema, "schema", "", "schema name in database")
 	_ = cmdBootstrap.MarkFlagRequired("schema")
 	cmdBootstrap.Flags().StringVar(&globalBootstrap.SchemaFile, "schema-file", "", "path to schema generation file")

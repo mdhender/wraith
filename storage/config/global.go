@@ -33,18 +33,20 @@ type Global struct {
 	Password   string `json:"password"`
 	Schema     string `json:"schema"`
 	SchemaFile string `json:"schema-file"`
+	OrdersPath string `json:"orders-path"`
 }
 
 // CreateGlobal creates a new store.
 // Assumes that the path to store the data already exists.
 // It returns any errors.
-func CreateGlobal(filename, user, password, schema, schemaFile string, overwrite bool) (*Global, error) {
+func CreateGlobal(filename, user, password, schema, schemaFile, ordersPath string, overwrite bool) (*Global, error) {
 	s := &Global{
 		Self:       filepath.Clean(filename),
 		User:       user,
 		Password:   password,
 		Schema:     schema,
 		SchemaFile: schemaFile,
+		OrdersPath: filepath.Clean(ordersPath),
 	}
 	if _, err := os.Stat(s.Self); err == nil {
 		if !overwrite {
