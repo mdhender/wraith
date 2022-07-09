@@ -694,11 +694,35 @@ func (s *server) ordersPostHandler() http.HandlerFunc {
 			return
 		}
 
-		log.Printf("%s: %s: ordersPath %q\n", r.Method, r.URL.Path, s.store.OrdersPath())
+		// try to replace characters we know the parser doesn't like
+		orders := input.orders
+		for _, pair := range [][]string{
+			{"\r\n", "\n"},
+			{"\t", " "},
+			{"\u2013", `-`},
+			{"\u2014", `-`},
+			{"\u2015", `-`},
+			{"\u2017", `_`},
+			{"\u2018", `'`},
+			{"\u2019", `'`},
+			{"\u201a", `,`},
+			{"\u201b", `'`},
+			{"\u201c", `"`},
+			{"\u201d", `"`},
+			{"\u201e", `"`},
+			{"\u201f", `"`},
+			{"\u2026", `...`},
+			{"\u2032", `'`},
+			{"\u2033", `"`},
+		} {
+			orders = strings.ReplaceAll(orders, pair[0], pair[1])
+		}
+
+		//log.Printf("%s: %s: ordersPath %q\n", r.Method, r.URL.Path, s.store.OrdersPath())
 
 		ordersFile := filepath.Join(s.store.OrdersPath(), fmt.Sprintf("%s.%s.%s.%d.txt", pGameName, chi.URLParam(r, "year"), chi.URLParam(r, "quarter"), claim.NationNo))
 		date := time.Now().UTC().Format(time.RFC3339)
-		orders := fmt.Sprintf(";; %s %d %s %s\n\n", pGameName, claim.NationNo, currentTurn, date) + input.orders + "\n"
+		orders = fmt.Sprintf(";; %s %d %s %s\n\n", pGameName, claim.NationNo, currentTurn, date) + orders + "\n"
 		if err := os.WriteFile(ordersFile, []byte(orders), 0644); err != nil {
 			log.Printf("%s: %s: writeFile %q: %v\n", r.Method, r.URL.Path, ordersFile, err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
