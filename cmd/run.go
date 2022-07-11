@@ -68,15 +68,23 @@ var cmdRun = &cobra.Command{
 		}
 
 		for _, order := range p {
-			if assembleFactoryGroup, ok := order.Command.(*orders.AssembleFactoryGroup); ok {
-				log.Printf("line %d: %q %q %d %q\n", order.Line, "assemble-factory-group", assembleFactoryGroup.Id, assembleFactoryGroup.Qty, assembleFactoryGroup.Product)
-			} else if assembleMineGroup, ok := order.Command.(*orders.AssembleMineGroup); ok {
-				log.Printf("line %d: %q %q %d %q\n", order.Line, "assemble-mine-group", assembleMineGroup.Id, assembleMineGroup.Qty, assembleMineGroup.DepositId)
-			} else if name, ok := order.Command.(*orders.NameOrder); ok {
-				if name.Id[0] == 'C' {
-					log.Printf("line %d: %q %q %q\n", order.Line, "name-colony", name.Id, name.Name)
-				} else if name.Id[0] == 'S' {
-					log.Printf("line %d: %q %q %q\n", order.Line, "name-ship", name.Id, name.Name)
+			if cmd, ok := order.(*orders.AssembleFactoryGroup); ok {
+				if cmd.Error == nil {
+					log.Printf("line %d: %q %q %d %q\n", cmd.Verb.Line, "assemble-factory-group", cmd.Id.Text, cmd.Qty.Integer, cmd.Product.Text)
+				} else {
+					log.Printf("line %d: %q %q %d %q %v\n", cmd.Verb.Line, "assemble-factory-group", cmd.Id.Text, cmd.Qty.Integer, cmd.Product, cmd.Error.Error)
+				}
+			} else if cmd, ok := order.(*orders.AssembleMineGroup); ok {
+				if cmd.Error == nil {
+					log.Printf("line %d: %q %q %d %q\n", cmd.Verb.Line, "assemble-mine-group", cmd.Id.Text, cmd.Qty.Integer, cmd.DepositId.Text)
+				}
+			} else if cmd, ok := order.(*orders.Name); ok {
+				if cmd.Error == nil {
+					if cmd.Id.Text[0] == 'C' {
+						log.Printf("line %d: %q %q %q\n", cmd.Verb.Line, "name-colony", cmd.Id.Text, cmd.Name.Text)
+					} else if cmd.Id.Text[0] == 'S' {
+						log.Printf("line %d: %q %q %q\n", cmd.Verb.Line, "name-ship", cmd.Id.Text, cmd.Name.Text)
+					}
 				}
 			}
 		}

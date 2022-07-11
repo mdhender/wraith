@@ -20,8 +20,7 @@ package orders
 
 import (
 	"fmt"
-	"log"
-	"strings"
+	"github.com/mdhender/wraith/internal/tokens"
 )
 
 type Arg struct {
@@ -37,127 +36,158 @@ type Order struct {
 	Command interface{}
 }
 
+type Error struct {
+	Error  error
+	Tokens []*tokens.Token
+}
+
+type AssembleGroup struct {
+	Verb  *tokens.Token
+	Id    *tokens.Token // id of colony or ship to assemble the group in
+	Qty   *tokens.Token // number of units to add to group
+	Error *Error        // nil unless there was an error parsing
+}
+
 type AssembleFactoryGroup struct {
-	Id      string // id of colony or ship to assemble the group in
-	Factory string // type of factory unit
-	Qty     int    // number of factory units
-	Product string // type of unit to produce
+	Verb    *tokens.Token
+	Id      *tokens.Token // id of colony or ship to assemble the group in
+	Qty     *tokens.Token // number of factory units
+	Factory *tokens.Token // type of factory unit
+	Product *tokens.Token // type of unit to produce
+	Error   *Error        // nil unless there was an error parsing
 }
 
 type AssembleMineGroup struct {
-	Id        string // id of colony or ship to assemble the group in
-	Mine      string // type of mine unit
-	Qty       int    // number of mine units
-	DepositId string // id of deposit to mine
+	Verb      *tokens.Token
+	Id        *tokens.Token // id of colony or ship to assemble the group in
+	Qty       *tokens.Token // number of mine units
+	Mine      *tokens.Token // type of mine unit
+	DepositId *tokens.Token // id of deposit to mine
+	Error     *Error        // nil unless there was an error parsing
 }
 
-type Error struct {
-	Words []string
-	Error error
+type Name struct {
+	Verb  *tokens.Token
+	Id    *tokens.Token // id of object to name
+	Name  *tokens.Token // new name of object
+	Error *Error        // nil unless there was an error parsing
 }
 
-type NameOrder struct {
-	Id   string // id of object to name
-	Name string // new name of object
+type Unknown struct {
+	Verb  *tokens.Token
+	Error *Error // nil unless there was an error parsing
 }
 
-func Parse(b []byte) ([]*Order, error) {
-	var orders []*Order
-	for tz := newTokenizer(b); !tz.eof(); {
-		if accept(tz, "eol") != nil {
+func Parse(b []byte) ([]interface{}, error) {
+	var orders []interface{}
+
+	for z := tokens.FromBytes(b); !z.IsEof(); {
+		if accept(z, tokens.EOL) != nil {
 			continue
 		}
-		if verb := accept(tz, "assemble"); verb != nil {
-			order, err := expectAssemble(tz, verb)
-			if err != nil {
-				log.Println(err)
-			} else {
-				orders = append(orders, order)
-			}
-		} else if verb = accept(tz, "name"); verb != nil {
-			order, err := expectName(tz, verb)
-			if err != nil {
-				log.Println(err)
-			} else {
-				orders = append(orders, order)
-			}
+
+		if verb := accept(z, tokens.Assemble); verb != nil {
+			orders = append(orders, expectAssemble(z, &AssembleGroup{Verb: verb}))
+		} else if verb = accept(z, tokens.Name); verb != nil {
+			orders = append(orders, expectName(z, &Name{Verb: verb}))
 		} else {
-			// unknown order
-			log.Printf("unknown order\n")
-			_ = reject(tz, nil)
+			orders = append(orders, &Unknown{Verb: z.Next(), Error: &Error{Error: fmt.Errorf("unknown order"), Tokens: reject(z)}})
 		}
 	}
+
 	return orders, nil
 }
 
-func accept(tz *tokenizer, kinds ...string) *Token {
-	tok := tz.next()
+func accept(z *tokens.Tokenizer, kinds ...tokens.Kind) *tokens.Token {
+	tok := z.Next()
 	for _, kind := range kinds {
 		if tok.Kind == kind {
 			return tok
 		}
 	}
-	tz.unget(tok)
+	z.UnGet(tok)
 	return nil
 }
 
-func expectAssemble(tz *tokenizer, verb *Token) (*Order, error) {
-	cors := accept(tz, "colony-id", "ship-id")
-	if cors == nil {
-		return nil, reject(tz, fmt.Errorf("%d: expected ship or colony id", verb.Line))
+func expectAssemble(z *tokens.Tokenizer, cmd *AssembleGroup) interface{} {
+	if cmd.Id = accept(z, tokens.ColonyId, tokens.ShipId); cmd.Id == nil {
+		cmd.Error = &Error{Error: fmt.Errorf("%d: expected ship or colony id", cmd.Verb.Line), Tokens: reject(z)}
+		return cmd
 	}
-	qty := accept(tz, "integer")
-	if qty == nil {
-		return nil, fmt.Errorf("%d: expected quantity", verb.Line)
+	if cmd.Qty = accept(z, tokens.Integer); cmd.Qty == nil {
+		cmd.Error = &Error{Error: fmt.Errorf("%d: expected quantity", cmd.Verb.Line), Tokens: reject(z)}
+		return cmd
 	}
-	if mine := accept(tz, "mine"); mine != nil {
-		deposit := accept(tz, "deposit-id")
-		if deposit == nil {
-			return nil, reject(tz, fmt.Errorf("%d: expected deposit to mine", verb.Line))
-		}
-		nl := accept(tz, "eol", "eof")
-		if nl == nil {
-			return nil, reject(tz, fmt.Errorf("%d: unexpected input on order", verb.Line))
-		}
-		return &Order{Line: verb.Line, Command: &AssembleMineGroup{Id: cors.Id, Mine: mine.Text, Qty: qty.Integer, DepositId: deposit.Id}}, nil
+	if mine := accept(z, tokens.MineUnit); mine != nil {
+		return expectMineGroup(z, &AssembleMineGroup{
+			Verb: cmd.Verb,
+			Id:   cmd.Id,
+			Qty:  cmd.Qty,
+			Mine: mine,
+		})
 	}
-	if factory := accept(tz, "factory"); factory != nil {
-		unit := accept(tz, "automation", "consumer-goods", "factory", "farm", "hyper-drive", "mine", "research", "structural", "sensor", "space-drive", "structural", "transport")
-		if unit == nil {
-			return nil, reject(tz, fmt.Errorf("%d: expected unit to produce", verb.Line))
-		}
-		nl := accept(tz, "eol", "eof")
-		if nl == nil {
-			return nil, reject(tz, fmt.Errorf("%d: unexpected input on order", verb.Line))
-		}
-		return &Order{Line: verb.Line, Command: &AssembleFactoryGroup{Id: cors.Id, Factory: factory.Text, Qty: qty.Integer, Product: unit.Unit}}, nil
+	if factory := accept(z, tokens.FactoryUnit); factory != nil {
+		return expectFactoryGroup(z, &AssembleFactoryGroup{
+			Verb:    cmd.Verb,
+			Id:      cmd.Id,
+			Qty:     cmd.Qty,
+			Factory: factory,
+		})
 	}
-	order := &Order{Line: verb.Line, Command: &Error{Error: fmt.Errorf("%d: expected mine or factory unit", verb.Line)}}
-	return order, reject(tz, fmt.Errorf("%d: expected mine or factory unit", verb.Line))
+	cmd.Error = &Error{Error: fmt.Errorf("%d: unexpected input on assemble group order", cmd.Verb.Line), Tokens: reject(z)}
+	return cmd
 }
 
-func expectName(tz *tokenizer, verb *Token) (*Order, error) {
-	cors := accept(tz, "colony-id", "ship-id")
-	if cors == nil {
-		return nil, reject(tz, fmt.Errorf("%d: expected ship or colony id", verb.Line))
+func expectFactoryGroup(z *tokens.Tokenizer, cmd *AssembleFactoryGroup) *AssembleFactoryGroup {
+	if cmd.Product = accept(z, tokens.AutomationUnit, tokens.ConsumerGoodsUnit, tokens.FactoryUnit, tokens.FarmUnit, tokens.HyperDriveUnit, tokens.MineUnit, tokens.ResearchUnit, tokens.SensorUnit, tokens.SpaceDriveUnit, tokens.StructuralUnit, tokens.TransportUnit); cmd.Product == nil {
+		cmd.Error = &Error{Error: fmt.Errorf("%d: expected unit to produce", cmd.Verb.Line), Tokens: reject(z)}
+		return cmd
 	}
-	name := accept(tz, "text")
-	if name == nil {
-		return nil, reject(tz, fmt.Errorf("%d: expected name", verb.Line))
-	} else if name.Kind != "text" || !strings.HasPrefix(name.Text, "\"") || !strings.HasSuffix(name.Text, "\"") {
-		return nil, reject(tz, fmt.Errorf("%d: expected name to be quoted text", verb.Line))
+	if nl := accept(z, tokens.EOL, tokens.EOF); nl == nil {
+		cmd.Error = &Error{Error: fmt.Errorf("%d: unexpected input on assemble factory group order", cmd.Verb.Line), Tokens: reject(z)}
+		return cmd
 	}
-	nl := accept(tz, "eol", "eof")
-	if nl == nil {
-		return nil, reject(tz, fmt.Errorf("%d: unexpected input on order", verb.Line))
-	}
-	return &Order{Line: verb.Line, Command: &NameOrder{Id: cors.Id, Name: name.Text}}, nil
+	return cmd
 }
 
-func reject(tz *tokenizer, err error) error {
-	// consume until we find eol or eof token
-	for tok := tz.next(); !(tok.Kind == "eof" || tok.Kind == "eol"); {
-		tok = tz.next()
+func expectMineGroup(z *tokens.Tokenizer, cmd *AssembleMineGroup) *AssembleMineGroup {
+	if cmd.DepositId = accept(z, tokens.DepositId); cmd.DepositId == nil {
+		cmd.Error = &Error{Error: fmt.Errorf("%d: expected deposit to mine", cmd.Verb.Line), Tokens: reject(z)}
+		return cmd
 	}
-	return err
+	if nl := accept(z, tokens.EOL, tokens.EOF); nl == nil {
+		cmd.Error = &Error{Error: fmt.Errorf("%d: unexpected input on assemble mine group order", cmd.Verb.Line), Tokens: reject(z)}
+		return cmd
+	}
+	return cmd
+}
+
+func expectName(z *tokens.Tokenizer, cmd *Name) *Name {
+	if cmd.Id = accept(z, tokens.ColonyId, tokens.ShipId); cmd.Id == nil {
+		cmd.Error = &Error{Error: fmt.Errorf("%d: expected ship or colony id", cmd.Verb.Line), Tokens: reject(z)}
+		return cmd
+	}
+	if cmd.Name = accept(z, tokens.QuotedText); cmd.Name == nil {
+		cmd.Error = &Error{Error: fmt.Errorf("%d: expected name", cmd.Verb.Line), Tokens: reject(z)}
+		return cmd
+	}
+	if nl := accept(z, tokens.EOL, tokens.EOF); nl == nil {
+		cmd.Error = &Error{Error: fmt.Errorf("%d: unexpected input on name order", cmd.Verb.Line), Tokens: reject(z)}
+		return cmd
+	}
+	return cmd
+}
+
+// consume until we find EOL or EOF token.
+// the slice of tokens returned will not include EOL or EOF
+func reject(z *tokens.Tokenizer) []*tokens.Token {
+	var toks []*tokens.Token
+	for t := z.Next(); t.Kind != tokens.EOF; t = z.Next() {
+		if t.Kind == tokens.EOL {
+			z.UnGet(t)
+			break
+		}
+		toks = append(toks, t)
+	}
+	return toks
 }
