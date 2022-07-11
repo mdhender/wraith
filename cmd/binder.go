@@ -50,9 +50,9 @@ func bindConfig(cmd *cobra.Command) error {
 		if globalBase.VerboseFlag {
 			log.Printf("[viper] using config file: %q\n", viper.ConfigFileUsed())
 		}
-		if err = viper.WriteConfigAs("viper.json"); err != nil {
-			return err
-		}
+		//if err = viper.WriteConfigAs("viper.json"); err != nil {
+		//	return err
+		//}
 		globalBase.ConfigFile = filepath.Clean(viper.ConfigFileUsed())
 	}
 
