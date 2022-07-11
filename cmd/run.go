@@ -19,6 +19,7 @@
 package cmd
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/mdhender/wraith/internal/orders"
@@ -67,27 +68,23 @@ var cmdRun = &cobra.Command{
 			log.Fatal(err)
 		}
 
+		bb := &bytes.Buffer{}
 		for _, order := range p {
-			if cmd, ok := order.(*orders.AssembleFactoryGroup); ok {
-				if cmd.Error == nil {
-					log.Printf("line %d: %q %q %d %q\n", cmd.Verb.Line, "assemble-factory-group", cmd.Id.Text, cmd.Qty.Integer, cmd.Product.Text)
-				} else {
-					log.Printf("line %d: %q %q %d %q %v\n", cmd.Verb.Line, "assemble-factory-group", cmd.Id.Text, cmd.Qty.Integer, cmd.Product, cmd.Error.Error)
-				}
+			if cmd, ok := order.(*orders.AssembleGroup); ok {
+				bb.WriteString(cmd.String())
+			} else if cmd, ok := order.(*orders.AssembleFactoryGroup); ok {
+				bb.WriteString(cmd.String())
 			} else if cmd, ok := order.(*orders.AssembleMineGroup); ok {
-				if cmd.Error == nil {
-					log.Printf("line %d: %q %q %d %q\n", cmd.Verb.Line, "assemble-mine-group", cmd.Id.Text, cmd.Qty.Integer, cmd.DepositId.Text)
-				}
+				bb.WriteString(cmd.String())
 			} else if cmd, ok := order.(*orders.Name); ok {
-				if cmd.Error == nil {
-					if cmd.Id.Text[0] == 'C' {
-						log.Printf("line %d: %q %q %q\n", cmd.Verb.Line, "name-colony", cmd.Id.Text, cmd.Name.Text)
-					} else if cmd.Id.Text[0] == 'S' {
-						log.Printf("line %d: %q %q %q\n", cmd.Verb.Line, "name-ship", cmd.Id.Text, cmd.Name.Text)
-					}
-				}
+				bb.WriteString(cmd.String())
+			} else if cmd, ok := order.(*orders.Unknown); ok {
+				bb.WriteString(cmd.String())
 			}
+			bb.Write([]byte{'\n'})
 		}
+
+		log.Printf("buffer: \n%s\n", string(bb.Bytes()))
 
 		return nil
 	},

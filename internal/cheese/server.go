@@ -26,6 +26,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/mdhender/wraith/engine"
+	"github.com/mdhender/wraith/internal/orders"
 	"github.com/mdhender/wraith/internal/osk"
 	"github.com/mdhender/wraith/models"
 	"io"
@@ -551,7 +552,9 @@ func (s *server) ordersGetHandler(templates string) http.HandlerFunc {
 		NationNo   int
 		Rows, Cols int
 		Orders     string
+		Validate   string
 	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%s: %s: ordersPath %q\n", r.Method, r.URL.Path, s.store.OrdersPath())
 
@@ -579,7 +582,7 @@ func (s *server) ordersGetHandler(templates string) http.HandlerFunc {
 			Year:     chi.URLParam(r, "year"),
 			Quarter:  chi.URLParam(r, "quarter"),
 			NationNo: claim.NationNo,
-			Rows:     5,
+			Rows:     18,
 			Cols:     80,
 		}
 
@@ -593,8 +596,33 @@ func (s *server) ordersGetHandler(templates string) http.HandlerFunc {
 		}
 
 		ordersFile := filepath.Join(s.store.OrdersPath(), fmt.Sprintf("%s.%s.%s.%d.txt", game.ShortName, chi.URLParam(r, "year"), chi.URLParam(r, "quarter"), claim.NationNo))
-		if b, err := os.ReadFile(ordersFile); err == nil {
+		b, err := os.ReadFile(ordersFile)
+		if err == nil {
 			oe.Orders = string(b)
+		}
+
+		// we accept a boolean query parameter to validate the orders file
+		if r.URL.Query().Get("validate") == "true" {
+			if p, err := orders.Parse(b); err != nil {
+				oe.Validate = fmt.Sprintf(";; sorry, but there was an error validating\n;; %+v\n", err)
+			} else {
+				bb := &bytes.Buffer{}
+				for _, order := range p {
+					if cmd, ok := order.(*orders.AssembleGroup); ok {
+						bb.WriteString(cmd.String())
+					} else if cmd, ok := order.(*orders.AssembleFactoryGroup); ok {
+						bb.WriteString(cmd.String())
+					} else if cmd, ok := order.(*orders.AssembleMineGroup); ok {
+						bb.WriteString(cmd.String())
+					} else if cmd, ok := order.(*orders.Name); ok {
+						bb.WriteString(cmd.String())
+					} else if cmd, ok := order.(*orders.Unknown); ok {
+						bb.WriteString(cmd.String())
+					}
+					bb.Write([]byte{'\n'})
+				}
+				oe.Validate = string(bb.Bytes())
+			}
 		}
 
 		t.Handle(w, r, oe)
@@ -666,7 +694,8 @@ func (s *server) ordersPostHandler() http.HandlerFunc {
 		}
 		//log.Printf("server: %s %q: %v\n", r.Method, r.URL.Path, r.PostForm)
 		var input struct {
-			orders string
+			orders   string
+			validate bool
 		}
 		for k, v := range r.Form {
 			switch k {
@@ -685,6 +714,8 @@ func (s *server) ordersPostHandler() http.HandlerFunc {
 					return
 				}
 				input.orders = v[0]
+			case "validate":
+				input.validate = true
 			}
 		}
 
@@ -729,7 +760,11 @@ func (s *server) ordersPostHandler() http.HandlerFunc {
 			return
 		}
 
-		http.Redirect(w, r, r.URL.Path, http.StatusSeeOther)
+		if input.validate {
+			http.Redirect(w, r, r.URL.Path+"?validate=true", http.StatusSeeOther)
+		} else {
+			http.Redirect(w, r, r.URL.Path, http.StatusSeeOther)
+		}
 		return
 	}
 }

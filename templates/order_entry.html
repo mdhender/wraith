@@ -8,18 +8,34 @@
 
 <h2>Turn {{.Year}}/{{.Quarter}} Orders -- Upload Form </h2>
 
-<p>
-  Please be wary.
-  This will overwrite any orders files that exist for this turn.
-</p>
-
 <form action="/ui/games/PT-1/orders/{{.Year}}/{{.Quarter}}" method="post">
   <label>
     <textarea autofocus placeholder="paste your orders here" rows="{{.Rows}}" cols="{{.Cols}}" name="orders" autocomplete="off" spellcheck="false" autocorrect="off">{{.Orders}}</textarea>
   </label>
   <br/>
+  <label>
+    <input type="checkbox" id="validate" name="validate">
+    Parse for errors
+  </label>
   <input type="submit" value="Upload">
 </form>
 
+<p>
+  The "upload" button will submit your orders;
+  any existing orders for this turn will be overwritten.
+</p>
+
+<p>
+  Checking the "parse for errors" box will run the order processor after you submit your orders.
+  The results will be shown in a new text box at the bottom of this page.
+</p>
+
+
+{{if .Validate}}
+<h2>Parsing Output</h2>
+<label>
+  <textarea placeholder=";; parsing output" rows="{{.Rows}}" cols="{{.Cols}}" autocomplete="off" spellcheck="false" autocorrect="off">{{.Validate}}</textarea>
+</label>
+{{end}}
 </body>
 </html>

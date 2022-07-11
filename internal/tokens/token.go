@@ -27,6 +27,13 @@ type Token struct {
 	Text    []byte  // always populated
 }
 
+func (t *Token) String() string {
+	if t == nil {
+		return ""
+	}
+	return string(t.Text)
+}
+
 type Kind int
 
 const (

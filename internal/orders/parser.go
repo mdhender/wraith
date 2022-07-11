@@ -41,11 +41,41 @@ type Error struct {
 	Tokens []*tokens.Token
 }
 
+func (o *Error) String() string {
+	var s string
+	if o == nil {
+		return s
+	}
+	for _, t := range o.Tokens {
+		s += " " + string(t.Text)
+	}
+	if o.Error != nil {
+		s += fmt.Sprintf(" ;; %v", o.Error)
+	}
+	return s
+}
+
 type AssembleGroup struct {
 	Verb  *tokens.Token
 	Id    *tokens.Token // id of colony or ship to assemble the group in
 	Qty   *tokens.Token // number of units to add to group
 	Error *Error        // nil unless there was an error parsing
+}
+
+func (o *AssembleGroup) String() string {
+	var s string
+	if o == nil {
+		return s
+	}
+	for i, t := range []*tokens.Token{o.Verb, o.Id, o.Qty} {
+		if t == nil {
+			break
+		} else if i != 0 {
+			s += " "
+		}
+		s += string(t.Text)
+	}
+	return s + o.Error.String()
 }
 
 type AssembleFactoryGroup struct {
@@ -57,6 +87,22 @@ type AssembleFactoryGroup struct {
 	Error   *Error        // nil unless there was an error parsing
 }
 
+func (o *AssembleFactoryGroup) String() string {
+	var s string
+	if o == nil {
+		return s
+	}
+	for i, t := range []*tokens.Token{o.Verb, o.Id, o.Qty, o.Factory, o.Product} {
+		if t == nil {
+			break
+		} else if i != 0 {
+			s += " "
+		}
+		s += string(t.Text)
+	}
+	return s + o.Error.String()
+}
+
 type AssembleMineGroup struct {
 	Verb      *tokens.Token
 	Id        *tokens.Token // id of colony or ship to assemble the group in
@@ -66,6 +112,22 @@ type AssembleMineGroup struct {
 	Error     *Error        // nil unless there was an error parsing
 }
 
+func (o *AssembleMineGroup) String() string {
+	var s string
+	if o == nil {
+		return s
+	}
+	for i, t := range []*tokens.Token{o.Verb, o.Id, o.Qty, o.Mine, o.DepositId} {
+		if t == nil {
+			break
+		} else if i != 0 {
+			s += " "
+		}
+		s += string(t.Text)
+	}
+	return s + o.Error.String()
+}
+
 type Name struct {
 	Verb  *tokens.Token
 	Id    *tokens.Token // id of object to name
@@ -73,9 +135,41 @@ type Name struct {
 	Error *Error        // nil unless there was an error parsing
 }
 
+func (o *Name) String() string {
+	var s string
+	if o == nil {
+		return s
+	}
+	for i, t := range []*tokens.Token{o.Verb, o.Id, o.Name} {
+		if t == nil {
+			break
+		} else if i != 0 {
+			s += " "
+		}
+		s += string(t.Text)
+	}
+	return s + o.Error.String()
+}
+
 type Unknown struct {
 	Verb  *tokens.Token
 	Error *Error // nil unless there was an error parsing
+}
+
+func (o *Unknown) String() string {
+	var s string
+	if o == nil {
+		return s
+	}
+	for i, t := range []*tokens.Token{o.Verb} {
+		if t == nil {
+			break
+		} else if i != 0 {
+			s += " "
+		}
+		s += string(t.Text)
+	}
+	return s + o.Error.String()
 }
 
 func Parse(b []byte) ([]interface{}, error) {
