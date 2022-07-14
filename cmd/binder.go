@@ -63,7 +63,7 @@ func bindConfig(cmd *cobra.Command) error {
 	// bind the current command's flags to viper
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
 		// Environment variables can't have dashes in them, so bind them to their equivalent
-		// keys with underscores, e.g. --favorite-color to STING_FAVORITE_COLOR
+		// keys with underscores, e.g. --favorite-color to WRAITH_FAVORITE_COLOR
 		if strings.Contains(f.Name, "-") {
 			envVarSuffix := strings.ToUpper(strings.ReplaceAll(f.Name, "-", "_"))
 			_ = viper.BindEnv(f.Name, fmt.Sprintf("%s_%s", globalBase.envPrefix, envVarSuffix))
