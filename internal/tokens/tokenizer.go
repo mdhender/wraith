@@ -152,6 +152,9 @@ func (z *Tokenizer) Next() *Token {
 	if bytes.Equal(word, []byte("consumer-goods")) {
 		return &Token{Line: z.line, Kind: ConsumerGoodsUnit, Text: word}
 	}
+	if bytes.Equal(word, []byte("control")) {
+		return &Token{Line: z.line, Kind: Control, Text: word}
+	}
 	if bytes.HasPrefix(word, []byte("factory-")) {
 		return &Token{Line: z.line, Kind: FactoryUnit, Text: word}
 	}

@@ -60,6 +60,7 @@ const (
 	// order verbs
 
 	Assemble
+	Control
 	Name
 
 	// units

@@ -154,8 +154,10 @@ func (t *tokenizer) next() *Token {
 	switch s {
 	case "assemble":
 		return &Token{Line: t.line, Word: string(word), Kind: "assemble", Text: s}
+	case "control":
+		return &Token{Line: t.line, Word: string(word), Kind: "control", Text: s}
 	case "name":
-		return &Token{Line: t.line, Word: string(word), Kind: "name"}
+		return &Token{Line: t.line, Word: string(word), Kind: "name", Text: s}
 	case "automation-1":
 		return &Token{Line: t.line, Word: string(word), Kind: "automation", Unit: "automation-1"}
 	case "consumer-goods":
