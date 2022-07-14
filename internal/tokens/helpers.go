@@ -43,6 +43,14 @@ func isId(b []byte) bool {
 	if (b[0] == 'd' || b[0] == 'D') && (b[1] == 'p' || b[1] == 'P') && ('0' < b[2] && b[2] <= '9') {
 		return true
 	}
+	// factory group id is FG##
+	if (b[0] == 'f' || b[0] == 'F') && (b[1] == 'g' || b[1] == 'G') && ('0' < b[2] && b[2] <= '9') {
+		return true
+	}
+	// mine group id is DP##
+	if (b[0] == 'm' || b[0] == 'M') && (b[1] == 'g' || b[1] == 'G') && ('0' < b[2] && b[2] <= '9') {
+		return true
+	}
 
 	// not a known id
 	return false
