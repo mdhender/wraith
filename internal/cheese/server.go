@@ -608,17 +608,7 @@ func (s *server) ordersGetHandler(templates string) http.HandlerFunc {
 			} else {
 				bb := &bytes.Buffer{}
 				for _, order := range p {
-					if cmd, ok := order.(*orders.AssembleGroup); ok {
-						bb.WriteString(cmd.String())
-					} else if cmd, ok := order.(*orders.AssembleFactoryGroup); ok {
-						bb.WriteString(cmd.String())
-					} else if cmd, ok := order.(*orders.AssembleMineGroup); ok {
-						bb.WriteString(cmd.String())
-					} else if cmd, ok := order.(*orders.Name); ok {
-						bb.WriteString(cmd.String())
-					} else if cmd, ok := order.(*orders.Unknown); ok {
-						bb.WriteString(cmd.String())
-					}
+					bb.WriteString(order.String())
 					bb.Write([]byte{'\n'})
 				}
 				oe.Validate = string(bb.Bytes())
