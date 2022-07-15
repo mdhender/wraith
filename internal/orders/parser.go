@@ -45,6 +45,8 @@ func Parse(b []byte) ([]*Order, error) {
 			orders = append(orders, cmd)
 			continue
 		}
+
+		// unknown order. reject the entire line.
 		verb := z.Next()
 		cmd := &Order{Line: verb.Line, Verb: verb}
 		cmd.Errors = append(cmd.Errors, fmt.Errorf("unknown order %q", string(verb.Text)))

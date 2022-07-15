@@ -29,6 +29,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 var globalRun struct {
@@ -57,24 +58,44 @@ var cmdRun = &cobra.Command{
 		}
 		log.Printf("loaded store version %q\n", s.Version())
 
-		ordersFile := filepath.Join(cfg.OrdersPath, fmt.Sprintf("%s.%s.%s.%d.txt", globalRun.Game, "0000", "0", 1))
-		b, err := os.ReadFile(ordersFile)
+		game, err := s.LookupGameByName(globalRun.Game)
+		if err != nil {
+			log.Fatal(err)
+		} else if game, err = s.FetchGameByNameAsOf(game.ShortName, game.CurrentTurn.String()); err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("loaded game %q: turn %q\n", game.ShortName, game.CurrentTurn.String())
+
+		now := time.Now()
+		users, err := s.FetchUserClaimsFromGameAsOf(game.Id, now)
 		if err != nil {
 			log.Fatal(err)
 		}
+		for _, user := range users {
+			log.Printf("run: nation %3d handle %-32q pid %4d turn %q\n", user.Games[0].NationNo, user.Games[0].PlayerHandle, user.Games[0].PlayerId, user.Games[0].EffTurn)
 
-		p, err := orders.Parse([]byte(b))
-		if err != nil {
-			log.Fatal(err)
+			ordersFile := filepath.Join(cfg.OrdersPath, fmt.Sprintf("%s.%04d.%d.%d.txt", user.Games[0].ShortName, user.Games[0].EffTurn.Year, user.Games[0].EffTurn.Quarter, user.Games[0].PlayerId))
+			b, err := os.ReadFile(ordersFile)
+			if err != nil {
+				log.Printf("can not open orders file\n")
+				continue
+			}
+
+			p, err := orders.Parse([]byte(b))
+			if err != nil {
+				log.Printf("can not parse orders file\n")
+				continue
+			}
+
+			bb := &bytes.Buffer{}
+			for _, order := range p {
+				bb.WriteString(order.String())
+				bb.Write([]byte{'\n'})
+			}
+
+			log.Printf("buffer: \n%s\n", string(bb.Bytes()))
+
 		}
-
-		bb := &bytes.Buffer{}
-		for _, order := range p {
-			bb.WriteString(order.String())
-			bb.Write([]byte{'\n'})
-		}
-
-		log.Printf("buffer: \n%s\n", string(bb.Bytes()))
 
 		return nil
 	},

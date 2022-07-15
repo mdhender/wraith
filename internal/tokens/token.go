@@ -60,6 +60,8 @@ const (
 	// order verbs
 
 	Assemble
+	AssembleFactoryGroup
+	AssembleMiningGroup
 	Control
 	Name
 

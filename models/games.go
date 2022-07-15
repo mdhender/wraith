@@ -765,6 +765,17 @@ func (s *Store) fetchSystems(gameId int, game *Game, turns map[string]*Turn) (ma
 	return systems, nil
 }
 
+// fetch turn
+func (s *Store) fetchTurn(gameId int, turn string) (*Turn, error) {
+	row := s.db.QueryRow("select no, year, quarter, start_dt, end_dt from turns where game_id = ? and turn = ?", gameId, turn)
+	t := &Turn{}
+	err := row.Scan(&t.No, &t.Year, &t.Quarter, &t.StartDt, &t.EndDt)
+	if err != nil {
+		return nil, fmt.Errorf("fetchTurn: %d %q: %w", gameId, turn, err)
+	}
+	return t, nil
+}
+
 // fetch turns
 func (s *Store) fetchTurns(gameId int) (map[string]*Turn, error) {
 	turns := make(map[string]*Turn)
@@ -969,7 +980,10 @@ func (s *Store) lookupGame(id int) (*Game, error) {
 	if err != nil {
 		return nil, fmt.Errorf("lookupGame: %d: %w", id, err)
 	}
-
+	g.CurrentTurn, err = s.fetchTurn(g.Id, currentTurn)
+	if err != nil {
+		return nil, fmt.Errorf("lookupGame: %d: %w", id, err)
+	}
 	return &g, nil
 }
 

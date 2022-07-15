@@ -81,10 +81,12 @@ func (o *Order) expectAssemble(z *tokens.Tokenizer) bool {
 	}
 	o.Args = append(o.Args, t)
 	if t = accept(z, tokens.FactoryUnit); t != nil {
+		o.Verb.Kind = tokens.AssembleFactoryGroup
 		o.Args = append(o.Args, t)
 		return o.expectFactoryGroup(z)
 	}
 	if t = accept(z, tokens.MineUnit); t != nil {
+		o.Verb.Kind = tokens.AssembleMiningGroup
 		o.Args = append(o.Args, t)
 		return o.expectMineGroup(z)
 	}
