@@ -196,6 +196,10 @@ type Star struct {
 	Orbits   []*Planet // each orbit may or may not contain a planet
 }
 
+func (s *Star) String() string {
+	return fmt.Sprintf("%s%s", s.System.Coords.String(), s.Sequence)
+}
+
 // Planet is a non-empty orbit.
 type Planet struct {
 	Star       *Star
@@ -207,6 +211,10 @@ type Planet struct {
 	Details    []*PlanetDetail
 	Colonies   []*ColonyOrShip // colonies on or orbiting the planet
 	Ships      []*ColonyOrShip // ships orbiting the planet
+}
+
+func (p *Planet) String() string {
+	return fmt.Sprintf("%s#%d", p.Star.String(), p.OrbitNo)
 }
 
 // PlanetDetail contains items that change from turn to turn

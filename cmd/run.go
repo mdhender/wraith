@@ -19,9 +19,10 @@
 package cmd
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
+	"github.com/mdhender/wraith/engine"
+	"github.com/mdhender/wraith/internal/adapters"
 	"github.com/mdhender/wraith/internal/orders"
 	"github.com/mdhender/wraith/models"
 	"github.com/mdhender/wraith/storage/config"
@@ -66,36 +67,41 @@ var cmdRun = &cobra.Command{
 		}
 		log.Printf("loaded game %q: turn %q\n", game.ShortName, game.CurrentTurn.String())
 
+		e, err := engine.Open(s)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("loaded engine version %q\n", e.Version())
+
 		now := time.Now()
 		users, err := s.FetchUserClaimsFromGameAsOf(game.Id, now)
 		if err != nil {
 			log.Fatal(err)
 		}
+		var pos []*engine.PlayerOrders
 		for _, user := range users {
-			log.Printf("run: nation %3d handle %-32q pid %4d turn %q\n", user.Games[0].NationNo, user.Games[0].PlayerHandle, user.Games[0].PlayerId, user.Games[0].EffTurn)
-
 			ordersFile := filepath.Join(cfg.OrdersPath, fmt.Sprintf("%s.%04d.%d.%d.txt", user.Games[0].ShortName, user.Games[0].EffTurn.Year, user.Games[0].EffTurn.Quarter, user.Games[0].PlayerId))
 			b, err := os.ReadFile(ordersFile)
 			if err != nil {
-				log.Printf("can not open orders file\n")
+				log.Printf("run: nation %3d handle %-32q pid %4d turn %q: %+v\n", user.Games[0].NationNo, user.Games[0].PlayerHandle, user.Games[0].PlayerId, user.Games[0].EffTurn, err)
 				continue
 			}
 
-			p, err := orders.Parse([]byte(b))
+			o, err := orders.Parse([]byte(b))
 			if err != nil {
-				log.Printf("can not parse orders file\n")
+				log.Printf("run: nation %3d handle %-32q pid %4d turn %q: %+v\n", user.Games[0].NationNo, user.Games[0].PlayerHandle, user.Games[0].PlayerId, user.Games[0].EffTurn, err)
 				continue
 			}
 
-			bb := &bytes.Buffer{}
-			for _, order := range p {
-				bb.WriteString(order.String())
-				bb.Write([]byte{'\n'})
-			}
-
-			log.Printf("buffer: \n%s\n", string(bb.Bytes()))
-
+			log.Printf("run: nation %3d handle %-32q pid %4d turn %q: orders:\n%s\n", user.Games[0].NationNo, user.Games[0].PlayerHandle, user.Games[0].PlayerId, user.Games[0].EffTurn, "...")
+			pos = append(pos, e.PlayerOrders(adapters.ModelsPlayerToEnginePlayer(game.Players[user.Games[0].PlayerId]), o))
 		}
+
+		err = e.Execute(pos, "control", "retool")
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("wow. executed!\n")
 
 		return nil
 	},
