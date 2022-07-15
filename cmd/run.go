@@ -78,7 +78,7 @@ var cmdRun = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		var pos []*engine.PlayerOrders
+		var pos []*engine.PhaseOrders
 		for _, user := range users {
 			ordersFile := filepath.Join(cfg.OrdersPath, fmt.Sprintf("%s.%04d.%d.%d.txt", user.Games[0].ShortName, user.Games[0].EffTurn.Year, user.Games[0].EffTurn.Quarter, user.Games[0].PlayerId))
 			b, err := os.ReadFile(ordersFile)
@@ -94,7 +94,11 @@ var cmdRun = &cobra.Command{
 			}
 
 			log.Printf("run: nation %3d handle %-32q pid %4d turn %q: orders:\n%s\n", user.Games[0].NationNo, user.Games[0].PlayerHandle, user.Games[0].PlayerId, user.Games[0].EffTurn, "...")
-			pos = append(pos, e.PlayerOrders(adapters.ModelsPlayerToEnginePlayer(game.Players[user.Games[0].PlayerId]), o))
+
+			po := adapters.OrdersToEnginePhaseOrders(o...)
+			po.Player = adapters.ModelsPlayerToEnginePlayer(game.Players[user.Games[0].PlayerId])
+
+			pos = append(pos, po)
 		}
 
 		err = e.Execute(pos, "control", "retool")

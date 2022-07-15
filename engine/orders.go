@@ -20,17 +20,16 @@ package engine
 
 import (
 	"github.com/mdhender/wraith/internal/orders"
-	"github.com/mdhender/wraith/internal/tokens"
 	"log"
 )
 
-type PlayerOrders struct {
+type PhaseOrders struct {
 	Player *Player
 	// orders sorted by phase
 	Combat      []*orders.Order
 	SetUp       []*orders.Order
 	Disassembly []*orders.Order
-	Retool      []*orders.Order
+	Retool      []*RetoolPhaseOrder
 	Transfer    []*orders.Order
 	Assembly    []*orders.Order
 	Trade       []*orders.Order
@@ -40,36 +39,48 @@ type PlayerOrders struct {
 	Draft       []*orders.Order
 	Pay         []*orders.Order
 	Ration      []*orders.Order
-	Control     []*orders.Order
+	Control     []*ControlPhaseOrder
 }
-
-// PlayerOrders creates and initializes the struct.
-// It sorts the orders into buckets for each phase.
-// Because it appends to the bucket, it does not change the relative order of commands in a phase.
-// Invalid or unknown orders are dropped.
-func (e *Engine) PlayerOrders(p *Player, o []*orders.Order) *PlayerOrders {
-	po := &PlayerOrders{Player: p}
-	for _, order := range o {
-		if order == nil || order.Verb == nil {
-			continue
-		}
-		switch order.Verb.Kind {
-		case tokens.AssembleFactoryGroup:
-			po.Retool = append(po.Retool, order)
-		case tokens.AssembleMiningGroup:
-			po.Retool = append(po.Retool, order)
-		case tokens.Control:
-			po.Control = append(po.Control, order)
-		case tokens.Name:
-			po.Control = append(po.Control, order)
-		}
-	}
-	return po
+type RetoolPhaseOrder struct {
+	FactoryGroup *RetoolFactoryGroupOrder
+	MiningGroup  *RetoolMiningGroupOrder
+}
+type RetoolFactoryGroupOrder struct {
+	CorS     string // id of ship or colony to assemble in
+	Quantity int
+	Unit     string
+	Product  string
+}
+type RetoolMiningGroupOrder struct {
+	CorS     string // id of ship or colony to assemble in
+	Quantity int
+	Unit     string
+	Product  string
+}
+type ControlPhaseOrder struct {
+	ControlColony *ControlColonyOrder
+	ControlShip   *ControlShipOrder
+	NameColony    *NameColonyOrder
+	NameShip      *NameShipOrder
+}
+type ControlColonyOrder struct {
+	Id string // id of colony to take control of
+}
+type ControlShipOrder struct {
+	Id string // id of ship to take control of
+}
+type NameColonyOrder struct {
+	Id   string // id of colony to name
+	Name string // name to assign to colony
+}
+type NameShipOrder struct {
+	Id   string // id of ship to name
+	Name string // name to assign to ship
 }
 
 // Execute runs all the orders in the list of phases.
 // If the list is empty, no phases will run.
-func (e *Engine) Execute(pos []*PlayerOrders, phases ...string) error {
+func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 	if indexOf("combat", phases) != -1 {
 		// not yet implemented
 	}
