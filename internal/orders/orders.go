@@ -112,7 +112,13 @@ func (o *Order) expectCorSId(z *tokens.Tokenizer) bool {
 
 func (o *Order) expectFactoryGroup(z *tokens.Tokenizer) bool {
 	var t *tokens.Token
-	if t = accept(z, tokens.AutomationUnit, tokens.ConsumerGoodsUnit, tokens.FactoryUnit, tokens.FarmUnit, tokens.HyperDriveUnit, tokens.MineUnit, tokens.ResearchUnit, tokens.SensorUnit, tokens.SpaceDriveUnit, tokens.StructuralUnit, tokens.TransportUnit); t == nil {
+	if t = accept(z,
+		tokens.AutomationUnit, tokens.ConsumerGoodsUnit,
+		tokens.FactoryUnit, tokens.FarmUnit,
+		tokens.HyperDriveUnit, tokens.LifeSupportUnit,
+		tokens.MineUnit, tokens.ResearchUnit,
+		tokens.SensorUnit, tokens.SpaceDriveUnit,
+		tokens.StructuralUnit, tokens.TransportUnit); t == nil {
 		o.Errors = append(o.Errors, fmt.Errorf("%d: expected unit to produce", o.Line))
 		o.reject(z)
 		return false
