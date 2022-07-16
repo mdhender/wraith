@@ -164,6 +164,9 @@ func (z *Tokenizer) Next() *Token {
 	if bytes.HasPrefix(word, []byte("hyper-drive-")) {
 		return &Token{Line: z.line, Kind: HyperDriveUnit, Text: word}
 	}
+	if bytes.HasPrefix(word, []byte("life-support-")) {
+		return &Token{Line: z.line, Kind: LifeSupportUnit, Text: word}
+	}
 	if bytes.HasPrefix(word, []byte("mine-")) {
 		return &Token{Line: z.line, Kind: MineUnit, Text: word}
 	}

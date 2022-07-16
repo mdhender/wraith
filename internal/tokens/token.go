@@ -72,6 +72,7 @@ const (
 	FactoryUnit
 	FarmUnit
 	HyperDriveUnit
+	LifeSupportUnit
 	MineUnit
 	ResearchUnit
 	SensorUnit

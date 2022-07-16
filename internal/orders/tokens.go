@@ -168,6 +168,8 @@ func (t *tokenizer) next() *Token {
 		return &Token{Line: t.line, Word: string(word), Kind: "farm", Unit: "farm-1"}
 	case "hyper-drive-1":
 		return &Token{Line: t.line, Word: string(word), Kind: "hyper-drive", Unit: "hyper-drive-1"}
+	case "life-support-1":
+		return &Token{Line: t.line, Word: string(word), Kind: "life-support", Unit: "life-support-1"}
 	case "mine-1":
 		return &Token{Line: t.line, Word: string(word), Kind: "mine", Unit: "mine-1"}
 	case "research":
