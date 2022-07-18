@@ -125,8 +125,10 @@ type ReportPlayer struct {
 */
 
 type Engine struct {
-	r    *models.Store
-	Game *models.Game
+	r        *models.Store
+	Game     *models.Game
+	Colonies map[string]*Colony // key is id
+	Ships    map[string]*Ship   // key is id
 }
 
 func (e *Engine) Version() string {

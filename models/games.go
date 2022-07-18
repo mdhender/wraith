@@ -1397,3 +1397,19 @@ func (s *Store) saveGame(g *Game) error {
 
 	return tx.Commit()
 }
+
+func (g *Game) AllColonies() []*ColonyOrShip {
+	var colonies []*ColonyOrShip
+	for _, colony := range g.Colonies {
+		colonies = append(colonies, colony)
+	}
+	return colonies
+}
+
+func (g *Game) AllShips() []*ColonyOrShip {
+	var ships []*ColonyOrShip
+	for _, ship := range g.Ships {
+		ships = append(ships, ship)
+	}
+	return ships
+}

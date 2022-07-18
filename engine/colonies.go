@@ -18,6 +18,12 @@
 
 package engine
 
+type Colony struct {
+	Id           string  // key, format is always C# where # is an integer
+	ControlledBy *Player // nil only if colony is not controlled
+	Name         string
+}
+
 type XColony struct {
 	Id         int // key for database
 	No         int
@@ -171,4 +177,9 @@ func (e *Engine) genHomeOrbitalColony(planet *Planet) *XColony {
 	c.Inventory = append(c.Inventory, &Inventory{Code: "NMTS", Name: "non-metallics", StowedQty: 100_000})
 	c.Inventory = append(c.Inventory, &Inventory{Code: "SDR", Name: "star-drive", TechLevel: 1, StowedQty: 250})
 	return c
+}
+
+func (e *Engine) findColony(id string) (*Colony, bool) {
+	c, ok := e.Colonies[id]
+	return c, ok
 }

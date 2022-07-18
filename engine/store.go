@@ -24,8 +24,14 @@ import (
 )
 
 // Open returns an initialized engine
-func Open(r *models.Store) (e *Engine, err error) {
-	return &Engine{r: r}, nil
+func Open(r *models.Store, options ...Option) (e *Engine, err error) {
+	e = &Engine{r: r}
+	for _, opt := range options {
+		if err := opt(e); err != nil {
+			return nil, err
+		}
+	}
+	return e, nil
 }
 
 //func (e *Engine) fetchNations() ([]*Nation, error) {

@@ -49,7 +49,7 @@ func Open(cfg *config.Global) (*Store, error) {
 		return nil, err
 	}
 	db.SetConnMaxLifetime(time.Minute * 3)
-	maxConns := 10
+	maxConns := 25
 	db.SetMaxOpenConns(maxConns)
 	db.SetMaxIdleConns(maxConns)
 
@@ -70,6 +70,10 @@ func (s *Store) Close() {
 		log.Printf("%+v\n", err)
 	}
 	s.db = nil
+}
+
+func (s *Store) GetDB() *sql.DB {
+	return s.db
 }
 
 func (s *Store) OrdersPath() string {

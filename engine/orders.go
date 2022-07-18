@@ -19,6 +19,7 @@
 package engine
 
 import (
+	"fmt"
 	"github.com/mdhender/wraith/internal/orders"
 	"log"
 )
@@ -31,7 +32,7 @@ type PhaseOrders struct {
 	Disassembly []*orders.Order
 	Retool      []*RetoolPhaseOrder
 	Transfer    []*orders.Order
-	Assembly    []*orders.Order
+	Assembly    []*AssemblyPhaseOrder
 	Trade       []*orders.Order
 	Survey      []*orders.Order
 	Espionage   []*orders.Order
@@ -41,6 +42,24 @@ type PhaseOrders struct {
 	Ration      []*orders.Order
 	Control     []*ControlPhaseOrder
 }
+
+type AssemblyPhaseOrder struct {
+	FactoryGroup *AssembleFactoryGroupOrder
+	MiningGroup  *AssembleMiningGroupOrder
+}
+type AssembleFactoryGroupOrder struct {
+	CorS     string // id of ship or colony to assemble in
+	Quantity int
+	Unit     string
+	Product  string
+}
+type AssembleMiningGroupOrder struct {
+	CorS     string // id of ship or colony to assemble in
+	Quantity int
+	Unit     string
+	Product  string
+}
+
 type RetoolPhaseOrder struct {
 	FactoryGroup *RetoolFactoryGroupOrder
 	MiningGroup  *RetoolMiningGroupOrder
@@ -57,6 +76,7 @@ type RetoolMiningGroupOrder struct {
 	Unit     string
 	Product  string
 }
+
 type ControlPhaseOrder struct {
 	ControlColony *ControlColonyOrder
 	ControlShip   *ControlShipOrder
@@ -91,18 +111,13 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 		// not yet implemented
 	}
 	if indexOf("retool", phases) != -1 {
-		for _, po := range pos {
-			if len(po.Retool) == 0 {
-				continue
-			}
-			log.Printf("execute: %s: %s\n", "retool", po.Player.Handle)
-		}
+		e.ExecuteRetoolPhase(pos)
 	}
 	if indexOf("transfer", phases) != -1 {
 		// not yet implemented
 	}
 	if indexOf("assembly", phases) != -1 {
-		// not yet implemented
+		e.ExecuteAssemblyPhase(pos)
 	}
 	if indexOf("trade", phases) != -1 {
 		// not yet implemented
@@ -126,11 +141,8 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 		// not yet implemented
 	}
 	if indexOf("control", phases) != -1 {
-		for _, po := range pos {
-			if len(po.Control) == 0 {
-				continue
-			}
-			log.Printf("execute: %s: %s\n", "control", po.Player.Handle)
+		for _, err := range e.ExecuteControlPhase(pos) {
+			log.Printf("execute: control: %v\n", err)
 		}
 	}
 	return nil
@@ -143,4 +155,134 @@ func indexOf(s string, sl []string) int {
 		}
 	}
 	return -1
+}
+
+// ExecuteAssemblyPhase runs all the orders in the assembly phase.
+func (e *Engine) ExecuteAssemblyPhase(pos []*PhaseOrders) []error {
+	var errs []error
+	for _, po := range pos {
+		if len(po.Assembly) == 0 {
+			continue
+		}
+		log.Printf("execute: %s: assembly\n", po.Player.Handle)
+	}
+	return errs
+}
+
+// ExecuteControlPhase runs all the orders in the control phase.
+func (e *Engine) ExecuteControlPhase(pos []*PhaseOrders) []error {
+	var errs []error
+	for _, po := range pos {
+		for _, order := range po.Control {
+			if err := order.ControlColony.Execute(e, po.Player); err != nil {
+				errs = append(errs, err)
+			}
+			if err := order.ControlShip.Execute(e, po.Player); err != nil {
+				errs = append(errs, err)
+			}
+			if err := order.NameColony.Execute(e, po.Player); err != nil {
+				errs = append(errs, err)
+			}
+			if err := order.NameShip.Execute(e, po.Player); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errs
+}
+
+// Execute changes the controller of a colony to the player.
+// Will fail if the colony is controlled by another player.
+func (o *ControlColonyOrder) Execute(e *Engine, p *Player) error {
+	if o == nil {
+		return nil
+	}
+	log.Printf("execute: %s: control: colony %q\n", p.Handle, o.Id)
+	// find colony
+	c, ok := e.findColony(o.Id)
+	if !ok {
+		return fmt.Errorf("no such colony %q", o.Id)
+	}
+	// fail if controlled by another player
+	if c.ControlledBy != nil && c.ControlledBy != p {
+		return fmt.Errorf("no such colony %q", o.Id)
+	}
+	// update the controller to the player
+	c.ControlledBy = p
+	return nil
+}
+
+// Execute changes the controller of a ship to the player.
+// Will fail if the ship is controlled by another player.
+func (o *ControlShipOrder) Execute(e *Engine, p *Player) error {
+	if o == nil {
+		return nil
+	}
+	log.Printf("execute: %s: control: ship %q\n", p.Handle, o.Id)
+	// find ship
+	s, ok := e.findShip(o.Id)
+	if !ok {
+		return fmt.Errorf("no such ship %q", o.Id)
+	}
+	// fail if controlled by another player
+	if s.ControlledBy != nil && s.ControlledBy != p {
+		return fmt.Errorf("no such ship %q", o.Id)
+	}
+	// update the controller to the player
+	s.ControlledBy = p
+	return nil
+}
+
+// Execute changes the name of a colony controlled by a player.
+// Will fail if the colony is not controlled by the player.
+func (o *NameColonyOrder) Execute(e *Engine, p *Player) error {
+	if o == nil {
+		return nil
+	}
+	log.Printf("execute: %s: name: colony %q %s\n", p.Handle, o.Id, o.Name)
+	// find colony
+	c, ok := e.findColony(o.Id)
+	if !ok {
+		return fmt.Errorf("no such colony %q", o.Id)
+	}
+	// fail if controlled by another player
+	if c.ControlledBy != p {
+		return fmt.Errorf("no such colony %q", o.Id)
+	}
+	// update the name
+	c.Name = o.Name
+	return nil
+}
+
+// Execute changes the name of a ship controlled by a player.
+// Will fail if the ship is not controlled by the player.
+func (o *NameShipOrder) Execute(e *Engine, p *Player) error {
+	if o == nil {
+		return nil
+	}
+	log.Printf("execute: %s: name: ship %q %s\n", p.Handle, o.Id, o.Name)
+	// find ship
+	s, ok := e.findShip(o.Id)
+	if !ok {
+		return fmt.Errorf("no such ship %q", o.Id)
+	}
+	// fail if controlled by another player
+	if s.ControlledBy != nil && s.ControlledBy != p {
+		return fmt.Errorf("no such ship %q", o.Id)
+	}
+	// update the name
+	s.Name = o.Name
+	return nil
+}
+
+// ExecuteRetoolPhase runs all the orders in the retool phase.
+func (e *Engine) ExecuteRetoolPhase(pos []*PhaseOrders) []error {
+	var errs []error
+	for _, po := range pos {
+		if len(po.Retool) == 0 {
+			continue
+		}
+		log.Printf("execute: %s: retool\n", po.Player.Handle)
+	}
+	return errs
 }

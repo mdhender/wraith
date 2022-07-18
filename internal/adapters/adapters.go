@@ -20,11 +20,29 @@
 package adapters
 
 import (
+	"fmt"
 	"github.com/mdhender/wraith/engine"
 	"github.com/mdhender/wraith/internal/orders"
 	"github.com/mdhender/wraith/internal/tokens"
 	"github.com/mdhender/wraith/models"
 )
+
+func ModelsColoniesToEngineColonies(mc []*models.ColonyOrShip) []*engine.Colony {
+	ec := make([]*engine.Colony, 0, len(mc))
+	for _, c := range mc {
+		ec = append(ec, ModelsColonyToEngineColony(c))
+	}
+	return ec
+}
+
+func ModelsColonyToEngineColony(mc *models.ColonyOrShip) *engine.Colony {
+	ec := &engine.Colony{
+		Id:           fmt.Sprintf("C%d", mc.MSN),
+		ControlledBy: nil,
+		Name:         "",
+	}
+	return ec
+}
 
 func ModelsPlayerToEnginePlayer(mp *models.Player) *engine.Player {
 	var ep engine.Player
@@ -51,14 +69,14 @@ func OrdersToEnginePhaseOrders(o ...*orders.Order) *engine.PhaseOrders {
 		}
 		switch order.Verb.Kind {
 		case tokens.AssembleFactoryGroup:
-			epo.Retool = append(epo.Retool, &engine.RetoolPhaseOrder{FactoryGroup: &engine.RetoolFactoryGroupOrder{
+			epo.Assembly = append(epo.Assembly, &engine.AssemblyPhaseOrder{FactoryGroup: &engine.AssembleFactoryGroupOrder{
 				CorS:     string(order.Args[0].Text),
 				Quantity: order.Args[1].Integer,
 				Unit:     "",
 				Product:  "",
 			}})
 		case tokens.AssembleMiningGroup:
-			epo.Retool = append(epo.Retool, &engine.RetoolPhaseOrder{MiningGroup: &engine.RetoolMiningGroupOrder{
+			epo.Assembly = append(epo.Assembly, &engine.AssemblyPhaseOrder{MiningGroup: &engine.AssembleMiningGroupOrder{
 				CorS:     string(order.Args[0].Text),
 				Quantity: order.Args[1].Integer,
 				Unit:     "",

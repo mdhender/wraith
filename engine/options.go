@@ -18,35 +18,16 @@
 
 package engine
 
-type Ship struct {
-	Id           string  // key, format is always S# where # is an integer
-	ControlledBy *Player // nil only if ship is not controlled
-	Name         string
-}
+type Option func(e *Engine) error
 
-type XShip struct {
-	Id         int // key for database
-	No         int
-	Name       string
-	Kind       string
-	Location   *Planet
-	TechLevel  int
-	Population struct {
-		Professional      XPopulation
-		Soldier           XPopulation
-		Unskilled         XPopulation
-		Unemployed        XPopulation
-		ConstructionCrews int
-		SpyTeams          int
-		RebelPct          float64
+func WithColonies(colonies []*Colony) func(e *Engine) error {
+	return func(e *Engine) error {
+		if e.Colonies == nil {
+			e.Colonies = make(map[string]*Colony)
+		}
+		for _, colony := range colonies {
+			e.Colonies[colony.Id] = colony
+		}
+		return nil
 	}
-	Hull          []*Inventory // units used to build ship
-	Inventory     []*Inventory // units stored in ship
-	FactoryGroups []*FactoryGroup
-	FarmGroups    []*XGroup
-}
-
-func (e *Engine) findShip(id string) (*Ship, bool) {
-	s, ok := e.Ships[id]
-	return s, ok
 }

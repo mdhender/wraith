@@ -30,12 +30,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
 var globalRun struct {
-	Game  string
-	Phase string
+	Game   string
+	Phases string
 }
 
 var cmdRun = &cobra.Command{
@@ -67,7 +68,11 @@ var cmdRun = &cobra.Command{
 		}
 		log.Printf("loaded game %q: turn %q\n", game.ShortName, game.CurrentTurn.String())
 
-		e, err := engine.Open(s)
+		for _, col := range adapters.ModelsColoniesToEngineColonies(game.AllColonies()) {
+			log.Println(*col)
+		}
+
+		e, err := engine.Open(s, engine.WithColonies(adapters.ModelsColoniesToEngineColonies(game.AllColonies())))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -101,7 +106,8 @@ var cmdRun = &cobra.Command{
 			pos = append(pos, po)
 		}
 
-		err = e.Execute(pos, "control", "retool")
+		phases := strings.Split(globalRun.Phases, ",")
+		err = e.Execute(pos, phases...)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -114,8 +120,8 @@ var cmdRun = &cobra.Command{
 func init() {
 	cmdRun.Flags().StringVar(&globalRun.Game, "game", "", "game to run against")
 	_ = cmdRun.MarkFlagRequired("game")
-	cmdRun.Flags().StringVar(&globalRun.Phase, "phase", "", "phase to process")
-	_ = cmdRun.MarkFlagRequired("phase")
+	cmdRun.Flags().StringVar(&globalRun.Phases, "phases", "", "comma separated list of phases to process")
+	_ = cmdRun.MarkFlagRequired("phases")
 
 	cmdBase.AddCommand(cmdRun)
 }
