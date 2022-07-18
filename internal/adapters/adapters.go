@@ -25,6 +25,7 @@ import (
 	"github.com/mdhender/wraith/internal/orders"
 	"github.com/mdhender/wraith/internal/tokens"
 	"github.com/mdhender/wraith/models"
+	"github.com/mdhender/wraith/wraith"
 )
 
 func ModelsColoniesToEngineColonies(mc []*models.ColonyOrShip) []*engine.Colony {
@@ -100,4 +101,48 @@ func OrdersToEnginePhaseOrders(o ...*orders.Order) *engine.PhaseOrders {
 		}
 	}
 	return &epo
+}
+
+// OrdersToPhaseOrders converts orders into the Engine's expected format while splitting them into buckets for each phase.
+// Because it appends to the bucket, it does not change the relative order of commands in a phase.
+// Invalid or unknown orders are dropped.
+func OrdersToPhaseOrders(p *wraith.Player, o ...*orders.Order) *wraith.PhaseOrders {
+	epo := &wraith.PhaseOrders{Player: p}
+	for _, order := range o {
+		if order == nil || order.Verb == nil || order.Errors != nil || order.Reject != nil {
+			continue
+		}
+		switch order.Verb.Kind {
+		case tokens.AssembleFactoryGroup:
+			epo.Assembly = append(epo.Assembly, &wraith.AssemblyPhaseOrder{FactoryGroup: &wraith.AssembleFactoryGroupOrder{
+				CorS:     string(order.Args[0].Text),
+				Quantity: order.Args[1].Integer,
+				Unit:     "",
+				Product:  "",
+			}})
+		case tokens.AssembleMiningGroup:
+			epo.Assembly = append(epo.Assembly, &wraith.AssemblyPhaseOrder{MiningGroup: &wraith.AssembleMiningGroupOrder{
+				CorS:     string(order.Args[0].Text),
+				Quantity: order.Args[1].Integer,
+				Unit:     "",
+				Product:  "",
+			}})
+		case tokens.Control:
+			id := string(order.Args[0].Text)
+			if order.Args[0].Kind == tokens.ColonyId {
+				epo.Control = append(epo.Control, &wraith.ControlPhaseOrder{ControlColony: &wraith.ControlColonyOrder{Id: id}})
+			} else if order.Args[0].Kind == tokens.ShipId {
+				epo.Control = append(epo.Control, &wraith.ControlPhaseOrder{ControlShip: &wraith.ControlShipOrder{Id: id}})
+			}
+		case tokens.Name:
+			id := string(order.Args[0].Text)
+			name := string(order.Args[1].Text)
+			if order.Args[0].Kind == tokens.ColonyId {
+				epo.Control = append(epo.Control, &wraith.ControlPhaseOrder{NameColony: &wraith.NameColonyOrder{Id: id, Name: name}})
+			} else if order.Args[0].Kind == tokens.ShipId {
+				epo.Control = append(epo.Control, &wraith.ControlPhaseOrder{NameShip: &wraith.NameShipOrder{Id: id, Name: name}})
+			}
+		}
+	}
+	return epo
 }

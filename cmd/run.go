@@ -21,20 +21,20 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/mdhender/wraith/engine"
 	"github.com/mdhender/wraith/internal/adapters"
 	"github.com/mdhender/wraith/internal/orders"
-	"github.com/mdhender/wraith/models"
 	"github.com/mdhender/wraith/storage/config"
+	"github.com/mdhender/wraith/storage/jdb"
+	"github.com/mdhender/wraith/wraith"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 var globalRun struct {
+	Path   string
 	Game   string
 	Phases string
 }
@@ -54,56 +54,39 @@ var cmdRun = &cobra.Command{
 		}
 		log.Printf("loaded config %q\n", cfg.Self)
 
-		s, err := models.Open(cfg)
+		if globalRun.Path = strings.TrimSpace(globalRun.Path); globalRun.Path == "" {
+			return errors.New("missing path to game files")
+		}
+		globalRun.Path = filepath.Clean(globalRun.Path)
+
+		jg, err := jdb.Load(filepath.Join(globalRun.Path, "game.json"))
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("loaded store version %q\n", s.Version())
 
-		game, err := s.LookupGameByName(globalRun.Game)
-		if err != nil {
-			log.Fatal(err)
-		} else if game, err = s.FetchGameByNameAsOf(game.ShortName, game.CurrentTurn.String()); err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("loaded game %q: turn %q\n", game.ShortName, game.CurrentTurn.String())
+		e := adapters.JdbGameToWraithEngine(jg)
+		log.Printf("loaded engine version %q\n", e.Version)
+		log.Printf("loaded game %s: turn %04d/%d\n", e.Game.Code, e.Game.Turn.Year, e.Game.Turn.Quarter)
 
-		for _, col := range adapters.ModelsColoniesToEngineColonies(game.AllColonies()) {
-			log.Println(*col)
-		}
+		var pos []*wraith.PhaseOrders
+		for _, user := range e.Players {
+			ordersFile := filepath.Join(filepath.Join(globalRun.Path, fmt.Sprintf("%d.orders.txt", user.Id)))
 
-		e, err := engine.Open(s, engine.WithColonies(adapters.ModelsColoniesToEngineColonies(game.AllColonies())))
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("loaded engine version %q\n", e.Version())
-
-		now := time.Now()
-		users, err := s.FetchUserClaimsFromGameAsOf(game.Id, now)
-		if err != nil {
-			log.Fatal(err)
-		}
-		var pos []*engine.PhaseOrders
-		for _, user := range users {
-			ordersFile := filepath.Join(cfg.OrdersPath, fmt.Sprintf("%s.%04d.%d.%d.txt", user.Games[0].ShortName, user.Games[0].EffTurn.Year, user.Games[0].EffTurn.Quarter, user.Games[0].PlayerId))
 			b, err := os.ReadFile(ordersFile)
 			if err != nil {
-				log.Printf("run: nation %3d handle %-32q pid %4d turn %q: %+v\n", user.Games[0].NationNo, user.Games[0].PlayerHandle, user.Games[0].PlayerId, user.Games[0].EffTurn, err)
+				log.Printf("run: %+v\n", err)
 				continue
 			}
+			log.Printf("run: load %s\n", ordersFile)
 
 			o, err := orders.Parse([]byte(b))
 			if err != nil {
-				log.Printf("run: nation %3d handle %-32q pid %4d turn %q: %+v\n", user.Games[0].NationNo, user.Games[0].PlayerHandle, user.Games[0].PlayerId, user.Games[0].EffTurn, err)
+				log.Printf("run: nation %3d handle %-32q pid %4d: %+v\n", user.MemberOf.No, user.Name, user.Id, err)
 				continue
 			}
+			//log.Printf("run: nation %3d handle %-32q pid %4d: orders:\n%s\n", user.MemberOf.No, user.Name, user.Id, "...")
 
-			log.Printf("run: nation %3d handle %-32q pid %4d turn %q: orders:\n%s\n", user.Games[0].NationNo, user.Games[0].PlayerHandle, user.Games[0].PlayerId, user.Games[0].EffTurn, "...")
-
-			po := adapters.OrdersToEnginePhaseOrders(o...)
-			po.Player = adapters.ModelsPlayerToEnginePlayer(game.Players[user.Games[0].PlayerId])
-
-			pos = append(pos, po)
+			pos = append(pos, adapters.OrdersToPhaseOrders(e.Players[user.Id], o...))
 		}
 
 		phases := strings.Split(globalRun.Phases, ",")
@@ -113,11 +96,21 @@ var cmdRun = &cobra.Command{
 		}
 		log.Printf("wow. executed!\n")
 
+		// bump the turn
+		if e.Game.Turn.Quarter = e.Game.Turn.Quarter + 1; e.Game.Turn.Quarter > 4 {
+			e.Game.Turn.Year = e.Game.Turn.Year + 1
+			e.Game.Turn.Quarter = 1
+		}
+
+		// and save the game
+
 		return nil
 	},
 }
 
 func init() {
+	cmdRun.Flags().StringVar(&globalRun.Path, "path", "", "path to game files")
+	_ = cmdRun.MarkFlagRequired("path")
 	cmdRun.Flags().StringVar(&globalRun.Game, "game", "", "game to run against")
 	_ = cmdRun.MarkFlagRequired("game")
 	cmdRun.Flags().StringVar(&globalRun.Phases, "phases", "", "comma separated list of phases to process")

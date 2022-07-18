@@ -28,6 +28,7 @@ type Coordinates struct {
 // Deposit of fuel, gold, metal, or non-metals on the surface of a planet
 type Deposit struct {
 	Id                   int     `json:"id"`                                // unique identifier
+	PlanetId             int     `json:"planet-id"`                         // id of planet deposit is on
 	No                   int     `json:"no"`                                // number of deposit on planet
 	UnitId               int     `json:"unit-id"`                           // fuel, gold, metallic, non-metallic
 	InitialQty           int     `json:"initial-qty"`                       // in metric tonnes
@@ -36,11 +37,14 @@ type Deposit struct {
 	ControlledByColonyId int     `json:"controlled-by-colony-id,omitempty"` // colony controlling this deposit
 }
 
+type Deposits []*Deposit
+
 // FactoryGroup is a group of factories on the ship or colony.
 // Each group is dedicated to manufacturing one type of unit.
 type FactoryGroup struct {
-	Id        int                  `json:"id"` // unique identifier
-	No        int                  `json:"no"`
+	Id        int                  `json:"id"`              // unique identifier
+	CorSId    int                  `json:"cors-id"`         // id for the ship or colony that controls the group
+	No        int                  `json:"no"`              // group number, range 1...255
 	Product   int                  `json:"product"`         // unit being manufactured
 	Units     []*FactoryGroupUnits `json:"units,omitempty"` // factory units in the group
 	Stage1Qty int                  `json:"stage-1-qty,omitempty"`
@@ -48,6 +52,8 @@ type FactoryGroup struct {
 	Stage3Qty int                  `json:"stage-3-qty,omitempty"`
 	Stage4Qty int                  `json:"stage-4-qty,omitempty"`
 }
+
+type FactoryGroups []*FactoryGroup
 
 // FactoryGroupUnits is the number of factories working together in the group
 type FactoryGroupUnits struct {
@@ -57,14 +63,17 @@ type FactoryGroupUnits struct {
 
 // FarmGroup is a group of farm units on the ship or colony.
 type FarmGroup struct {
-	Id        int               `json:"id"` // unique identifier
-	No        int               `json:"no"`
-	Units     []*FarmGroupUnits `json:"units,omitempty"` // factory units in the group
+	Id        int               `json:"id"`              // unique identifier
+	CorSId    int               `json:"cors-id"`         // id for the ship or colony that controls the group
+	No        int               `json:"no"`              // group number, range 1...10
+	Units     []*FarmGroupUnits `json:"units,omitempty"` // farm units in the group
 	Stage1Qty int               `json:"stage-1-qty,omitempty"`
 	Stage2Qty int               `json:"stage-2-qty,omitempty"`
 	Stage3Qty int               `json:"stage-3-qty,omitempty"`
 	Stage4Qty int               `json:"stage-4-qty,omitempty"`
 }
+
+type FarmGroups []*FarmGroup
 
 // FarmGroupUnits is the number of farms working together in the group
 type FarmGroupUnits struct {
@@ -83,10 +92,20 @@ type Game struct {
 		StartDt string `json:"startDt,omitempty"` // moment turn starts, UTC
 		EndDt   string `json:"endDt,omitempty"`   // moment just after turn ends, UTC
 	} `json:"turn"`
-	Players []*Player `json:"players,omitempty"`
-	Nations []*Nation `json:"nations,omitempty"`
-	Systems []*System `json:"systems,omitempty"`
-	Units   []*Unit   `json:"units,omitempty"`
+
+	Deposits        Deposits        `json:"deposits,omitempty"`
+	FactoryGroups   FactoryGroups   `json:"factory-groups,omitempty"`
+	FarmGroups      FarmGroups      `json:"farm-groups,omitempty"`
+	MineGroups      MineGroups      `json:"mine-groups,omitempty"`
+	Nations         Nations         `json:"nations,omitempty"`
+	OrbitalColonies OrbitalColonies `json:"orbital-colonies,omitempty"`
+	Planets         Planets         `json:"planets,omitempty"`
+	Players         Players         `json:"players,omitempty"`
+	Ships           Ships           `json:"ships,omitempty"`
+	SurfaceColonies SurfaceColonies `json:"surface-colonies,omitempty"`
+	Units           Units           `json:"units,omitempty"`
+	Stars           Stars           `json:"stars,omitempty"`
+	Systems         Systems         `json:"systems,omitempty"`
 }
 
 type HullUnit struct {
@@ -103,7 +122,8 @@ type InventoryUnit struct {
 // MineGroup is a group of mines working a single deposit.
 // All mine units in a group must be the same type and tech level.
 type MineGroup struct {
-	Id        int `json:"id"` // unique identifier
+	Id        int `json:"id"`        // unique identifier
+	ColonyId  int `json:"colony-id"` // id for the colony that controls the group
 	No        int `json:"no"`
 	DepositId int `json:"deposit-id"`
 	UnitId    int `json:"unit-id"`             // mine units in the group
@@ -113,6 +133,8 @@ type MineGroup struct {
 	Stage3Qty int `json:"stage-3-qty,omitempty"`
 	Stage4Qty int `json:"stage-4-qty,omitempty"`
 }
+
+type MineGroups []*MineGroup
 
 // Nation is a single nation in the game.
 // The controller of the nation rules it, and may designate other
@@ -139,6 +161,23 @@ type Nation struct {
 		Mining        int `json:"mining,omitempty"`        // not used currently
 		Shields       int `json:"shields,omitempty"`       // not used currently
 	} `json:"skills"` // not used currently
+}
+
+type Nations []*Nation
+
+// Len implements sort.Sort interface
+func (n Nations) Len() int {
+	return len(n)
+}
+
+// Less implements sort.Sort interface
+func (n Nations) Less(i, j int) bool {
+	return n[i].No < n[j].No
+}
+
+// Swap implements sort.Sort interface
+func (n Nations) Swap(i, j int) {
+	n[i], n[j] = n[j], n[i]
 }
 
 // OrbitalColony defines an orbital colony.
@@ -174,21 +213,27 @@ type OrbitalColony struct {
 		UnskilledPct    float64 `json:"unskilled-pct,omitempty"`
 		UnemployedPct   float64 `json:"unemployed-pct,omitempty"`
 	} `json:"rations"`
-	FactoryGroups []*FactoryGroup `json:"factory-groups,omitempty"`
-	FarmGroups    []*FarmGroup    `json:"farm-groups,omitempty"`
+	FactoryGroupIds []int `json:"factory-group-ids,omitempty"` // list of the factory group ids
+	FarmGroupIds    []int `json:"farm-group-ids,omitempty"`    // list of the farm group ids
 }
 
-// Planet is a non-empty orbit.
+type OrbitalColonies []*OrbitalColony
+
+// Planet is an orbit. It may be empty.
 type Planet struct {
-	Id              int              `json:"id"`      // unique identifier
-	OrbitNo         int              `json:"orbitNo"` // 1..10
-	Kind            string           `json:"kind"`    // asteroid belt, gas giant, terrestrial
-	HabitabilityNo  int              `json:"habitabilityNo,omitempty"`
-	Deposits        []*Deposit       `json:"deposits,omitempty"`
-	SurfaceColonies []*SurfaceColony `json:"surface-colonies,omitempty"`
-	OrbitalColonies []*OrbitalColony `json:"orbital-colonies,omitempty"`
-	Ships           []*Ship          `json:"ships,omitempty"`
+	Id               int    `json:"id"` // unique identifier
+	SystemId         int    `json:"system-id"`
+	StarId           int    `json:"star-id"`
+	OrbitNo          int    `json:"orbitNo"` // 1..10
+	Kind             string `json:"kind"`    // asteroid belt, gas giant, terrestrial
+	HabitabilityNo   int    `json:"habitabilityNo,omitempty"`
+	DepositIds       []int  `json:"deposit-ids,omitempty"`
+	SurfaceColonyIds []int  `json:"surface-colony-ids,omitempty"`
+	OrbitalColonyIds []int  `json:"orbital-colony-ids,omitempty"`
+	ShipIds          []int  `json:"ship-ids,omitempty"`
 }
+
+type Planets []*Planet
 
 // Player is a position in the game.
 type Player struct {
@@ -199,11 +244,28 @@ type Player struct {
 	ReportsToPlayerId int    `json:"reports-to-player,omitempty"` // player that this player reports to
 }
 
+type Players []*Player
+
+// Len implements sort.Sort interface
+func (p Players) Len() int {
+	return len(p)
+}
+
+// Less implements sort.Sort interface
+func (p Players) Less(i, j int) bool {
+	return p[i].Id < p[j].Id
+}
+
+// Swap implements sort.Sort interface
+func (p Players) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+
 // Ship defines a ship.
 type Ship struct {
 	Id                   int              `json:"id"`                                // unique identifier
 	MSN                  int              `json:"msn"`                               // manufacturer serial number; in game id for the ship
-	BuiltBy              int              `json:"built-by,omitempty"`                // id of the nation that originally built the ship
+	BuiltByNationId      int              `json:"built-by-nation-id,omitempty"`      // id of the nation that originally built the ship
 	Name                 string           `json:"name,omitempty"`                    // name of this ship
 	TechLevel            int              `json:"tech-level,omitempty"`              // tech level of this ship
 	ControlledByPlayerId int              `json:"controlled-by-player-id,omitempty"` // id of player that controls this ship
@@ -231,24 +293,29 @@ type Ship struct {
 		UnskilledPct    float64 `json:"unskilled-pct,omitempty"`
 		UnemployedPct   float64 `json:"unemployed-pct,omitempty"`
 	} `json:"rations"`
-	FactoryGroups []*FactoryGroup `json:"factory-groups,omitempty"`
-	FarmGroups    []*FarmGroup    `json:"farm-groups,omitempty"`
+	FactoryGroupIds []int `json:"factory-group-ids,omitempty"` // list of the factory group ids
+	FarmGroupIds    []int `json:"farm-group-ids,omitempty"`    // list of the farm group ids
 }
+
+type Ships []*Ship
 
 // Star is a stellar system in the game.
 // It contains zero or more planets, with each planet assigned to an orbit ranging from 1...10
 type Star struct {
-	Id       int       `json:"id"`       // unique identifier
-	Sequence string    `json:"sequence"` // A, B, etc
-	Kind     string    `json:"kind"`
-	Planets  []*Planet `json:"planets"`
+	Id        int    `json:"id"` // unique identifier
+	SystemId  int    `json:"system-id"`
+	Sequence  string `json:"sequence"` // A, B, etc
+	Kind      string `json:"kind"`
+	PlanetIds []int  `json:"planet-ids"`
 }
+
+type Stars []*Star
 
 // SurfaceColony defines a surface colony.
 type SurfaceColony struct {
 	Id                   int              `json:"id"`                                // unique identifier
 	MSN                  int              `json:"msn"`                               // manufacturer serial number; in game id for the colony
-	BuiltBy              int              `json:"built-by,omitempty"`                // id of the nation that originally built the colony
+	BuiltByNationId      int              `json:"built-by-nation-id,omitempty"`      // id of the nation that originally built the colony
 	Name                 string           `json:"name,omitempty"`                    // name of this colony
 	TechLevel            int              `json:"tech-level,omitempty"`              // tech level of this colony
 	ControlledByPlayerId int              `json:"controlled-by-player-id,omitempty"` // id of player that controls this colony
@@ -277,18 +344,22 @@ type SurfaceColony struct {
 		UnskilledPct    float64 `json:"unskilled-pct,omitempty"`
 		UnemployedPct   float64 `json:"unemployed-pct,omitempty"`
 	} `json:"rations"`
-	FactoryGroups []*FactoryGroup `json:"factory-groups,omitempty"`
-	FarmGroups    []*FarmGroup    `json:"farm-groups,omitempty"`
-	MineGroups    []*MineGroup    `json:"mine-groups,omitempty"`
+	FactoryGroupIds []int `json:"factory-group-ids,omitempty"` // list of the factory group ids
+	FarmGroupIds    []int `json:"farm-group-ids,omitempty"`    // list of the farm group ids
+	MineGroupIds    []int `json:"mine-group-ids,omitempty"`    // list of the mine group ids
 }
+
+type SurfaceColonies []*SurfaceColony
 
 // System is a system in the game.
 // It contains zero or more stars.
 type System struct {
-	Id     int         `json:"id,omitempty"` // unique identifier
-	Coords Coordinates `json:"coords"`
-	Stars  []*Star     `json:"stars,omitempty"`
+	Id      int         `json:"id,omitempty"` // unique identifier
+	Coords  Coordinates `json:"coords"`
+	StarIds []int       `json:"star-ids,omitempty"`
 }
+
+type Systems []*System
 
 // Unit is a thing in the game.
 type Unit struct {
@@ -303,3 +374,5 @@ type Unit struct {
 	Hudnut              bool    `json:"hudnut,omitempty"`       // if true, unit can be disassembled when stowed
 	StowedVolumePerUnit float64 `json:"stowed-volume-per-unit"` // volume (in cubic meters) of a single unit when stowed
 }
+
+type Units []*Unit

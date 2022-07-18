@@ -28,9 +28,12 @@ import (
 	"github.com/spf13/cobra"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 var globalExport struct {
+	File string
 	Game string
 	Turn string
 }
@@ -43,6 +46,10 @@ var cmdExport = &cobra.Command{
 		if globalBase.ConfigFile == "" {
 			return errors.New("missing config file name")
 		}
+		if globalExport.File = strings.TrimSpace(globalExport.File); globalExport.File == "" {
+			return errors.New("missing export file name")
+		}
+		globalExport.File = filepath.Clean(globalExport.File)
 
 		cfg, err := config.LoadGlobal(globalBase.ConfigFile)
 		if err != nil {
@@ -69,18 +76,21 @@ var cmdExport = &cobra.Command{
 
 		if gj, err := jdb.Extract(s.GetDB(), context.Background(), game.Id); err != nil {
 			log.Fatal(err)
-		} else if b, err := json.MarshalIndent(gj, "", "  "); err != nil {
+		} else if b, err := json.MarshalIndent(gj, "", "\t"); err != nil {
 			log.Fatal(err)
-		} else if err := os.WriteFile("D:\\wraith\\testdata\\jdb.json", b, 0666); err != nil {
+		} else if err := os.WriteFile(globalExport.File, b, 0666); err != nil {
 			log.Fatal(err)
 		}
 
-		log.Printf("export: created jdb.json!")
+		log.Printf("export: created %q\n", globalExport.File)
+
 		return nil
 	},
 }
 
 func init() {
+	cmdExport.Flags().StringVar(&globalExport.File, "filename", "", "file name to create")
+	_ = cmdExport.MarkFlagRequired("file")
 	cmdExport.Flags().StringVar(&globalExport.Game, "game", "", "game to export")
 	_ = cmdExport.MarkFlagRequired("game")
 	cmdExport.Flags().StringVar(&globalExport.Turn, "turn", "", "turn to export")

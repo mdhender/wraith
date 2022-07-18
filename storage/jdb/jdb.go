@@ -63,17 +63,11 @@ func (g *Game) extractGame(db *sql.DB) error {
 	}
 
 	// error correction because i didn't load home world data
-	for _, system := range g.Systems {
-		for _, stars := range system.Stars {
-			for _, planet := range stars.Planets {
-				for _, colony := range planet.SurfaceColonies {
-					for _, nation := range g.Nations {
-						if nation.HomePlanetId == 0 && nation.ControlledByPlayerId == colony.ControlledByPlayerId {
-							nation.HomePlanetId = colony.PlanetId
-							break
-						}
-					}
-				}
+	for _, colony := range g.SurfaceColonies {
+		for _, nation := range g.Nations {
+			if nation.HomePlanetId == 0 && nation.ControlledByPlayerId == colony.ControlledByPlayerId {
+				nation.HomePlanetId = colony.PlanetId
+				break
 			}
 		}
 	}
@@ -184,14 +178,15 @@ func (g *Game) extractStars(db *sql.DB, system *System, turn string) error {
 		return fmt.Errorf("extractStars: %w", err)
 	}
 	for rows.Next() {
-		star := &Star{}
+		star := &Star{SystemId: system.Id}
 		err := rows.Scan(&star.Id, &star.Sequence, &star.Kind)
 		if err != nil {
 			return fmt.Errorf("extractStars: %w", err)
 		} else if err = g.extractPlanets(db, star, turn); err != nil {
 			return fmt.Errorf("extractStars: %w", err)
 		}
-		system.Stars = append(system.Stars, star)
+		system.StarIds = append(system.StarIds, star.Id)
+		g.Stars = append(g.Stars, star)
 	}
 	return nil
 }
@@ -207,7 +202,7 @@ func (g *Game) extractPlanets(db *sql.DB, star *Star, turn string) error {
 		return fmt.Errorf("extractPlanets: %w", err)
 	}
 	for rows.Next() {
-		planet := &Planet{}
+		planet := &Planet{SystemId: star.SystemId, StarId: star.Id}
 		err := rows.Scan(&planet.Id, &planet.OrbitNo, &planet.Kind, &planet.HabitabilityNo)
 		if err != nil {
 			return fmt.Errorf("extractPlanets: %w", err)
@@ -220,7 +215,8 @@ func (g *Game) extractPlanets(db *sql.DB, star *Star, turn string) error {
 		} else if err = g.extractShips(db, planet, turn); err != nil {
 			return fmt.Errorf("extractPlanets: %w", err)
 		}
-		star.Planets = append(star.Planets, planet)
+		star.PlanetIds = append(star.PlanetIds, planet.Id)
+		g.Planets = append(g.Planets, planet)
 	}
 	return nil
 }
@@ -237,13 +233,14 @@ func (g *Game) extractDeposits(db *sql.DB, planet *Planet, turn string) error {
 		return fmt.Errorf("extractDeposits: %w", err)
 	}
 	for rows.Next() {
-		deposit := &Deposit{}
+		deposit := &Deposit{PlanetId: planet.Id}
 		err := rows.Scan(&deposit.Id, &deposit.No, &deposit.UnitId, &deposit.InitialQty, &deposit.YieldPct,
 			&deposit.RemainingQty, &deposit.ControlledByColonyId)
 		if err != nil {
 			return fmt.Errorf("extractDeposits: %w", err)
 		}
-		planet.Deposits = append(planet.Deposits, deposit)
+		planet.DepositIds = append(planet.DepositIds, deposit.Id)
+		g.Deposits = append(g.Deposits, deposit)
 	}
 	return nil
 }
@@ -283,14 +280,30 @@ func (g *Game) extractSurfaceColonies(db *sql.DB, planet *Planet, turn string) e
 			return fmt.Errorf("extractSurfaceColonies: %w", err)
 		} else if colony.Inventory, err = g.extractInventory(db, colony.Id, turn); err != nil {
 			return fmt.Errorf("extractSurfaceColonies: %w", err)
-		} else if colony.FactoryGroups, err = g.extractFactoryGroups(db, colony.Id, turn); err != nil {
-			return fmt.Errorf("extractSurfaceColonies: %w", err)
-		} else if colony.FarmGroups, err = g.extractFarmGroups(db, colony.Id, turn); err != nil {
-			return fmt.Errorf("extractSurfaceColonies: %w", err)
-		} else if colony.MineGroups, err = g.extractMineGroups(db, colony.Id, turn); err != nil {
-			return fmt.Errorf("extractSurfaceColonies: %w", err)
 		}
-		planet.SurfaceColonies = append(planet.SurfaceColonies, colony)
+		if groups, err := g.extractFactoryGroups(db, colony.Id, turn); err != nil {
+			return fmt.Errorf("extractSurfaceColonies: %w", err)
+		} else {
+			for _, group := range groups {
+				colony.FactoryGroupIds = append(colony.FactoryGroupIds, group.Id)
+			}
+		}
+		if groups, err := g.extractFarmGroups(db, colony.Id, turn); err != nil {
+			return fmt.Errorf("extractSurfaceColonies: %w", err)
+		} else {
+			for _, group := range groups {
+				colony.FarmGroupIds = append(colony.FarmGroupIds, group.Id)
+			}
+		}
+		if groups, err := g.extractMineGroups(db, colony.Id, turn); err != nil {
+			return fmt.Errorf("extractSurfaceColonies: %w", err)
+		} else {
+			for _, group := range groups {
+				colony.MineGroupIds = append(colony.MineGroupIds, group.Id)
+			}
+		}
+		planet.SurfaceColonyIds = append(planet.SurfaceColonyIds, colony.Id)
+		g.SurfaceColonies = append(g.SurfaceColonies, colony)
 	}
 	return nil
 }
@@ -351,7 +364,7 @@ func (g *Game) extractFactoryGroups(db *sql.DB, corsId int, turn string) ([]*Fac
 		return nil, fmt.Errorf("extractFactoryGroups: %w", err)
 	}
 	for rows.Next() {
-		group := &FactoryGroup{}
+		group := &FactoryGroup{CorSId: corsId}
 		if err := rows.Scan(&group.Id, &group.No, &group.Product,
 			&group.Stage1Qty, &group.Stage2Qty, &group.Stage3Qty, &group.Stage4Qty); err != nil {
 			return nil, fmt.Errorf("extractFactoryGroups: %w", err)
@@ -359,6 +372,7 @@ func (g *Game) extractFactoryGroups(db *sql.DB, corsId int, turn string) ([]*Fac
 			return nil, fmt.Errorf("extractFactoryGroups: %w", err)
 		}
 		groups = append(groups, group)
+		g.FactoryGroups = append(g.FactoryGroups, group)
 	}
 	return groups, nil
 }
@@ -398,7 +412,7 @@ func (g *Game) extractFarmGroups(db *sql.DB, corsId int, turn string) ([]*FarmGr
 		return nil, fmt.Errorf("extractFarmGroups: %w", err)
 	}
 	for rows.Next() {
-		group := &FarmGroup{}
+		group := &FarmGroup{CorSId: corsId}
 		if err := rows.Scan(&group.Id, &group.No,
 			&group.Stage1Qty, &group.Stage2Qty, &group.Stage3Qty, &group.Stage4Qty); err != nil {
 			return nil, fmt.Errorf("extractFarmGroups: %w", err)
@@ -406,6 +420,7 @@ func (g *Game) extractFarmGroups(db *sql.DB, corsId int, turn string) ([]*FarmGr
 			return nil, fmt.Errorf("extractFarmGroups: %w", err)
 		}
 		groups = append(groups, group)
+		g.FarmGroups = append(g.FarmGroups, group)
 	}
 	return groups, nil
 }
@@ -447,13 +462,14 @@ func (g *Game) extractMineGroups(db *sql.DB, corsId int, turn string) ([]*MineGr
 		return nil, fmt.Errorf("extractMineGroups: %w", err)
 	}
 	for rows.Next() {
-		group := &MineGroup{}
+		group := &MineGroup{ColonyId: corsId}
 		if err := rows.Scan(&group.Id, &group.No, &group.DepositId,
 			&group.UnitId, &group.TotalQty,
 			&group.Stage1Qty, &group.Stage2Qty, &group.Stage3Qty, &group.Stage4Qty); err != nil {
 			return nil, fmt.Errorf("extractMineGroups: %w", err)
 		}
 		groups = append(groups, group)
+		g.MineGroups = append(g.MineGroups, group)
 	}
 	return groups, nil
 }
@@ -493,12 +509,23 @@ func (g *Game) extractOrbitalColonies(db *sql.DB, planet *Planet, turn string) e
 			return fmt.Errorf("extractOrbitalColonies: %w", err)
 		} else if colony.Inventory, err = g.extractInventory(db, colony.Id, turn); err != nil {
 			return fmt.Errorf("extractOrbitalColonies: %w", err)
-		} else if colony.FactoryGroups, err = g.extractFactoryGroups(db, colony.Id, turn); err != nil {
-			return fmt.Errorf("extractOrbitalColonies: %w", err)
-		} else if colony.FarmGroups, err = g.extractFarmGroups(db, colony.Id, turn); err != nil {
-			return fmt.Errorf("extractOrbitalColonies: %w", err)
 		}
-		planet.OrbitalColonies = append(planet.OrbitalColonies, colony)
+		if groups, err := g.extractFactoryGroups(db, colony.Id, turn); err != nil {
+			return fmt.Errorf("extractOrbitalColonies: %w", err)
+		} else {
+			for _, group := range groups {
+				colony.FactoryGroupIds = append(colony.FactoryGroupIds, group.Id)
+			}
+		}
+		if groups, err := g.extractFarmGroups(db, colony.Id, turn); err != nil {
+			return fmt.Errorf("extractOrbitalColonies: %w", err)
+		} else {
+			for _, group := range groups {
+				colony.FarmGroupIds = append(colony.FarmGroupIds, group.Id)
+			}
+		}
+		planet.OrbitalColonyIds = append(planet.OrbitalColonyIds, colony.Id)
+		g.OrbitalColonies = append(g.OrbitalColonies, colony)
 	}
 	return nil
 }
@@ -538,12 +565,23 @@ func (g *Game) extractShips(db *sql.DB, planet *Planet, turn string) error {
 			return fmt.Errorf("extractShips: %w", err)
 		} else if ship.Inventory, err = g.extractInventory(db, ship.Id, turn); err != nil {
 			return fmt.Errorf("extractShips: %w", err)
-		} else if ship.FactoryGroups, err = g.extractFactoryGroups(db, ship.Id, turn); err != nil {
-			return fmt.Errorf("extractShips: %w", err)
-		} else if ship.FarmGroups, err = g.extractFarmGroups(db, ship.Id, turn); err != nil {
-			return fmt.Errorf("extractShips: %w", err)
 		}
-		planet.Ships = append(planet.Ships, ship)
+		if groups, err := g.extractFactoryGroups(db, ship.Id, turn); err != nil {
+			return fmt.Errorf("extractShips: %w", err)
+		} else {
+			for _, group := range groups {
+				ship.FactoryGroupIds = append(ship.FactoryGroupIds, group.Id)
+			}
+		}
+		if groups, err := g.extractFarmGroups(db, ship.Id, turn); err != nil {
+			return fmt.Errorf("extractShips: %w", err)
+		} else {
+			for _, group := range groups {
+				ship.FarmGroupIds = append(ship.FarmGroupIds, group.Id)
+			}
+		}
+		planet.ShipIds = append(planet.ShipIds, ship.Id)
+		g.Ships = append(g.Ships, ship)
 	}
 	return nil
 }
