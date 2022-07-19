@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// wraith - the wraith game engine and server
+// wraith - the wraith game engine and Server
 // Copyright (c) 2022 Michael D. Henderson
 //
 // This program is free software: you can redistribute it and/or modify

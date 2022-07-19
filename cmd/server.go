@@ -25,7 +25,6 @@ import (
 	"github.com/mdhender/wraith/storage/config"
 	"github.com/spf13/cobra"
 	"log"
-	"net"
 	"strings"
 )
 
@@ -68,8 +67,14 @@ var cmdServer = &cobra.Command{
 		}
 		log.Printf("loaded store version %q\n", s.Version())
 
-		key := []byte(globalServer.JwtKey)
-		if err := cheese.Serve(net.JoinHostPort(globalServer.Host, globalServer.Port), key, s, globalServer.Templates); err != nil {
+		opts := []cheese.Option{
+			cheese.WithHost(globalServer.Host),
+			cheese.WithPort(globalServer.Port),
+			cheese.WithKey([]byte(globalServer.JwtKey)),
+			cheese.WithTemplates(globalServer.Templates),
+			cheese.WithStore(s),
+		}
+		if err := cheese.Serve(opts...); err != nil {
 			log.Fatal(err)
 		}
 
