@@ -29,9 +29,9 @@ import (
 	"github.com/mdhender/wraith/internal/osk"
 	"github.com/mdhender/wraith/models"
 	"github.com/mdhender/wraith/storage/jdb"
+	"github.com/mdhender/wraith/wraith"
 	"io"
 	"log"
-	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -47,68 +47,56 @@ func (s *Server) clusterGetHandler(templates string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, claims, _ := jwtauth.FromContext(r.Context())
 		if _, ok := s.claims[strings.ToLower(claims["user_id"].(string))]; !ok {
-			log.Printf("%s: %s: fetchClusterListByGame: not ok\n", r.Method, r.URL.Path)
+			log.Printf("%s: %s: clusterGetHandler: not ok\n", r.Method, r.URL.Path)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 		// todo: use claim to fetch game
 
-		pGameName := chi.URLParam(r, "game")
-		game, err := s.store.LookupGameByName(pGameName)
-		if err != nil {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			return
-		}
+		pGameName, year, quarter := chi.URLParam(r, "game"), 0, 0
 		x, _ := strconv.Atoi(chi.URLParam(r, "x"))
 		y, _ := strconv.Atoi(chi.URLParam(r, "y"))
 		z, _ := strconv.Atoi(chi.URLParam(r, "z"))
 
-		systems, err := s.store.FetchClusterListByGame(game.Id)
+		gamePath := filepath.Clean(filepath.Join(s.gamesPath, pGameName, fmt.Sprintf("%04d", year), fmt.Sprintf("%d", quarter)))
+		log.Printf("%s: %s: gamePath %s\n", r.Method, r.URL.Path, gamePath)
+		jg, err := jdb.Load(filepath.Join(gamePath, "game.json"))
 		if err != nil {
-			log.Printf("%s: %s: game %d: %v\n", r.Method, r.URL.Path, game.Id, err)
+			log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
-
-		scans := make(ClusterList, len(systems), len(systems))
-		for i, sys := range systems {
-			dx, dy, dz := sys.X-x, sys.Y-y, sys.Z-z
-			scans[i] = &ClusterListItem{
-				Distance: math.Sqrt(float64(dx*dx + dy*dy + dz*dz)),
-				X:        sys.X,
-				Y:        sys.Y,
-				Z:        sys.Z,
-				QtyStars: sys.QtyStars,
-			}
+		e, err := adapters.JdbGameToWraithEngine(jg)
+		if err != nil {
+			log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
 		}
+		scans := e.ClusterScan(wraith.Coordinates{X: x, Y: y, Z: z})
 		sort.Sort(scans)
 
 		type row struct {
 			X, Y, Z, QtyStars int
-			Distance          string
-			URL               string
+			Distance, URL     string
 		}
-		clusterList := struct {
+		var scan struct {
 			X, Y, Z int // origin
 			Systems []row
-		}{
-			X:       x,
-			Y:       y,
-			Z:       z,
-			Systems: make([]row, len(scans), len(scans)),
-		}
-		for i, scan := range scans {
-			clusterList.Systems[i] = row{
-				X:        scan.X,
-				Y:        scan.Y,
-				Z:        scan.Z,
-				QtyStars: scan.QtyStars,
-				Distance: fmt.Sprintf("%.3f ly", scan.Distance),
-				URL:      fmt.Sprintf("/ui/games/PT-1/cluster/%d/%d/%d", scan.X, scan.Y, scan.Z),
-			}
 		}
 
-		t.Handle(w, r, clusterList)
+		scan.X, scan.Y, scan.Z = x, y, z
+		scan.Systems = make([]row, len(scans), len(scans))
+
+		for i, system := range scans {
+			scan.Systems[i].X = system.X
+			scan.Systems[i].Y = system.Y
+			scan.Systems[i].Z = system.Z
+			scan.Systems[i].QtyStars = system.QtyStars
+			scan.Systems[i].Distance = fmt.Sprintf("%.3f ly", system.Distance)
+			scan.Systems[i].URL = fmt.Sprintf("/ui/games/%s/cluster/%d/%d/%d", pGameName, system.X, system.Y, system.Z)
+		}
+
+		t.Handle(w, r, scan)
 	}
 }
 
