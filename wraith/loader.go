@@ -18,7 +18,10 @@
 
 package wraith
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 type Engine struct {
 	Version string
@@ -157,10 +160,26 @@ type HullUnit struct {
 	TotalQty int // number of units
 }
 
+func (u *HullUnit) totalMass() int {
+	return int(math.Ceil(float64(u.TotalQty) * u.Unit.MassPerUnit))
+}
+
+func (u *HullUnit) totalVolume() int {
+	return int(math.Ceil(float64(u.TotalQty) * u.Unit.VolumePerUnit))
+}
+
 type InventoryUnit struct {
 	Unit      *Unit
 	TotalQty  int // number of units
 	StowedQty int // number of units that are disassembled for storage
+}
+
+func (u *InventoryUnit) totalMass() int {
+	return int(math.Ceil(float64(u.TotalQty) * u.Unit.MassPerUnit))
+}
+
+func (u *InventoryUnit) totalVolume() int {
+	return int(math.Ceil(float64(u.TotalQty-u.StowedQty)*u.Unit.VolumePerUnit)) + int(math.Ceil(float64(u.StowedQty)*u.Unit.StowedVolumePerUnit))
 }
 
 // MineGroup is a group of mines working a single deposit.
@@ -202,12 +221,34 @@ type Pay struct {
 	UnskilledPct    float64
 }
 
+// totalPay assumes that the base rates are per unit of population
+//  PROFESSIONAL      0.375 CONSUMER GOODS
+//  SOLDIER           0.250 CONSUMER GOODS
+//  UNSKILLED WORKER  0.125 CONSUMER GOODS
+//  UNEMPLOYABLE      0.000 CONSUMER GOODS
+func (pay Pay) totalPay(pop Population, code string) int {
+	switch code {
+	case "PRO":
+		return int(math.Ceil((0.375 * pay.ProfessionalPct) * float64(pop.ProfessionalQty)))
+	case "SLD":
+		return int(math.Ceil((0.250 * pay.SoldierPct) * float64(pop.SoldierQty)))
+	case "USK":
+		return int(math.Ceil((0.125 * pay.UnskilledPct) * float64(pop.UnskilledQty)))
+	case "UEM":
+		return 0
+	default:
+		panic(fmt.Sprintf("assert(pay.totalPay.Code != %q)", code))
+	}
+}
+
 type Player struct {
 	Id        int     // unique id for a player
 	UserId    int     // user that controls this player
 	Name      string  // unique name for this player
 	MemberOf  *Nation // nation the player is aligned with
 	ReportsTo *Player // player that this player reports to
+	Colonies  CorSs   // colonies controlled by this player
+	Ships     CorSs   // ships controlled by this player
 }
 
 // Planet is an orbit. It may be empty.
@@ -242,6 +283,26 @@ type Rations struct {
 	UnemployedPct   float64
 }
 
+// totalRations assumes that base rates are per unit of population
+//  PROFESSIONAL      0.250 FOOD
+//  SOLDIER           0.250 FOOD
+//  UNSKILLED WORKER  0.250 FOOD
+//  UNEMPLOYABLE      0.250 FOOD
+func (ration Rations) totalRations(pop Population, code string) int {
+	switch code {
+	case "PRO":
+		return int(math.Ceil((0.25 * ration.ProfessionalPct) * (float64(pop.ProfessionalQty))))
+	case "SLD":
+		return int(math.Ceil((0.25 * ration.SoldierPct) * (float64(pop.SoldierQty))))
+	case "USK":
+		return int(math.Ceil((0.25 * ration.UnskilledPct) * (float64(pop.UnskilledQty))))
+	case "UEM":
+		return int(math.Ceil((0.25 * ration.UnemployedPct) * (float64(pop.UnemployedQty))))
+	default:
+		panic(fmt.Sprintf("assert(ration.totalRations.Code != %q)", code))
+	}
+}
+
 type Skills struct {
 	Biology       int
 	Bureaucracy   int
@@ -263,6 +324,20 @@ type Star struct {
 	Planets  []*Planet
 }
 
+type Stars []*Star
+
+func (s Stars) Len() int {
+	return len(s)
+}
+
+func (s Stars) Less(i, j int) bool {
+	return s[i].Id < s[j].Id
+}
+
+func (s Stars) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
 type System struct {
 	Id     int // unique identifier
 	Coords Coordinates
@@ -271,14 +346,17 @@ type System struct {
 
 // Unit is a thing in the game.
 type Unit struct {
-	Id                  int // unique identifier
-	Kind                string
-	Code                string
-	TechLevel           int
-	Name                string
-	Description         string
-	MassPerUnit         float64 // mass (in metric tonnes) of a single unit
-	VolumePerUnit       float64 // volume (in cubic meters) of a single unit
-	Hudnut              bool    // if true, unit can be disassembled when stowed
-	StowedVolumePerUnit float64 // volume (in cubic meters) of a single unit when stowed
+	Id                    int // unique identifier
+	Kind                  string
+	Code                  string
+	TechLevel             int
+	Name                  string
+	Description           string
+	MassPerUnit           float64 // mass (in metric tonnes) of a single unit
+	VolumePerUnit         float64 // volume (in cubic meters) of a single unit
+	Hudnut                bool    // if true, unit can be disassembled when stowed
+	StowedVolumePerUnit   float64 // volume (in cubic meters) of a single unit when stowed
+	FuelPerUnitPerTurn    float64
+	MetsPerUnitPerTurn    float64
+	NonMetsPerUnitPerTurn float64
 }

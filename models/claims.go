@@ -24,9 +24,10 @@ import (
 )
 
 type Claim struct {
-	User     string
-	Player   string
-	NationNo int
+	User       string
+	PlayerId   int
+	PlayerName string
+	NationNo   int
 }
 
 func (s *Store) FetchClaims(asOfTurn string) (map[string]*Claim, error) {
@@ -37,7 +38,7 @@ func (s *Store) FetchClaims(asOfTurn string) (map[string]*Claim, error) {
 	claims := make(map[string]*Claim)
 
 	rows, err := s.db.Query(`
-		select u.handle, pd.handle, n.nation_no
+		select u.handle, pd.player_id, pd.handle, n.nation_no
 		from player_dtl pd
 		left join users u on u.id = pd.controlled_by
 		left join nation_player np on np.player_id = pd.player_id
@@ -48,11 +49,12 @@ func (s *Store) FetchClaims(asOfTurn string) (map[string]*Claim, error) {
 	}
 	for rows.Next() {
 		claim := &Claim{}
-		err := rows.Scan(&claim.User, &claim.Player, &claim.NationNo)
+		err := rows.Scan(&claim.User, &claim.PlayerId, &claim.PlayerName, &claim.NationNo)
 		if err != nil {
 			return nil, fmt.Errorf("fetchClaims: %q: %w", asOfTurn, err)
 		}
 		claims[claim.User] = claim
+		//log.Println("claim", claim)
 	}
 
 	return claims, nil

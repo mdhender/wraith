@@ -210,6 +210,8 @@ func (g *Game) extractPlanets(db *sql.DB, star *Star, turn string) error {
 			return fmt.Errorf("extractPlanets: %w", err)
 		} else if err = g.extractSurfaceColonies(db, planet, turn); err != nil {
 			return fmt.Errorf("extractPlanets: %w", err)
+		} else if err = g.extractEnclosedColonies(db, planet, turn); err != nil {
+			return fmt.Errorf("extractPlanets: %w", err)
 		} else if err = g.extractOrbitalColonies(db, planet, turn); err != nil {
 			return fmt.Errorf("extractPlanets: %w", err)
 		} else if err = g.extractShips(db, planet, turn); err != nil {
@@ -341,10 +343,12 @@ func (g *Game) extractInventory(db *sql.DB, corsId int, turn string) ([]*Invento
 		return nil, fmt.Errorf("extractInventory: %w", err)
 	}
 	for rows.Next() {
+		var operQty int
 		unit := &InventoryUnit{}
-		if err := rows.Scan(&unit.UnitId, &unit.TotalQty, &unit.StowedQty); err != nil {
+		if err := rows.Scan(&unit.UnitId, &operQty, &unit.StowedQty); err != nil {
 			return nil, fmt.Errorf("extractInventory: %w", err)
 		}
+		unit.TotalQty = operQty + unit.StowedQty
 		units = append(units, unit)
 	}
 	return units, nil
@@ -472,6 +476,69 @@ func (g *Game) extractMineGroups(db *sql.DB, corsId int, turn string) ([]*MineGr
 		g.MineGroups = append(g.MineGroups, group)
 	}
 	return groups, nil
+}
+
+func (g *Game) extractEnclosedColonies(db *sql.DB, planet *Planet, turn string) error {
+	rows, err := db.Query(`
+		select c.id, c.msn,
+			   cd.name, cd.tech_level, ifnull(cd.controlled_by, 0),
+			   cl.planet_id,
+			   cp.qty_professional, cp.qty_soldier, cp.qty_unskilled, cp.qty_unemployed, cp.qty_construction_crews, cp.qty_spy_teams, cp.rebel_pct,
+			   cpp.professional_pct, cpp.soldier_pct, cpp.unskilled_pct,
+			   cr.professional_pct, cr.soldier_pct, cr.unskilled_pct, cr.unemployed_pct
+		from games g
+			inner join cors c on g.id = c.game_id and c.kind = 'enclosed'
+			inner join cors_dtl cd on c.id = cd.cors_id and (cd.efftn <= g.current_turn and g.current_turn < cd.endtn)
+			inner join cors_loc cl on c.id = cl.cors_id and (cl.efftn <= g.current_turn and g.current_turn < cl.endtn)
+			inner join cors_population cp on c.id = cp.cors_id and (cp.efftn <= g.current_turn and g.current_turn < cp.endtn)
+			inner join cors_pay cpp on c.id = cpp.cors_id and (cpp.efftn <= g.current_turn and g.current_turn < cpp.endtn)
+			inner join cors_rations cr on c.id = cr.cors_id and (cr.efftn <= g.current_turn and g.current_turn < cr.endtn)
+		where g.id = ?
+		and cl.planet_id = ?
+		order by c.id`, g.Id, planet.Id)
+	if err != nil {
+		return fmt.Errorf("extractEnclosedColonies: %w", err)
+	}
+	for rows.Next() {
+		colony := &EnclosedColony{}
+		err := rows.Scan(&colony.Id, &colony.MSN,
+			&colony.Name, &colony.TechLevel, &colony.ControlledByPlayerId,
+			&colony.PlanetId,
+			&colony.Population.ProfessionalQty, &colony.Population.SoldierQty, &colony.Population.UnskilledQty, &colony.Population.UnemployedQty, &colony.Population.ConstructionCrewQty, &colony.Population.SpyTeamQty, &colony.Population.RebelPct,
+			&colony.Pay.ProfessionalPct, &colony.Pay.SoldierPct, &colony.Pay.UnskilledPct,
+			&colony.Rations.ProfessionalPct, &colony.Rations.SoldierPct, &colony.Rations.UnskilledPct, &colony.Rations.UnemployedPct)
+		if err != nil {
+			return fmt.Errorf("extractEnclosedColonies: %w", err)
+		} else if colony.Hull, err = g.extractHull(db, colony.Id, turn); err != nil {
+			return fmt.Errorf("extractEnclosedColonies: %w", err)
+		} else if colony.Inventory, err = g.extractInventory(db, colony.Id, turn); err != nil {
+			return fmt.Errorf("extractEnclosedColonies: %w", err)
+		}
+		if groups, err := g.extractFactoryGroups(db, colony.Id, turn); err != nil {
+			return fmt.Errorf("extractEnclosedColonies: %w", err)
+		} else {
+			for _, group := range groups {
+				colony.FactoryGroupIds = append(colony.FactoryGroupIds, group.Id)
+			}
+		}
+		if groups, err := g.extractFarmGroups(db, colony.Id, turn); err != nil {
+			return fmt.Errorf("extractEnclosedColonies: %w", err)
+		} else {
+			for _, group := range groups {
+				colony.FarmGroupIds = append(colony.FarmGroupIds, group.Id)
+			}
+		}
+		if groups, err := g.extractMineGroups(db, colony.Id, turn); err != nil {
+			return fmt.Errorf("extractEnclosedColonies: %w", err)
+		} else {
+			for _, group := range groups {
+				colony.MineGroupIds = append(colony.MineGroupIds, group.Id)
+			}
+		}
+		planet.EnclosedColonyIds = append(planet.EnclosedColonyIds, colony.Id)
+		g.EnclosedColonies = append(g.EnclosedColonies, colony)
+	}
+	return nil
 }
 
 func (g *Game) extractOrbitalColonies(db *sql.DB, planet *Planet, turn string) error {

@@ -39,6 +39,46 @@ type Deposit struct {
 
 type Deposits []*Deposit
 
+// EnclosedColony defines an enclosed surface colony.
+type EnclosedColony struct {
+	Id                   int              `json:"id"`                                // unique identifier
+	MSN                  int              `json:"msn"`                               // manufacturer serial number; in game id for the colony
+	BuiltByNationId      int              `json:"built-by-nation-id,omitempty"`      // id of the nation that originally built the colony
+	Name                 string           `json:"name,omitempty"`                    // name of this colony
+	TechLevel            int              `json:"tech-level,omitempty"`              // tech level of this colony
+	ControlledByPlayerId int              `json:"controlled-by-player-id,omitempty"` // id of player that controls this colony
+	PlanetId             int              `json:"planet-id,omitempty"`               // id of planet the colony is built on
+	Hull                 []*HullUnit      `json:"hull,omitempty"`
+	Inventory            []*InventoryUnit `json:"inventory,omitempty"`
+	Population           struct {
+		ProfessionalQty        int     `json:"professional-qty,omitempty"`
+		SoldierQty             int     `json:"soldier-qty,omitempty"`
+		UnskilledQty           int     `json:"unskilled-qty,omitempty"`
+		UnemployedQty          int     `json:"unemployed-qty,omitempty"`
+		ConstructionCrewQty    int     `json:"construction-crew-qty,omitempty"`
+		SpyTeamQty             int     `json:"spy-team-qty,omitempty"`
+		RebelPct               float64 `json:"rebel-pct,omitempty"`
+		BirthsPriorTurn        int     `json:"births-prior-turn,omitempty"`
+		NaturalDeathsPriorTurn int     `json:"natural-deaths-prior-turn,omitempty"`
+	} `json:"population"`
+	Pay struct {
+		ProfessionalPct float64 `json:"professional-pct,omitempty"`
+		SoldierPct      float64 `json:"soldier-pct,omitempty"`
+		UnskilledPct    float64 `json:"unskilled-pct,omitempty"`
+	} `json:"pay"`
+	Rations struct {
+		ProfessionalPct float64 `json:"professional-pct,omitempty"`
+		SoldierPct      float64 `json:"soldier-pct,omitempty"`
+		UnskilledPct    float64 `json:"unskilled-pct,omitempty"`
+		UnemployedPct   float64 `json:"unemployed-pct,omitempty"`
+	} `json:"rations"`
+	FactoryGroupIds []int `json:"factory-group-ids,omitempty"` // list of the factory group ids
+	FarmGroupIds    []int `json:"farm-group-ids,omitempty"`    // list of the farm group ids
+	MineGroupIds    []int `json:"mine-group-ids,omitempty"`    // list of the mine group ids
+}
+
+type EnclosedColonies []*EnclosedColony
+
 // FactoryGroup is a group of factories on the ship or colony.
 // Each group is dedicated to manufacturing one type of unit.
 type FactoryGroup struct {
@@ -93,19 +133,20 @@ type Game struct {
 		EndDt   string `json:"endDt,omitempty"`   // moment just after turn ends, UTC
 	} `json:"turn"`
 
-	Deposits        Deposits        `json:"deposits,omitempty"`
-	FactoryGroups   FactoryGroups   `json:"factory-groups,omitempty"`
-	FarmGroups      FarmGroups      `json:"farm-groups,omitempty"`
-	MineGroups      MineGroups      `json:"mine-groups,omitempty"`
-	Nations         Nations         `json:"nations,omitempty"`
-	OrbitalColonies OrbitalColonies `json:"orbital-colonies,omitempty"`
-	Planets         Planets         `json:"planets,omitempty"`
-	Players         Players         `json:"players,omitempty"`
-	Ships           Ships           `json:"ships,omitempty"`
-	SurfaceColonies SurfaceColonies `json:"surface-colonies,omitempty"`
-	Units           Units           `json:"units,omitempty"`
-	Stars           Stars           `json:"stars,omitempty"`
-	Systems         Systems         `json:"systems,omitempty"`
+	Deposits         Deposits         `json:"deposits,omitempty"`
+	EnclosedColonies EnclosedColonies `json:"enclosed-colonies,omitempty"`
+	FactoryGroups    FactoryGroups    `json:"factory-groups,omitempty"`
+	FarmGroups       FarmGroups       `json:"farm-groups,omitempty"`
+	MineGroups       MineGroups       `json:"mine-groups,omitempty"`
+	Nations          Nations          `json:"nations,omitempty"`
+	OrbitalColonies  OrbitalColonies  `json:"orbital-colonies,omitempty"`
+	Planets          Planets          `json:"planets,omitempty"`
+	Players          Players          `json:"players,omitempty"`
+	Ships            Ships            `json:"ships,omitempty"`
+	SurfaceColonies  SurfaceColonies  `json:"surface-colonies,omitempty"`
+	Units            Units            `json:"units,omitempty"`
+	Stars            Stars            `json:"stars,omitempty"`
+	Systems          Systems          `json:"systems,omitempty"`
 }
 
 type HullUnit struct {
@@ -221,16 +262,17 @@ type OrbitalColonies []*OrbitalColony
 
 // Planet is an orbit. It may be empty.
 type Planet struct {
-	Id               int    `json:"id"` // unique identifier
-	SystemId         int    `json:"system-id"`
-	StarId           int    `json:"star-id"`
-	OrbitNo          int    `json:"orbitNo"` // 1..10
-	Kind             string `json:"kind"`    // asteroid belt, gas giant, terrestrial
-	HabitabilityNo   int    `json:"habitabilityNo,omitempty"`
-	DepositIds       []int  `json:"deposit-ids,omitempty"`
-	SurfaceColonyIds []int  `json:"surface-colony-ids,omitempty"`
-	OrbitalColonyIds []int  `json:"orbital-colony-ids,omitempty"`
-	ShipIds          []int  `json:"ship-ids,omitempty"`
+	Id                int    `json:"id"` // unique identifier
+	SystemId          int    `json:"system-id"`
+	StarId            int    `json:"star-id"`
+	OrbitNo           int    `json:"orbitNo"` // 1..10
+	Kind              string `json:"kind"`    // asteroid belt, gas giant, terrestrial
+	HabitabilityNo    int    `json:"habitabilityNo,omitempty"`
+	DepositIds        []int  `json:"deposit-ids,omitempty"`
+	SurfaceColonyIds  []int  `json:"surface-colony-ids,omitempty"`
+	EnclosedColonyIds []int  `json:"enclosed-colony-ids,omitempty"`
+	OrbitalColonyIds  []int  `json:"orbital-colony-ids,omitempty"`
+	ShipIds           []int  `json:"ship-ids,omitempty"`
 }
 
 type Planets []*Planet

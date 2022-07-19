@@ -48,6 +48,10 @@ func JdbGameToWraithEngine(jg *jdb.Game) *wraith.Engine {
 	e.Game.Turn.Year = jg.Turn.Year
 	e.Game.Turn.Quarter = jg.Turn.Quarter
 
+	for _, unit := range jg.Units {
+		e.Units[unit.Id] = jdbUnitToWraithUnit(unit)
+	}
+
 	// two loops to create players.
 	// first loop creates the struct.
 	for _, player := range jg.Players {
@@ -72,39 +76,25 @@ func JdbGameToWraithEngine(jg *jdb.Game) *wraith.Engine {
 	for _, star := range jg.Stars {
 		s := jdbStarToWraithStar(star, e.Systems)
 		e.Stars[s.Id] = s
+		s.System.Stars = append(s.System.Stars, s)
 	}
 
 	for _, planet := range jg.Planets {
 		p := jdbPlanetToWraithPlanet(planet, e.Systems, e.Stars)
 		e.Planets[p.Id] = p
-	}
-
-	for _, nation := range jg.Nations {
-		n := jdbNationToWraithNation(nation, e.Players, e.Planets)
-		e.Nations[n.Id] = n
-		e.Players[nation.ControlledByPlayerId].MemberOf = n
-	}
-
-	for _, colony := range jg.SurfaceColonies {
-		c := jdbSurfaceColonyToWraithColony(colony, e.FactoryGroups, e.FarmGroups, e.MineGroups, e.Nations, e.Planets, e.Players, e.Units)
-		e.Colonies[c.HullId] = c
-		e.CorSById[c.Id] = c
-	}
-	for _, colony := range jg.OrbitalColonies {
-		c := jdbOrbitalColonyToWraithColony(colony, e.FactoryGroups, e.FarmGroups, e.Nations, e.Planets, e.Players, e.Units)
-		e.Colonies[c.HullId] = c
-		e.CorSById[c.Id] = c
-	}
-	for _, ship := range jg.Ships {
-		s := jdbShipToWraithShip(ship, e.FactoryGroups, e.FarmGroups, e.Nations, e.Planets, e.Players, e.Units)
-		e.Ships[s.HullId] = s
-		e.CorSById[s.Id] = s
+		p.Star.Planets = append(p.Star.Planets, p)
 	}
 
 	for _, deposit := range jg.Deposits {
 		d := jdbDepositToWraithDeposit(deposit, e.Planets, e.CorSById, e.Units)
 		e.Deposits[d.Id] = d
 		d.Planet.Deposits = append(d.Planet.Deposits, d)
+	}
+
+	for _, nation := range jg.Nations {
+		n := jdbNationToWraithNation(nation, e.Players, e.Planets)
+		e.Nations[n.Id] = n
+		e.Players[nation.ControlledByPlayerId].MemberOf = n
 	}
 
 	for _, group := range jg.FactoryGroups {
@@ -122,10 +112,60 @@ func JdbGameToWraithEngine(jg *jdb.Game) *wraith.Engine {
 		e.MineGroups[g.Id] = g
 	}
 
+	for _, colony := range jg.SurfaceColonies {
+		c := jdbSurfaceColonyToWraithColony(colony, e.FactoryGroups, e.FarmGroups, e.MineGroups, e.Nations, e.Planets, e.Players, e.Units)
+		e.Colonies[c.HullId] = c
+		e.CorSById[c.Id] = c
+	}
+	for _, colony := range jg.EnclosedColonies {
+		c := jdbEnclosedColonyToWraithColony(colony, e.FactoryGroups, e.FarmGroups, e.MineGroups, e.Nations, e.Planets, e.Players, e.Units)
+		e.Colonies[c.HullId] = c
+		e.CorSById[c.Id] = c
+	}
+	for _, colony := range jg.OrbitalColonies {
+		c := jdbOrbitalColonyToWraithColony(colony, e.FactoryGroups, e.FarmGroups, e.Nations, e.Planets, e.Players, e.Units)
+		e.Colonies[c.HullId] = c
+		e.CorSById[c.Id] = c
+	}
+	for _, ship := range jg.Ships {
+		s := jdbShipToWraithShip(ship, e.FactoryGroups, e.FarmGroups, e.Nations, e.Planets, e.Players, e.Units)
+		e.Ships[s.HullId] = s
+		e.CorSById[s.Id] = s
+	}
+
+	for _, group := range jg.FactoryGroups {
+		e.FactoryGroups[group.Id].CorS = e.CorSById[group.CorSId]
+	}
+
+	for _, group := range jg.FarmGroups {
+		e.FarmGroups[group.Id].CorS = e.CorSById[group.CorSId]
+	}
+
+	for _, group := range jg.MineGroups {
+		e.MineGroups[group.Id].CorS = e.CorSById[group.ColonyId]
+	}
+
 	for _, planet := range e.Planets {
 		sort.Sort(planet.Colonies)
 		sort.Sort(planet.Deposits)
 		sort.Sort(planet.Ships)
+	}
+
+	for _, colony := range e.Colonies {
+		if colony.ControlledBy != nil {
+			colony.ControlledBy.Colonies = append(colony.ControlledBy.Colonies, colony)
+		}
+	}
+
+	for _, ship := range e.Ships {
+		if ship.ControlledBy != nil {
+			ship.ControlledBy.Colonies = append(ship.ControlledBy.Colonies, ship)
+		}
+	}
+
+	for _, player := range e.Players {
+		sort.Sort(player.Colonies)
+		sort.Sort(player.Ships)
 	}
 
 	return e
@@ -142,6 +182,67 @@ func jdbDepositToWraithDeposit(deposit *jdb.Deposit, planets map[int]*wraith.Pla
 		Planet:       planets[deposit.PlanetId],
 		ControlledBy: cors[deposit.ControlledByColonyId],
 	}
+}
+
+func jdbEnclosedColonyToWraithColony(colony *jdb.EnclosedColony, factoryGroup map[int]*wraith.FactoryGroup, farmGroup map[int]*wraith.FarmGroup, mineGroup map[int]*wraith.MineGroup, nations map[int]*wraith.Nation, planets map[int]*wraith.Planet, players map[int]*wraith.Player, units map[int]*wraith.Unit) *wraith.CorS {
+	cors := &wraith.CorS{
+		Id:           colony.Id,
+		Kind:         "enclosed",
+		HullId:       fmt.Sprintf("C%d", colony.MSN),
+		MSN:          colony.MSN,
+		BuiltBy:      nations[colony.BuiltByNationId],
+		Name:         colony.Name,
+		TechLevel:    colony.TechLevel,
+		ControlledBy: players[colony.ControlledByPlayerId],
+		Planet:       planets[colony.PlanetId],
+		Population: wraith.Population{
+			ProfessionalQty:     colony.Population.ProfessionalQty,
+			SoldierQty:          colony.Population.SoldierQty,
+			UnskilledQty:        colony.Population.UnskilledQty,
+			UnemployedQty:       colony.Population.UnemployedQty,
+			ConstructionCrewQty: colony.Population.ConstructionCrewQty,
+			SpyTeamQty:          colony.Population.SpyTeamQty,
+			RebelPct:            colony.Population.RebelPct,
+		},
+		Pay: wraith.Pay{
+			ProfessionalPct: colony.Pay.ProfessionalPct,
+			SoldierPct:      colony.Pay.SoldierPct,
+			UnskilledPct:    colony.Pay.UnskilledPct,
+		},
+		Rations: wraith.Rations{
+			ProfessionalPct: colony.Rations.ProfessionalPct,
+			SoldierPct:      colony.Rations.SoldierPct,
+			UnskilledPct:    colony.Rations.UnskilledPct,
+			UnemployedPct:   colony.Rations.UnemployedPct,
+		},
+	}
+	for _, group := range colony.FactoryGroupIds {
+		cors.FactoryGroups = append(cors.FactoryGroups, factoryGroup[group])
+	}
+	for _, group := range colony.FarmGroupIds {
+		cors.FarmGroups = append(cors.FarmGroups, farmGroup[group])
+	}
+	for _, group := range colony.MineGroupIds {
+		cors.MineGroups = append(cors.MineGroups, mineGroup[group])
+	}
+	for _, unit := range colony.Hull {
+		if u, ok := units[unit.UnitId]; ok {
+			cors.Hull = append(cors.Hull, &wraith.HullUnit{
+				Unit:     u,
+				TotalQty: unit.TotalQty,
+			})
+		}
+	}
+	for _, unit := range colony.Inventory {
+		if u, ok := units[unit.UnitId]; ok {
+			cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{
+				Unit:      u,
+				TotalQty:  unit.TotalQty,
+				StowedQty: unit.StowedQty,
+			})
+		}
+	}
+	return cors
 }
 
 func jdbFactoryGroupToWraithFactoryGroup(group *jdb.FactoryGroup, cors map[int]*wraith.CorS, units map[int]*wraith.Unit) *wraith.FactoryGroup {
@@ -411,4 +512,89 @@ func jdbSystemToWraithSystem(system *jdb.System) *wraith.System {
 			Z: system.Coords.Z,
 		},
 	}
+}
+
+func jdbUnitToWraithUnit(unit *jdb.Unit) *wraith.Unit {
+	metsPerTurn, nonMetsPerTurn, _, fuelPerTurn, _ := unitAttributes(unit.Kind, unit.TechLevel)
+	return &wraith.Unit{
+		Id:                    unit.Id,
+		Kind:                  unit.Kind,
+		Code:                  unit.Code,
+		TechLevel:             unit.TechLevel,
+		Name:                  unit.Name,
+		Description:           unit.Description,
+		MassPerUnit:           unit.MassPerUnit,
+		VolumePerUnit:         unit.VolumePerUnit,
+		Hudnut:                unit.Hudnut,
+		StowedVolumePerUnit:   unit.StowedVolumePerUnit,
+		FuelPerUnitPerTurn:    fuelPerTurn,
+		MetsPerUnitPerTurn:    metsPerTurn,
+		NonMetsPerUnitPerTurn: nonMetsPerTurn,
+	}
+}
+
+func unitAttributes(name string, techLevel int) (mets, nmts, totalMassUnits, fuelPerTurn, fuelPerCombatRound float64) {
+	tl := float64(techLevel)
+	switch name {
+	case "anti-missile":
+		return 2 * tl, 2 * tl, 4 * tl, 0, 0
+	case "assault-craft":
+		return 3 * tl, 2 * tl, 5 * tl, 0, 0.1
+	case "assault-weapon":
+		return 1 * tl, 1 * tl, 2 * tl, 2 * tl * tl, 0
+	case "automation":
+		return 2 * tl, 2 * tl, 4 * tl, 0, 0
+	case "consumer-goods":
+		return 0.2, 0.4, 0.6, 0, 0
+	case "energy-shield":
+		return 25 * tl, 25 * tl, 50 * tl, 0, 10 * tl
+	case "energy-weapon":
+		return 5 * tl, 5 * tl, 10 * tl, 0, 4 * tl
+	case "factory":
+		return 8 * tl, 4 * tl, 12 + 2*tl, 0.5 * tl, 4 * tl
+	case "farm":
+		if techLevel == 1 {
+			return 4 + tl, 2 + tl, 6 + 2*tl, 0.5 * tl, 0
+		} else if techLevel < 6 {
+			return 4 + tl, 4 + tl, 6 + 2*tl, 0.5 * tl, 0
+		}
+		return 4 + tl, 2 + tl, 6 + 2*tl, tl, 0
+	case "food":
+		return 0, 0, 6, 0, 0
+	case "fuel":
+		return 0, 0, 1, 0, 0
+	case "gold":
+		return 0, 0, 1, 0, 0
+	case "hyper-drive":
+		return 25 * tl, 20 * tl, 45 * tl, 0, 0
+	case "life-support":
+		return 3 * tl, 5 * tl, 8 * tl, 1, 0
+	case "light-structural":
+		return 0.01, 0.04, 0.05, 0, 0
+	case "metallics":
+		return 0, 0, 1, 0, 0
+	case "military-robots":
+		return 10 * tl, 10 * tl, 20 + 2*tl, 0, 0
+	case "military-supplies":
+		return 0.02, 0.02, 0.04, 0, 0
+	case "mine":
+		return 5 + tl, 5 + tl, 10 + (2 * tl), 0.5 * tl, 0
+	case "missile":
+		return 2 * tl, 2 * tl, 4 * tl, 0, 0
+	case "missile-launcher":
+		return 15 * tl, 10 * tl, 25 * tl, 0, 0
+	case "non-metallics":
+		return 0, 0, 1, 0, 0
+	case "sensor":
+		return 10 * tl, 20 * tl, 40 * tl, tl / 20, 0
+	case "space-drive":
+		return 15 * tl, 10 * tl, 25 * tl, 0, tl * tl
+	case "structural":
+		return 0.1, 0.4, 0.5, 0, 0
+	case "super-light-structural":
+		return 0.001, 0.004, 0.005, 0, 0
+	case "transport":
+		return 3 * tl, tl, 4 * tl, 0.1 * tl * tl, 0.01 * tl * tl
+	}
+	panic(fmt.Sprintf("assert(unit.name != %q)", name))
 }
