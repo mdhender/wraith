@@ -97,11 +97,6 @@ func (e *Engine) Report(w io.Writer, playerIds ...int) error {
 			tRations := cs.Rations.totalRations(cs.Population, "PRO") + cs.Rations.totalRations(cs.Population, "SLD") + cs.Rations.totalRations(cs.Population, "USK") + cs.Rations.totalRations(cs.Population, "UEM")
 			_, _ = p.Fprintf(w, "  ----------------   %16d  --------  --------  %16d  %16d\n", tPop, tPay, tRations)
 
-			//		if cs.Population.Births == 0 && cs.Population.Deaths == 0 {
-			//			cs.Population.Births = cs.Population.TotalPopulation() / 1600
-			//			cs.Population.Deaths = cs.Population.Births
-			//		}
-
 			_, _ = p.Fprintf(w, "\n")
 			_, _ = p.Fprintf(w, "  Crew/Team________  Units___________\n")
 			_, _ = p.Fprintf(w, "  Construction Crew  %16d\n", cs.Population.ConstructionCrewQty)

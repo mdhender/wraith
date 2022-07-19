@@ -442,13 +442,14 @@ type Ship struct {
 	Hull                 HullUnits      `json:"hull,omitempty"`
 	Inventory            InventoryUnits `json:"inventory,omitempty"`
 	Population           struct {
-		ProfessionalQty     int     `json:"professional-qty,omitempty"`
-		SoldierQty          int     `json:"soldier-qty,omitempty"`
-		UnskilledQty        int     `json:"unskilled-qty,omitempty"`
-		UnemployedQty       int     `json:"unemployed-qty,omitempty"`
-		ConstructionCrewQty int     `json:"construction-crew-qty,omitempty"`
-		SpyTeamQty          int     `json:"spy-team-qty,omitempty"`
-		RebelPct            float64 `json:"rebel-pct,omitempty"`
+		ProfessionalQty        int     `json:"professional-qty,omitempty"`
+		SoldierQty             int     `json:"soldier-qty,omitempty"`
+		UnskilledQty           int     `json:"unskilled-qty,omitempty"`
+		UnemployedQty          int     `json:"unemployed-qty,omitempty"`
+		ConstructionCrewQty    int     `json:"construction-crew-qty,omitempty"`
+		SpyTeamQty             int     `json:"spy-team-qty,omitempty"`
+		RebelPct               float64 `json:"rebel-pct,omitempty"`
+		NaturalDeathsPriorTurn int     `json:"natural-deaths-prior-turn,omitempty"`
 	} `json:"population"`
 	Pay struct {
 		ProfessionalPct float64 `json:"professional-pct,omitempty"`
@@ -580,19 +581,19 @@ func (s Systems) Swap(i, j int) {
 
 // Unit is a thing in the game.
 type Unit struct {
-	Id                    int     `json:"id"` // unique identifier
-	Kind                  string  `json:"kind"`
-	Code                  string  `json:"code"`
-	TechLevel             int     `json:"tech-level,omitempty"`
-	Name                  string  `json:"name"`
-	Description           string  `json:"description,omitempty"`
-	MassPerUnit           float64 `json:"mass-per-unit"`          // mass (in metric tonnes) of a single unit
-	VolumePerUnit         float64 `json:"volume-per-unit"`        // volume (in cubic meters) of a single unit
-	Hudnut                bool    `json:"hudnut,omitempty"`       // if true, unit can be disassembled when stowed
-	StowedVolumePerUnit   float64 `json:"stowed-volume-per-unit"` // volume (in cubic meters) of a single unit when stowed
-	FuelPerUnitPerTurn    float64 `json:"fuel-per-unit-per-turn,omitempty"`
-	MetsPerUnitPerTurn    float64 `json:"mets-per-unit-per-turn,omitempty"`
-	NonMetsPerUnitPerTurn float64 `json:"non-mets-per-unit-per-turn,omitempty"`
+	Id                  int     `json:"id"` // unique identifier
+	Kind                string  `json:"kind"`
+	Code                string  `json:"code"`
+	TechLevel           int     `json:"tech-level,omitempty"`
+	Name                string  `json:"name"`
+	Description         string  `json:"description,omitempty"`
+	MassPerUnit         float64 `json:"mass-per-unit"`          // mass (in metric tonnes) of a single unit
+	VolumePerUnit       float64 `json:"volume-per-unit"`        // volume (in cubic meters) of a single unit
+	Hudnut              bool    `json:"hudnut,omitempty"`       // if true, unit can be disassembled when stowed
+	StowedVolumePerUnit float64 `json:"stowed-volume-per-unit"` // volume (in cubic meters) of a single unit when stowed
+	FuelPerUnitPerTurn  float64 `json:"fuel-per-unit-per-turn,omitempty"`
+	MetsPerUnit         float64 `json:"mets-per-unit,omitempty"`
+	NonMetsPerUnit      float64 `json:"non-mets-per-unit,omitempty"`
 }
 
 type Units []*Unit

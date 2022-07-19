@@ -123,8 +123,7 @@ var cmdRun = &cobra.Command{
 
 		// and save the game
 		jg = adapters.WraithEngineToJdbGame(e)
-		log.Println(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", jg.Turn.Year), fmt.Sprintf("%d", jg.Turn.Quarter), "output.json"))
-		err = jg.Write(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", jg.Turn.Year), fmt.Sprintf("%d", jg.Turn.Quarter), "output.json"))
+		err = jg.Write(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", jg.Turn.Year), fmt.Sprintf("%d", jg.Turn.Quarter), "game.json"))
 		if err != nil {
 			log.Fatal(err)
 		}

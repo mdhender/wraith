@@ -102,6 +102,23 @@ type NameShipOrder struct {
 // Execute runs all the orders in the list of phases.
 // If the list is empty, no phases will run.
 func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
+	if indexOf("fuel-allocation", phases) != -1 {
+		log.Printf("execute: fuel-allocation phase\n")
+		e.ExecuteFuelAllocationPhase(pos)
+	}
+	if indexOf("life-support", phases) != -1 {
+		log.Printf("execute: life-support phase\n")
+		e.ExecuteLifeSupportPhase(pos)
+	}
+	if indexOf("farm-production", phases) != -1 {
+		log.Printf("execute: farm-production phase: not implemented\n")
+	}
+	if indexOf("mine-production", phases) != -1 {
+		log.Printf("execute: mine-production phase: not implemented\n")
+	}
+	if indexOf("factory-production", phases) != -1 {
+		log.Printf("execute: factory-production phase: not implemented\n")
+	}
 	if indexOf("combat", phases) != -1 {
 		log.Printf("execute: combat phase: not implemented\n")
 	}
@@ -149,12 +166,122 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 			log.Printf("execute: control: %v\n", err)
 		}
 	}
+
+	// bookkeeping
+	for _, player := range e.Players {
+		for _, colony := range player.Colonies {
+			colony.Population.BirthsPriorTurn = 0
+			colony.Population.NaturalDeathsPriorTurn = colony.nonCombatDeaths
+			foundFuel := false
+			for _, u := range colony.Inventory {
+				if u.Unit.Kind == "fuel" {
+					if foundFuel {
+						u.TotalQty, u.StowedQty = 0, 0
+					} else {
+						foundFuel, u.TotalQty, u.StowedQty = true, colony.fuel.available, colony.fuel.available
+					}
+				}
+			}
+		}
+		for _, ship := range player.Ships {
+			ship.Population.BirthsPriorTurn = 0
+			ship.Population.NaturalDeathsPriorTurn = ship.nonCombatDeaths
+			foundFuel := false
+			for _, u := range ship.Inventory {
+				if u.Unit.Kind == "fuel" {
+					if foundFuel {
+						u.TotalQty, u.StowedQty = 0, 0
+					} else {
+						foundFuel, u.TotalQty, u.StowedQty = true, ship.fuel.available, ship.fuel.available
+					}
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
+// ExecuteFuelAllocationPhase runs all the orders in the fuel allocation phase.
+func (e *Engine) ExecuteFuelAllocationPhase(pos []*PhaseOrders) (errs []error) {
+	for _, player := range e.Players {
+		for _, colony := range player.Colonies {
+			for _, u := range colony.Inventory {
+				if u.Unit.Kind != "fuel" {
+					continue
+				}
+				colony.fuel.available += u.TotalQty
+			}
+		}
+		for _, ship := range player.Ships {
+			for _, u := range ship.Inventory {
+				if u.Unit.Kind != "fuel" {
+					continue
+				}
+				ship.fuel.available += u.TotalQty
+			}
+		}
+	}
+	return errs
+}
+
+// ExecuteLifeSupportPhase runs all the orders in the life support phase.
+func (e *Engine) ExecuteLifeSupportPhase(pos []*PhaseOrders) (errs []error) {
+	for _, player := range e.Players {
+		for _, colony := range player.Colonies {
+			if !(colony.Kind == "enclosed" || colony.Kind == "orbital") {
+				continue
+			}
+			lsuPopulation := 0
+			for _, u := range colony.Hull {
+				if colony.fuel.available <= 0 {
+					break
+				} else if u.Unit.Kind != "life-support" {
+					continue
+				}
+				u.fuel.needed = u.Unit.fuelUsed(u.TotalQty)
+				if colony.fuel.available < u.fuel.needed {
+					u.activeQty = colony.fuel.available / u.Unit.fuelUsed(1)
+					u.fuel.allocated = u.Unit.fuelUsed(u.activeQty)
+				} else {
+					u.activeQty = u.TotalQty
+					u.fuel.allocated = u.fuel.needed
+				}
+				colony.fuel.available -= u.fuel.allocated
+				lsuPopulation = lsuPopulation + u.activeQty*u.Unit.TechLevel*u.Unit.TechLevel
+			}
+			if deaths := colony.Population.Total() - lsuPopulation; deaths > 0 {
+				log.Printf("execute: life-support: %q: %q: deaths %d\n", player.Name, colony.HullId, deaths)
+				colony.Population.KillProportionally(deaths)
+				colony.nonCombatDeaths += deaths
+			}
+		}
+		for _, ship := range player.Ships {
+			lsuPopulation := 0
+			for _, u := range ship.Hull {
+				if ship.fuel.available <= 0 {
+					break
+				} else if u.Unit.Kind != "life-support" {
+					continue
+				}
+				u.fuel.needed = u.Unit.fuelUsed(u.TotalQty)
+				if ship.fuel.available < u.fuel.needed {
+					u.activeQty = ship.fuel.available / u.Unit.fuelUsed(1)
+					u.fuel.allocated = u.Unit.fuelUsed(u.activeQty)
+				} else {
+					u.activeQty = u.TotalQty
+					u.fuel.allocated = u.fuel.needed
+				}
+				ship.fuel.available -= u.fuel.allocated
+				lsuPopulation = lsuPopulation + u.activeQty*u.Unit.TechLevel*u.Unit.TechLevel
+			}
+		}
+	}
+	return errs
+}
+
 // ExecuteAssemblyPhase runs all the orders in the assembly phase.
-func (e *Engine) ExecuteAssemblyPhase(pos []*PhaseOrders) []error {
-	var errs []error
+func (e *Engine) ExecuteAssemblyPhase(pos []*PhaseOrders) (errs []error) {
 	for _, po := range pos {
 		if len(po.Assembly) == 0 {
 			continue
@@ -165,8 +292,7 @@ func (e *Engine) ExecuteAssemblyPhase(pos []*PhaseOrders) []error {
 }
 
 // ExecuteControlPhase runs all the orders in the control phase.
-func (e *Engine) ExecuteControlPhase(pos []*PhaseOrders) []error {
-	var errs []error
+func (e *Engine) ExecuteControlPhase(pos []*PhaseOrders) (errs []error) {
 	for _, po := range pos {
 		for _, order := range po.Control {
 			if err := order.ControlColony.Execute(e, po.Player); err != nil {
@@ -271,8 +397,7 @@ func (o *NameShipOrder) Execute(e *Engine, p *Player) error {
 }
 
 // ExecuteRetoolPhase runs all the orders in the retool phase.
-func (e *Engine) ExecuteRetoolPhase(pos []*PhaseOrders) []error {
-	var errs []error
+func (e *Engine) ExecuteRetoolPhase(pos []*PhaseOrders) (errs []error) {
 	for _, po := range pos {
 		if len(po.Retool) == 0 {
 			continue

@@ -72,8 +72,17 @@ func (g *Game) extractGame(db *sql.DB) error {
 		}
 	}
 
-	// error correction for built by fields
+	// error correction for built by fields, consumer goods, and life support units
 	if g.Turn.Year == 0 && g.Turn.Quarter == 0 {
+		var cngd, lsu *Unit
+		for _, u := range g.Units {
+			switch u.Code {
+			case "CNGD":
+				cngd = u
+			case "LSP-1":
+				lsu = u
+			}
+		}
 		for _, colony := range g.EnclosedColonies {
 			if colony.BuiltByNationId == 0 {
 				for _, player := range g.Players {
@@ -85,12 +94,25 @@ func (g *Game) extractGame(db *sql.DB) error {
 			}
 		}
 		for _, colony := range g.OrbitalColonies {
+			totalPop := colony.Population.ProfessionalQty + colony.Population.SoldierQty + colony.Population.UnskilledQty + colony.Population.UnemployedQty
+			totalCngd := (375*colony.Population.ProfessionalQty + 250*colony.Population.SoldierQty + 125*colony.Population.UnskilledQty) / 1000
 			if colony.BuiltByNationId == 0 {
 				for _, player := range g.Players {
 					if player.Id == colony.ControlledByPlayerId {
 						colony.BuiltByNationId = player.MemberOf
 						break
 					}
+				}
+			}
+			for _, u := range colony.Hull {
+				if u.UnitId == lsu.Id && u.TotalQty < (totalPop+totalPop/16) {
+					u.TotalQty = totalPop + totalPop/16
+				}
+			}
+			for _, u := range colony.Inventory {
+				if u.UnitId == cngd.Id && (u.TotalQty+u.StowedQty)/4 < (totalCngd+totalCngd/16) {
+					u.TotalQty = 4 * (totalCngd + totalCngd/16)
+					u.StowedQty = u.TotalQty
 				}
 			}
 		}
@@ -126,6 +148,9 @@ func (g *Game) extractUnits(db *sql.DB) error {
 		}
 		unit.Kind = unit.Description
 		unit.Hudnut = hudnut == "Y"
+
+		unit.MetsPerUnit, unit.NonMetsPerUnit, _, unit.FuelPerUnitPerTurn, _ = unitAttributes(unit.Kind, unit.TechLevel)
+
 		g.Units = append(g.Units, unit)
 	}
 	return nil

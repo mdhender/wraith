@@ -209,13 +209,15 @@ func jdbEnclosedColonyToWraithColony(colony *jdb.EnclosedColony, factoryGroup ma
 		ControlledBy: players[colony.ControlledByPlayerId],
 		Planet:       planets[colony.PlanetId],
 		Population: wraith.Population{
-			ProfessionalQty:     colony.Population.ProfessionalQty,
-			SoldierQty:          colony.Population.SoldierQty,
-			UnskilledQty:        colony.Population.UnskilledQty,
-			UnemployedQty:       colony.Population.UnemployedQty,
-			ConstructionCrewQty: colony.Population.ConstructionCrewQty,
-			SpyTeamQty:          colony.Population.SpyTeamQty,
-			RebelPct:            colony.Population.RebelPct,
+			ProfessionalQty:        colony.Population.ProfessionalQty,
+			SoldierQty:             colony.Population.SoldierQty,
+			UnskilledQty:           colony.Population.UnskilledQty,
+			UnemployedQty:          colony.Population.UnemployedQty,
+			ConstructionCrewQty:    colony.Population.ConstructionCrewQty,
+			SpyTeamQty:             colony.Population.SpyTeamQty,
+			RebelPct:               colony.Population.RebelPct,
+			BirthsPriorTurn:        colony.Population.BirthsPriorTurn,
+			NaturalDeathsPriorTurn: colony.Population.NaturalDeathsPriorTurn,
 		},
 		Pay: wraith.Pay{
 			ProfessionalPct: colony.Pay.ProfessionalPct,
@@ -331,13 +333,15 @@ func jdbOrbitalColonyToWraithColony(colony *jdb.OrbitalColony, factoryGroup map[
 		ControlledBy: players[colony.ControlledByPlayerId],
 		Planet:       planets[colony.PlanetId],
 		Population: wraith.Population{
-			ProfessionalQty:     colony.Population.ProfessionalQty,
-			SoldierQty:          colony.Population.SoldierQty,
-			UnskilledQty:        colony.Population.UnskilledQty,
-			UnemployedQty:       colony.Population.UnemployedQty,
-			ConstructionCrewQty: colony.Population.ConstructionCrewQty,
-			SpyTeamQty:          colony.Population.SpyTeamQty,
-			RebelPct:            colony.Population.RebelPct,
+			ProfessionalQty:        colony.Population.ProfessionalQty,
+			SoldierQty:             colony.Population.SoldierQty,
+			UnskilledQty:           colony.Population.UnskilledQty,
+			UnemployedQty:          colony.Population.UnemployedQty,
+			ConstructionCrewQty:    colony.Population.ConstructionCrewQty,
+			SpyTeamQty:             colony.Population.SpyTeamQty,
+			RebelPct:               colony.Population.RebelPct,
+			BirthsPriorTurn:        colony.Population.BirthsPriorTurn,
+			NaturalDeathsPriorTurn: colony.Population.NaturalDeathsPriorTurn,
 		},
 		Pay: wraith.Pay{
 			ProfessionalPct: colony.Pay.ProfessionalPct,
@@ -400,13 +404,14 @@ func jdbShipToWraithShip(ship *jdb.Ship, factoryGroup map[int]*wraith.FactoryGro
 		ControlledBy: players[ship.ControlledByPlayerId],
 		Planet:       planets[ship.PlanetId],
 		Population: wraith.Population{
-			ProfessionalQty:     ship.Population.ProfessionalQty,
-			SoldierQty:          ship.Population.SoldierQty,
-			UnskilledQty:        ship.Population.UnskilledQty,
-			UnemployedQty:       ship.Population.UnemployedQty,
-			ConstructionCrewQty: ship.Population.ConstructionCrewQty,
-			SpyTeamQty:          ship.Population.SpyTeamQty,
-			RebelPct:            ship.Population.RebelPct,
+			ProfessionalQty:        ship.Population.ProfessionalQty,
+			SoldierQty:             ship.Population.SoldierQty,
+			UnskilledQty:           ship.Population.UnskilledQty,
+			UnemployedQty:          ship.Population.UnemployedQty,
+			ConstructionCrewQty:    ship.Population.ConstructionCrewQty,
+			SpyTeamQty:             ship.Population.SpyTeamQty,
+			RebelPct:               ship.Population.RebelPct,
+			NaturalDeathsPriorTurn: ship.Population.NaturalDeathsPriorTurn,
 		},
 		Pay: wraith.Pay{
 			ProfessionalPct: ship.Pay.ProfessionalPct,
@@ -458,13 +463,15 @@ func jdbSurfaceColonyToWraithColony(colony *jdb.SurfaceColony, factoryGroup map[
 		ControlledBy: players[colony.ControlledByPlayerId],
 		Planet:       planets[colony.PlanetId],
 		Population: wraith.Population{
-			ProfessionalQty:     colony.Population.ProfessionalQty,
-			SoldierQty:          colony.Population.SoldierQty,
-			UnskilledQty:        colony.Population.UnskilledQty,
-			UnemployedQty:       colony.Population.UnemployedQty,
-			ConstructionCrewQty: colony.Population.ConstructionCrewQty,
-			SpyTeamQty:          colony.Population.SpyTeamQty,
-			RebelPct:            colony.Population.RebelPct,
+			ProfessionalQty:        colony.Population.ProfessionalQty,
+			SoldierQty:             colony.Population.SoldierQty,
+			UnskilledQty:           colony.Population.UnskilledQty,
+			UnemployedQty:          colony.Population.UnemployedQty,
+			ConstructionCrewQty:    colony.Population.ConstructionCrewQty,
+			SpyTeamQty:             colony.Population.SpyTeamQty,
+			RebelPct:               colony.Population.RebelPct,
+			BirthsPriorTurn:        colony.Population.BirthsPriorTurn,
+			NaturalDeathsPriorTurn: colony.Population.NaturalDeathsPriorTurn,
 		},
 		Pay: wraith.Pay{
 			ProfessionalPct: colony.Pay.ProfessionalPct,
@@ -528,7 +535,6 @@ func jdbSystemToWraithSystem(system *jdb.System) *wraith.System {
 }
 
 func jdbUnitToWraithUnit(unit *jdb.Unit) *wraith.Unit {
-	metsPerTurn, nonMetsPerTurn, _, fuelPerTurn, _ := unitAttributes(unit.Kind, unit.TechLevel)
 	return &wraith.Unit{
 		Id:                    unit.Id,
 		Kind:                  unit.Kind,
@@ -540,74 +546,8 @@ func jdbUnitToWraithUnit(unit *jdb.Unit) *wraith.Unit {
 		VolumePerUnit:         unit.VolumePerUnit,
 		Hudnut:                unit.Hudnut,
 		StowedVolumePerUnit:   unit.StowedVolumePerUnit,
-		FuelPerUnitPerTurn:    fuelPerTurn,
-		MetsPerUnitPerTurn:    metsPerTurn,
-		NonMetsPerUnitPerTurn: nonMetsPerTurn,
+		FuelPerUnitPerTurn:    unit.FuelPerUnitPerTurn,
+		MetsPerUnitPerTurn:    unit.MetsPerUnit,
+		NonMetsPerUnitPerTurn: unit.NonMetsPerUnit,
 	}
-}
-
-func unitAttributes(name string, techLevel int) (mets, nmts, totalMassUnits, fuelPerTurn, fuelPerCombatRound float64) {
-	tl := float64(techLevel)
-	switch name {
-	case "anti-missile":
-		return 2 * tl, 2 * tl, 4 * tl, 0, 0
-	case "assault-craft":
-		return 3 * tl, 2 * tl, 5 * tl, 0, 0.1
-	case "assault-weapon":
-		return 1 * tl, 1 * tl, 2 * tl, 2 * tl * tl, 0
-	case "automation":
-		return 2 * tl, 2 * tl, 4 * tl, 0, 0
-	case "consumer-goods":
-		return 0.2, 0.4, 0.6, 0, 0
-	case "energy-shield":
-		return 25 * tl, 25 * tl, 50 * tl, 0, 10 * tl
-	case "energy-weapon":
-		return 5 * tl, 5 * tl, 10 * tl, 0, 4 * tl
-	case "factory":
-		return 8 * tl, 4 * tl, 12 + 2*tl, 0.5 * tl, 4 * tl
-	case "farm":
-		if techLevel == 1 {
-			return 4 + tl, 2 + tl, 6 + 2*tl, 0.5 * tl, 0
-		} else if techLevel < 6 {
-			return 4 + tl, 4 + tl, 6 + 2*tl, 0.5 * tl, 0
-		}
-		return 4 + tl, 2 + tl, 6 + 2*tl, tl, 0
-	case "food":
-		return 0, 0, 6, 0, 0
-	case "fuel":
-		return 0, 0, 1, 0, 0
-	case "gold":
-		return 0, 0, 1, 0, 0
-	case "hyper-drive":
-		return 25 * tl, 20 * tl, 45 * tl, 0, 0
-	case "life-support":
-		return 3 * tl, 5 * tl, 8 * tl, 1, 0
-	case "light-structural":
-		return 0.01, 0.04, 0.05, 0, 0
-	case "metallics":
-		return 0, 0, 1, 0, 0
-	case "military-robots":
-		return 10 * tl, 10 * tl, 20 + 2*tl, 0, 0
-	case "military-supplies":
-		return 0.02, 0.02, 0.04, 0, 0
-	case "mine":
-		return 5 + tl, 5 + tl, 10 + (2 * tl), 0.5 * tl, 0
-	case "missile":
-		return 2 * tl, 2 * tl, 4 * tl, 0, 0
-	case "missile-launcher":
-		return 15 * tl, 10 * tl, 25 * tl, 0, 0
-	case "non-metallics":
-		return 0, 0, 1, 0, 0
-	case "sensor":
-		return 10 * tl, 20 * tl, 40 * tl, tl / 20, 0
-	case "space-drive":
-		return 15 * tl, 10 * tl, 25 * tl, 0, tl * tl
-	case "structural":
-		return 0.1, 0.4, 0.5, 0, 0
-	case "super-light-structural":
-		return 0.001, 0.004, 0.005, 0, 0
-	case "transport":
-		return 3 * tl, tl, 4 * tl, 0.1 * tl * tl, 0.01 * tl * tl
-	}
-	panic(fmt.Sprintf("assert(unit.name != %q)", name))
 }

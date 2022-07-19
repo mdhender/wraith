@@ -179,19 +179,19 @@ func WraithEngineToJdbGame(e *wraith.Engine) *jdb.Game {
 
 	for _, unit := range e.Units {
 		u := &jdb.Unit{
-			Id:                    unit.Id,
-			Kind:                  unit.Kind,
-			Code:                  unit.Code,
-			TechLevel:             unit.TechLevel,
-			Name:                  unit.Name,
-			Description:           unit.Description,
-			MassPerUnit:           unit.MassPerUnit,
-			VolumePerUnit:         unit.VolumePerUnit,
-			Hudnut:                unit.Hudnut,
-			StowedVolumePerUnit:   unit.StowedVolumePerUnit,
-			FuelPerUnitPerTurn:    unit.FuelPerUnitPerTurn,
-			MetsPerUnitPerTurn:    unit.MetsPerUnitPerTurn,
-			NonMetsPerUnitPerTurn: unit.NonMetsPerUnitPerTurn,
+			Id:                  unit.Id,
+			Kind:                unit.Kind,
+			Code:                unit.Code,
+			TechLevel:           unit.TechLevel,
+			Name:                unit.Name,
+			Description:         unit.Description,
+			MassPerUnit:         unit.MassPerUnit,
+			VolumePerUnit:       unit.VolumePerUnit,
+			Hudnut:              unit.Hudnut,
+			StowedVolumePerUnit: unit.StowedVolumePerUnit,
+			FuelPerUnitPerTurn:  unit.FuelPerUnitPerTurn,
+			MetsPerUnit:         unit.MetsPerUnitPerTurn,
+			NonMetsPerUnit:      unit.NonMetsPerUnitPerTurn,
 		}
 		jg.Units = append(jg.Units, u)
 	}

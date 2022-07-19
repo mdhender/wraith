@@ -71,6 +71,12 @@ type CorS struct {
 	FactoryGroups FactoryGroups // list of the factory groups
 	FarmGroups    FarmGroups    // list of the farm groups
 	MineGroups    MineGroups    // list of the mine groups
+	fuel          struct {
+		available int
+		allocated int
+		used      int
+	}
+	nonCombatDeaths int
 }
 
 type CorSs []*CorS
@@ -161,8 +167,14 @@ type FarmGroupUnits struct {
 }
 
 type HullUnit struct {
-	Unit     *Unit
-	TotalQty int // number of units
+	Unit      *Unit
+	TotalQty  int // number of units
+	activeQty int
+	fuel      struct {
+		needed    int
+		allocated int
+		used      int
+	}
 }
 
 func (u *HullUnit) totalMass() int {
@@ -177,6 +189,12 @@ type InventoryUnit struct {
 	Unit      *Unit
 	TotalQty  int // number of units
 	StowedQty int // number of units that are disassembled for storage
+	activeQty int
+	fuel      struct {
+		needed    int
+		allocated int
+		used      int
+	}
 }
 
 func (u *InventoryUnit) totalMass() int {
@@ -281,6 +299,46 @@ type Population struct {
 	NaturalDeathsPriorTurn int
 }
 
+// KillProportionally kills by proportion
+func (p *Population) KillProportionally(n int) {
+	for n > 0 && p.Total() > 0 {
+		pct := float64(n) / float64(p.Total())
+		if p.ProfessionalQty > 0 {
+			k := int(pct * float64(p.ProfessionalQty))
+			n -= k
+			p.ProfessionalQty -= k
+		}
+		if p.SoldierQty > 0 {
+			k := int(pct * float64(p.SoldierQty))
+			if k < 1 {
+				k = 1
+			}
+			n -= k
+			p.SoldierQty -= k
+		}
+		if p.UnskilledQty > 0 {
+			k := int(pct * float64(p.UnskilledQty))
+			if k < 1 {
+				k = 1
+			}
+			n -= k
+			p.UnskilledQty -= k
+		}
+		if p.UnemployedQty > 0 {
+			k := int(pct * float64(p.UnemployedQty))
+			if k < 1 {
+				k = 1
+			}
+			n -= k
+			p.UnemployedQty -= k
+		}
+	}
+}
+
+func (p Population) Total() int {
+	return p.ProfessionalQty + p.SoldierQty + p.UnskilledQty + p.UnemployedQty
+}
+
 type Rations struct {
 	ProfessionalPct float64
 	SoldierPct      float64
@@ -364,4 +422,8 @@ type Unit struct {
 	FuelPerUnitPerTurn    float64
 	MetsPerUnitPerTurn    float64
 	NonMetsPerUnitPerTurn float64
+}
+
+func (u *Unit) fuelUsed(qty int) int {
+	return int(math.Ceil(u.FuelPerUnitPerTurn * float64(qty)))
 }
