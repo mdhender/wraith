@@ -19,12 +19,10 @@
 package cheese
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/jwtauth/v5"
-	"github.com/mdhender/wraith/engine"
 	"log"
 	"net/http"
 	"strings"
@@ -142,35 +140,8 @@ func (s *Server) serve() error {
 			r.Get("/", s.homeGetHandler(s.templates))
 			r.Get("/games/{game}/cluster", s.clusterGetHandler(s.templates))
 			r.Get("/games/{game}/cluster/{x}/{y}/{z}", s.clusterGetHandler(s.templates))
-			r.Get("/games/{game}/current-report", func(w http.ResponseWriter, r *http.Request) {
-				_, claims, _ := jwtauth.FromContext(r.Context())
-				claim, ok := s.claims[strings.ToLower(claims["user_id"].(string))]
-				if !ok {
-					log.Printf("%s: %s: fetchClaims: not ok\n", r.Method, r.URL.Path)
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
-				}
-
-				game := chi.URLParam(r, "game")
-				year := 0
-				quarter := 0
-				e, err := engine.Open(s.store)
-				if err != nil {
-					log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
-				}
-				bw := bytes.NewBuffer([]byte(fmt.Sprintf("<body><h1>Nation %d</h1><code><pre>", claim.NationNo)))
-				err = e.Report(bw, game, claim.NationNo, year, quarter)
-				if err != nil {
-					log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
-				}
-				bw.Write([]byte("</pre></code></body>"))
-				_, _ = w.Write(bw.Bytes())
-			})
 			r.Get("/reports/{game}/{year}/{quarter}/{player}", s.reportsGetHandler(s.templates))
+			r.Get("/reports/{game}/current", s.currentReportGetHandler())
 			r.Get("/games/{game}/orders", s.ordersGetRedirect())
 			r.Get("/games/{game}/orders/{year}/{quarter}", s.ordersGetHandler(s.templates))
 			r.Post("/games/{game}/orders/{year}/{quarter}", s.ordersPostHandler())

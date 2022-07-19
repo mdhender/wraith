@@ -112,6 +112,20 @@ func (s *Server) clusterGetHandler(templates string) http.HandlerFunc {
 	}
 }
 
+func (s *Server) currentReportGetHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, claims, _ := jwtauth.FromContext(r.Context())
+		claim, ok := s.claims[strings.ToLower(claims["user_id"].(string))]
+		if !ok {
+			log.Printf("%s: %s: fetchClaims: not ok\n", r.Method, r.URL.Path)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		game, year, quarter := chi.URLParam(r, "game"), 0, 0
+		http.Redirect(w, r, fmt.Sprintf("/ui/reports/%s/%04d/%d/%d", game, year, quarter, claim.PlayerId), http.StatusTemporaryRedirect)
+	}
+}
+
 func (s *Server) homeGetHandler(templates string) http.HandlerFunc {
 	t := osk.New(templates, "home.html")
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -571,8 +585,8 @@ func (s *Server) reportsGetHandler(templates string) http.HandlerFunc {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
-		gamePath := filepath.Clean(filepath.Join("D:\\wraith\\testdata\\games", game, fmt.Sprintf("%04d", year), fmt.Sprintf("%d", quarter)))
-		log.Printf("hey: gamePath %s\n", gamePath)
+		gamePath := filepath.Clean(filepath.Join(s.gamesPath, game, fmt.Sprintf("%04d", year), fmt.Sprintf("%d", quarter)))
+		log.Printf("%s: %s: gamePath %s\n", r.Method, r.URL.Path, gamePath)
 		jg, err := jdb.Load(filepath.Join(gamePath, "game.json"))
 		if err != nil {
 			log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)

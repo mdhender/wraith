@@ -26,13 +26,13 @@ import (
 )
 
 type Server struct {
-	addr       string
-	debug      bool
-	host, port string
-	key        []byte
-	store      *models.Store
-	claims     map[string]*models.Claim
-	templates  string
+	debug            bool
+	addr, host, port string
+	gamesPath        string
+	key              []byte
+	store            *models.Store
+	claims           map[string]*models.Claim
+	templates        string
 }
 
 func Serve(options ...Option) error {
@@ -42,10 +42,11 @@ func Serve(options ...Option) error {
 			return err
 		}
 	}
-	if len(s.key) == 0 {
+	if len(s.gamesPath) == 0 {
+		return fmt.Errorf("missing games path")
+	} else if len(s.key) == 0 {
 		return fmt.Errorf("missing key")
-	}
-	if s.templates == "" {
+	} else if s.templates == "" {
 		return fmt.Errorf("missing templates path")
 	}
 

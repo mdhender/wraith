@@ -9,7 +9,7 @@
 <h1>Howdy, {{.User}}</h1>
 <ul>
   <li>
-    <a href="/ui/games/PT-1/current-report" target="_blank">Current Report ↗</a>
+    <a href="/ui/reports/PT-1/current" target="_blank">Current Report ↗</a>
   </li>
   <li>
     <a href="/ui/games/PT-1/orders" target="_blank">Current Orders ↗</a>
@@ -24,7 +24,7 @@
     <a href="https://wraith.dev/docs/index.html">Documentation ↗</a>
   </li>
 </ul>
-<p>You are registered as player "{{.Player}} in game "PT-1." Your nation number is that game is {{.NationNo}}.</p>
+<p>You are registered as player "{{.PlayerName}}" in game "PT-1." You are player #{{.PlayerId}} and nation #{{.NationNo}} in that game.</p>
 {{else}}
 <h1>Something went wrong...</h1>
 <p>

@@ -33,6 +33,7 @@ var globalServer struct {
 	Port      string
 	AuthnFile string
 	GameFile  string
+	GamesPath string
 	JwtFile   string
 	JwtKey    string
 	Templates string
@@ -45,6 +46,10 @@ var cmdServer = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if globalBase.ConfigFile == "" {
 			return errors.New("missing config file name")
+		}
+
+		if globalServer.GamesPath = strings.TrimSpace(globalServer.GamesPath); globalServer.GamesPath == "" {
+			return errors.New("missing games path")
 		}
 
 		if globalServer.JwtKey = strings.TrimSpace(globalServer.JwtKey); globalServer.JwtKey == "" {
@@ -70,6 +75,7 @@ var cmdServer = &cobra.Command{
 		opts := []cheese.Option{
 			cheese.WithHost(globalServer.Host),
 			cheese.WithPort(globalServer.Port),
+			cheese.WithGamesPath(globalServer.GamesPath),
 			cheese.WithKey([]byte(globalServer.JwtKey)),
 			cheese.WithTemplates(globalServer.Templates),
 			cheese.WithStore(s),
@@ -89,6 +95,8 @@ func init() {
 	_ = cmdServer.MarkFlagRequired("authn")
 	cmdServer.Flags().StringVar(&globalServer.GameFile, "game", "", "game data")
 	_ = cmdServer.MarkFlagRequired("game")
+	cmdServer.Flags().StringVar(&globalServer.GamesPath, "games", "", "path to games data")
+	_ = cmdServer.MarkFlagRequired("games")
 	cmdServer.Flags().StringVar(&globalServer.JwtFile, "jwt", "", "jwt key data")
 	_ = cmdServer.MarkFlagRequired("jwt")
 	cmdServer.Flags().StringVar(&globalServer.JwtKey, "jwt-key", "", "jwt signing key")

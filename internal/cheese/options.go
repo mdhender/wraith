@@ -29,6 +29,19 @@ import (
 
 type Option func(*Server) error
 
+func WithGamesPath(path string) func(*Server) error {
+	return func(s *Server) error {
+		path = filepath.Clean(path)
+		if fi, err := os.Stat(path); err != nil {
+			return err
+		} else if !fi.IsDir() {
+			return fmt.Errorf("%s: not a directory", path)
+		}
+		s.gamesPath = path
+		return nil
+	}
+}
+
 func WithHost(host string) func(*Server) error {
 	return func(s *Server) error {
 		s.host = host
