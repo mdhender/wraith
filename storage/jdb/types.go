@@ -39,17 +39,29 @@ type Deposit struct {
 
 type Deposits []*Deposit
 
+func (d Deposits) Len() int {
+	return len(d)
+}
+
+func (d Deposits) Less(i, j int) bool {
+	return d[i].Id < d[j].Id
+}
+
+func (d Deposits) Swap(i, j int) {
+	d[i], d[j] = d[j], d[i]
+}
+
 // EnclosedColony defines an enclosed surface colony.
 type EnclosedColony struct {
-	Id                   int              `json:"id"`                                // unique identifier
-	MSN                  int              `json:"msn"`                               // manufacturer serial number; in game id for the colony
-	BuiltByNationId      int              `json:"built-by-nation-id,omitempty"`      // id of the nation that originally built the colony
-	Name                 string           `json:"name,omitempty"`                    // name of this colony
-	TechLevel            int              `json:"tech-level,omitempty"`              // tech level of this colony
-	ControlledByPlayerId int              `json:"controlled-by-player-id,omitempty"` // id of player that controls this colony
-	PlanetId             int              `json:"planet-id,omitempty"`               // id of planet the colony is built on
-	Hull                 []*HullUnit      `json:"hull,omitempty"`
-	Inventory            []*InventoryUnit `json:"inventory,omitempty"`
+	Id                   int            `json:"id"`                                // unique identifier
+	MSN                  int            `json:"msn"`                               // manufacturer serial number; in game id for the colony
+	BuiltByNationId      int            `json:"built-by-nation-id,omitempty"`      // id of the nation that originally built the colony
+	Name                 string         `json:"name,omitempty"`                    // name of this colony
+	TechLevel            int            `json:"tech-level,omitempty"`              // tech level of this colony
+	ControlledByPlayerId int            `json:"controlled-by-player-id,omitempty"` // id of player that controls this colony
+	PlanetId             int            `json:"planet-id,omitempty"`               // id of planet the colony is built on
+	Hull                 HullUnits      `json:"hull,omitempty"`
+	Inventory            InventoryUnits `json:"inventory,omitempty"`
 	Population           struct {
 		ProfessionalQty        int     `json:"professional-qty,omitempty"`
 		SoldierQty             int     `json:"soldier-qty,omitempty"`
@@ -79,6 +91,18 @@ type EnclosedColony struct {
 
 type EnclosedColonies []*EnclosedColony
 
+func (e EnclosedColonies) Len() int {
+	return len(e)
+}
+
+func (e EnclosedColonies) Less(i, j int) bool {
+	return e[i].Id < e[j].Id
+}
+
+func (e EnclosedColonies) Swap(i, j int) {
+	e[i], e[j] = e[j], e[i]
+}
+
 // FactoryGroup is a group of factories on the ship or colony.
 // Each group is dedicated to manufacturing one type of unit.
 type FactoryGroup struct {
@@ -94,6 +118,23 @@ type FactoryGroup struct {
 }
 
 type FactoryGroups []*FactoryGroup
+
+func (f FactoryGroups) Len() int {
+	return len(f)
+}
+
+func (f FactoryGroups) Less(i, j int) bool {
+	if f[i].CorSId < f[j].CorSId {
+		return true
+	} else if f[i].CorSId == f[j].CorSId {
+		return f[i].No < f[j].No
+	}
+	return false
+}
+
+func (f FactoryGroups) Swap(i, j int) {
+	f[i], f[j] = f[j], f[i]
+}
 
 // FactoryGroupUnits is the number of factories working together in the group
 type FactoryGroupUnits struct {
@@ -114,6 +155,23 @@ type FarmGroup struct {
 }
 
 type FarmGroups []*FarmGroup
+
+func (f FarmGroups) Len() int {
+	return len(f)
+}
+
+func (f FarmGroups) Less(i, j int) bool {
+	if f[i].CorSId < f[j].CorSId {
+		return true
+	} else if f[i].CorSId == f[j].CorSId {
+		return f[i].No < f[j].No
+	}
+	return false
+}
+
+func (f FarmGroups) Swap(i, j int) {
+	f[i], f[j] = f[j], f[i]
+}
 
 // FarmGroupUnits is the number of farms working together in the group
 type FarmGroupUnits struct {
@@ -154,10 +212,38 @@ type HullUnit struct {
 	TotalQty int `json:"total-qty,omitempty"` // number of units
 }
 
+type HullUnits []*HullUnit
+
+func (u HullUnits) Len() int {
+	return len(u)
+}
+
+func (u HullUnits) Less(i, j int) bool {
+	return u[i].UnitId < u[j].UnitId
+}
+
+func (u HullUnits) Swap(i, j int) {
+	u[i], u[j] = u[j], u[i]
+}
+
 type InventoryUnit struct {
 	UnitId    int `json:"unit-id"`              // id of unit
 	TotalQty  int `json:"total-qty,omitempty"`  // number of units
 	StowedQty int `json:"stowed-qty,omitempty"` // number of units that are disassembled for storage
+}
+
+type InventoryUnits []*InventoryUnit
+
+func (u InventoryUnits) Len() int {
+	return len(u)
+}
+
+func (u InventoryUnits) Less(i, j int) bool {
+	return u[i].UnitId < u[j].UnitId
+}
+
+func (u InventoryUnits) Swap(i, j int) {
+	u[i], u[j] = u[j], u[i]
 }
 
 // MineGroup is a group of mines working a single deposit.
@@ -176,6 +262,23 @@ type MineGroup struct {
 }
 
 type MineGroups []*MineGroup
+
+func (m MineGroups) Len() int {
+	return len(m)
+}
+
+func (m MineGroups) Less(i, j int) bool {
+	if m[i].ColonyId < m[j].ColonyId {
+		return true
+	} else if m[i].ColonyId == m[j].ColonyId {
+		return m[i].No < m[j].No
+	}
+	return false
+}
+
+func (m MineGroups) Swap(i, j int) {
+	m[i], m[j] = m[j], m[i]
+}
 
 // Nation is a single nation in the game.
 // The controller of the nation rules it, and may designate other
@@ -223,15 +326,15 @@ func (n Nations) Swap(i, j int) {
 
 // OrbitalColony defines an orbital colony.
 type OrbitalColony struct {
-	Id                   int              `json:"id"`                                // unique identifier
-	MSN                  int              `json:"msn"`                               // manufacturer serial number; in game id for the colony
-	BuiltByNationId      int              `json:"built-by-nation-id,omitempty"`      // id of the nation that originally built the colony
-	Name                 string           `json:"name,omitempty"`                    // name of this colony
-	TechLevel            int              `json:"tech-level,omitempty"`              // tech level of this colony
-	ControlledByPlayerId int              `json:"controlled-by-player-id,omitempty"` // id of player that controls this colony
-	PlanetId             int              `json:"planet-id,omitempty"`               // id of planet the colony is orbiting
-	Hull                 []*HullUnit      `json:"hull,omitempty"`
-	Inventory            []*InventoryUnit `json:"inventory,omitempty"`
+	Id                   int            `json:"id"`                                // unique identifier
+	MSN                  int            `json:"msn"`                               // manufacturer serial number; in game id for the colony
+	BuiltByNationId      int            `json:"built-by-nation-id,omitempty"`      // id of the nation that originally built the colony
+	Name                 string         `json:"name,omitempty"`                    // name of this colony
+	TechLevel            int            `json:"tech-level,omitempty"`              // tech level of this colony
+	ControlledByPlayerId int            `json:"controlled-by-player-id,omitempty"` // id of player that controls this colony
+	PlanetId             int            `json:"planet-id,omitempty"`               // id of planet the colony is orbiting
+	Hull                 HullUnits      `json:"hull,omitempty"`
+	Inventory            InventoryUnits `json:"inventory,omitempty"`
 	Population           struct {
 		ProfessionalQty        int     `json:"professional-qty,omitempty"`
 		SoldierQty             int     `json:"soldier-qty,omitempty"`
@@ -260,6 +363,18 @@ type OrbitalColony struct {
 
 type OrbitalColonies []*OrbitalColony
 
+func (o OrbitalColonies) Len() int {
+	return len(o)
+}
+
+func (o OrbitalColonies) Less(i, j int) bool {
+	return o[i].Id < o[j].Id
+}
+
+func (o OrbitalColonies) Swap(i, j int) {
+	o[i], o[j] = o[j], o[i]
+}
+
 // Planet is an orbit. It may be empty.
 type Planet struct {
 	Id                int    `json:"id"` // unique identifier
@@ -276,6 +391,18 @@ type Planet struct {
 }
 
 type Planets []*Planet
+
+func (p Planets) Len() int {
+	return len(p)
+}
+
+func (p Planets) Less(i, j int) bool {
+	return p[i].Id < p[j].Id
+}
+
+func (p Planets) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
 
 // Player is a position in the game.
 type Player struct {
@@ -305,15 +432,15 @@ func (p Players) Swap(i, j int) {
 
 // Ship defines a ship.
 type Ship struct {
-	Id                   int              `json:"id"`                                // unique identifier
-	MSN                  int              `json:"msn"`                               // manufacturer serial number; in game id for the ship
-	BuiltByNationId      int              `json:"built-by-nation-id,omitempty"`      // id of the nation that originally built the ship
-	Name                 string           `json:"name,omitempty"`                    // name of this ship
-	TechLevel            int              `json:"tech-level,omitempty"`              // tech level of this ship
-	ControlledByPlayerId int              `json:"controlled-by-player-id,omitempty"` // id of player that controls this ship
-	PlanetId             int              `json:"planet-id,omitempty"`               // id of planet the ship is orbiting
-	Hull                 []*HullUnit      `json:"hull,omitempty"`
-	Inventory            []*InventoryUnit `json:"inventory,omitempty"`
+	Id                   int            `json:"id"`                                // unique identifier
+	MSN                  int            `json:"msn"`                               // manufacturer serial number; in game id for the ship
+	BuiltByNationId      int            `json:"built-by-nation-id,omitempty"`      // id of the nation that originally built the ship
+	Name                 string         `json:"name,omitempty"`                    // name of this ship
+	TechLevel            int            `json:"tech-level,omitempty"`              // tech level of this ship
+	ControlledByPlayerId int            `json:"controlled-by-player-id,omitempty"` // id of player that controls this ship
+	PlanetId             int            `json:"planet-id,omitempty"`               // id of planet the ship is orbiting
+	Hull                 HullUnits      `json:"hull,omitempty"`
+	Inventory            InventoryUnits `json:"inventory,omitempty"`
 	Population           struct {
 		ProfessionalQty     int     `json:"professional-qty,omitempty"`
 		SoldierQty          int     `json:"soldier-qty,omitempty"`
@@ -341,6 +468,18 @@ type Ship struct {
 
 type Ships []*Ship
 
+func (s Ships) Len() int {
+	return len(s)
+}
+
+func (s Ships) Less(i, j int) bool {
+	return s[i].Id < s[j].Id
+}
+
+func (s Ships) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
 // Star is a stellar system in the game.
 // It contains zero or more planets, with each planet assigned to an orbit ranging from 1...10
 type Star struct {
@@ -353,17 +492,29 @@ type Star struct {
 
 type Stars []*Star
 
+func (s Stars) Len() int {
+	return len(s)
+}
+
+func (s Stars) Less(i, j int) bool {
+	return s[i].Id < s[j].Id
+}
+
+func (s Stars) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
 // SurfaceColony defines a surface colony.
 type SurfaceColony struct {
-	Id                   int              `json:"id"`                                // unique identifier
-	MSN                  int              `json:"msn"`                               // manufacturer serial number; in game id for the colony
-	BuiltByNationId      int              `json:"built-by-nation-id,omitempty"`      // id of the nation that originally built the colony
-	Name                 string           `json:"name,omitempty"`                    // name of this colony
-	TechLevel            int              `json:"tech-level,omitempty"`              // tech level of this colony
-	ControlledByPlayerId int              `json:"controlled-by-player-id,omitempty"` // id of player that controls this colony
-	PlanetId             int              `json:"planet-id,omitempty"`               // id of planet the colony is built on
-	Hull                 []*HullUnit      `json:"hull,omitempty"`
-	Inventory            []*InventoryUnit `json:"inventory,omitempty"`
+	Id                   int            `json:"id"`                                // unique identifier
+	MSN                  int            `json:"msn"`                               // manufacturer serial number; in game id for the colony
+	BuiltByNationId      int            `json:"built-by-nation-id,omitempty"`      // id of the nation that originally built the colony
+	Name                 string         `json:"name,omitempty"`                    // name of this colony
+	TechLevel            int            `json:"tech-level,omitempty"`              // tech level of this colony
+	ControlledByPlayerId int            `json:"controlled-by-player-id,omitempty"` // id of player that controls this colony
+	PlanetId             int            `json:"planet-id,omitempty"`               // id of planet the colony is built on
+	Hull                 HullUnits      `json:"hull,omitempty"`
+	Inventory            InventoryUnits `json:"inventory,omitempty"`
 	Population           struct {
 		ProfessionalQty        int     `json:"professional-qty,omitempty"`
 		SoldierQty             int     `json:"soldier-qty,omitempty"`
@@ -393,6 +544,18 @@ type SurfaceColony struct {
 
 type SurfaceColonies []*SurfaceColony
 
+func (s SurfaceColonies) Len() int {
+	return len(s)
+}
+
+func (s SurfaceColonies) Less(i, j int) bool {
+	return s[i].Id < s[j].Id
+}
+
+func (s SurfaceColonies) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
 // System is a system in the game.
 // It contains zero or more stars.
 type System struct {
@@ -403,18 +566,50 @@ type System struct {
 
 type Systems []*System
 
+func (s Systems) Len() int {
+	return len(s)
+}
+
+func (s Systems) Less(i, j int) bool {
+	return s[i].Id < s[j].Id
+}
+
+func (s Systems) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
 // Unit is a thing in the game.
 type Unit struct {
-	Id                  int     `json:"id"` // unique identifier
-	Kind                string  `json:"kind"`
-	Code                string  `json:"code"`
-	TechLevel           int     `json:"tech-level,omitempty"`
-	Name                string  `json:"name"`
-	Description         string  `json:"description,omitempty"`
-	MassPerUnit         float64 `json:"mass-per-unit"`          // mass (in metric tonnes) of a single unit
-	VolumePerUnit       float64 `json:"volume-per-unit"`        // volume (in cubic meters) of a single unit
-	Hudnut              bool    `json:"hudnut,omitempty"`       // if true, unit can be disassembled when stowed
-	StowedVolumePerUnit float64 `json:"stowed-volume-per-unit"` // volume (in cubic meters) of a single unit when stowed
+	Id                    int     `json:"id"` // unique identifier
+	Kind                  string  `json:"kind"`
+	Code                  string  `json:"code"`
+	TechLevel             int     `json:"tech-level,omitempty"`
+	Name                  string  `json:"name"`
+	Description           string  `json:"description,omitempty"`
+	MassPerUnit           float64 `json:"mass-per-unit"`          // mass (in metric tonnes) of a single unit
+	VolumePerUnit         float64 `json:"volume-per-unit"`        // volume (in cubic meters) of a single unit
+	Hudnut                bool    `json:"hudnut,omitempty"`       // if true, unit can be disassembled when stowed
+	StowedVolumePerUnit   float64 `json:"stowed-volume-per-unit"` // volume (in cubic meters) of a single unit when stowed
+	FuelPerUnitPerTurn    float64 `json:"fuel-per-unit-per-turn,omitempty"`
+	MetsPerUnitPerTurn    float64 `json:"mets-per-unit-per-turn,omitempty"`
+	NonMetsPerUnitPerTurn float64 `json:"non-mets-per-unit-per-turn,omitempty"`
 }
 
 type Units []*Unit
+
+func (u Units) Len() int {
+	return len(u)
+}
+
+func (u Units) Less(i, j int) bool {
+	if u[i].Kind < u[j].Kind {
+		return true
+	} else if u[i].Kind == u[j].Kind {
+		return u[i].TechLevel < u[j].TechLevel
+	}
+	return false
+}
+
+func (u Units) Swap(i, j int) {
+	u[i], u[j] = u[j], u[i]
+}

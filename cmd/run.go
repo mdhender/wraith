@@ -34,9 +34,11 @@ import (
 )
 
 var globalRun struct {
-	Path   string
-	Game   string
-	Phases string
+	Root    string
+	Year    int
+	Quarter int
+	Game    string
+	Phases  string
 }
 
 var cmdRun = &cobra.Command{
@@ -54,23 +56,40 @@ var cmdRun = &cobra.Command{
 		}
 		log.Printf("loaded config %q\n", cfg.Self)
 
-		if globalRun.Path = strings.TrimSpace(globalRun.Path); globalRun.Path == "" {
+		if globalRun.Root = strings.TrimSpace(globalRun.Root); globalRun.Root == "" {
 			return errors.New("missing path to game files")
 		}
-		globalRun.Path = filepath.Clean(globalRun.Path)
+		globalRun.Root = filepath.Clean(globalRun.Root)
 
-		jg, err := jdb.Load(filepath.Join(globalRun.Path, "game.json"))
+		if globalRun.Game = strings.TrimSpace(globalRun.Game); globalRun.Game == "" {
+			return errors.New("missing game name")
+		} else if filepath.Clean(globalRun.Game) != globalRun.Game {
+			return errors.New("invalid game name")
+		}
+
+		if !(0 <= globalRun.Year && globalRun.Year <= 9999) {
+			return errors.New("invalid year")
+		}
+
+		if !(1 <= globalRun.Quarter && globalRun.Quarter <= 4) && !(globalRun.Year == 0 && globalRun.Quarter == 0) {
+			return errors.New("invalid quarter")
+		}
+
+		jg, err := jdb.Load(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", globalRun.Year), fmt.Sprintf("%d", globalRun.Quarter), "game.json"))
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		e := adapters.JdbGameToWraithEngine(jg)
+		e, err := adapters.JdbGameToWraithEngine(jg)
+		if err != nil {
+			log.Fatal(err)
+		}
 		log.Printf("loaded engine version %q\n", e.Version)
 		log.Printf("loaded game %s: turn %04d/%d\n", e.Game.Code, e.Game.Turn.Year, e.Game.Turn.Quarter)
 
 		var pos []*wraith.PhaseOrders
 		for _, user := range e.Players {
-			ordersFile := filepath.Join(filepath.Join(globalRun.Path, fmt.Sprintf("%d.orders.txt", user.Id)))
+			ordersFile := filepath.Join(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", globalRun.Year), fmt.Sprintf("%d", globalRun.Quarter), fmt.Sprintf("%d.orders.txt", user.Id)))
 
 			b, err := os.ReadFile(ordersFile)
 			if err != nil {
@@ -103,16 +122,26 @@ var cmdRun = &cobra.Command{
 		}
 
 		// and save the game
+		jg = adapters.WraithEngineToJdbGame(e)
+		log.Println(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", jg.Turn.Year), fmt.Sprintf("%d", jg.Turn.Quarter), "output.json"))
+		err = jg.Write(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", jg.Turn.Year), fmt.Sprintf("%d", jg.Turn.Quarter), "output.json"))
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		return nil
 	},
 }
 
 func init() {
-	cmdRun.Flags().StringVar(&globalRun.Path, "path", "", "path to game files")
-	_ = cmdRun.MarkFlagRequired("path")
+	cmdRun.Flags().StringVar(&globalRun.Root, "root", "", "path to game files")
+	_ = cmdRun.MarkFlagRequired("root")
 	cmdRun.Flags().StringVar(&globalRun.Game, "game", "", "game to run against")
 	_ = cmdRun.MarkFlagRequired("game")
+	cmdRun.Flags().IntVar(&globalRun.Year, "year", 0, "turn year")
+	_ = cmdRun.MarkFlagRequired("year")
+	cmdRun.Flags().IntVar(&globalRun.Quarter, "quarter", 0, "turn quarter")
+	_ = cmdRun.MarkFlagRequired("quarter")
 	cmdRun.Flags().StringVar(&globalRun.Phases, "phases", "", "comma separated list of phases to process")
 	_ = cmdRun.MarkFlagRequired("phases")
 

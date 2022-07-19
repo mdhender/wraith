@@ -23,10 +23,13 @@ import (
 	"github.com/mdhender/wraith/storage/jdb"
 	"github.com/mdhender/wraith/wraith"
 	"sort"
+	"time"
 )
 
 // JdbGameToWraithEngine converts a Game to an Engine.
-func JdbGameToWraithEngine(jg *jdb.Game) *wraith.Engine {
+func JdbGameToWraithEngine(jg *jdb.Game) (*wraith.Engine, error) {
+	var err error
+
 	e := &wraith.Engine{
 		Version:       "0.1.0",
 		Colonies:      make(map[string]*wraith.CorS),
@@ -44,9 +47,17 @@ func JdbGameToWraithEngine(jg *jdb.Game) *wraith.Engine {
 		Units:         make(map[int]*wraith.Unit),
 	}
 
+	e.Game.Id = jg.Id
 	e.Game.Code = jg.ShortName
+	e.Game.Name = jg.Name
 	e.Game.Turn.Year = jg.Turn.Year
 	e.Game.Turn.Quarter = jg.Turn.Quarter
+	if e.Game.Turn.StartDt, err = time.Parse(time.RFC3339, jg.Turn.StartDt); err != nil {
+		return nil, err
+	}
+	if e.Game.Turn.EndDt, err = time.Parse(time.RFC3339, jg.Turn.EndDt); err != nil {
+		return nil, err
+	}
 
 	for _, unit := range jg.Units {
 		e.Units[unit.Id] = jdbUnitToWraithUnit(unit)
@@ -145,22 +156,24 @@ func JdbGameToWraithEngine(jg *jdb.Game) *wraith.Engine {
 		e.MineGroups[group.Id].CorS = e.CorSById[group.ColonyId]
 	}
 
-	for _, planet := range e.Planets {
-		sort.Sort(planet.Colonies)
-		sort.Sort(planet.Deposits)
-		sort.Sort(planet.Ships)
-	}
-
 	for _, colony := range e.Colonies {
 		if colony.ControlledBy != nil {
 			colony.ControlledBy.Colonies = append(colony.ControlledBy.Colonies, colony)
 		}
+		colony.Planet.Colonies = append(colony.Planet.Colonies, colony)
 	}
 
 	for _, ship := range e.Ships {
 		if ship.ControlledBy != nil {
 			ship.ControlledBy.Colonies = append(ship.ControlledBy.Colonies, ship)
 		}
+		ship.Planet.Ships = append(ship.Planet.Ships, ship)
+	}
+
+	for _, planet := range e.Planets {
+		sort.Sort(planet.Colonies)
+		sort.Sort(planet.Deposits)
+		sort.Sort(planet.Ships)
 	}
 
 	for _, player := range e.Players {
@@ -168,7 +181,7 @@ func JdbGameToWraithEngine(jg *jdb.Game) *wraith.Engine {
 		sort.Sort(player.Ships)
 	}
 
-	return e
+	return e, nil
 }
 
 func jdbDepositToWraithDeposit(deposit *jdb.Deposit, planets map[int]*wraith.Planet, cors map[int]*wraith.CorS, units map[int]*wraith.Unit) *wraith.Deposit {

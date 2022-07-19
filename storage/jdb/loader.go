@@ -20,10 +20,12 @@ package jdb
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 )
 
 func Load(filename string) (*Game, error) {
+	log.Printf("jdb: loading %s\n", filename)
 	var g Game
 	b, err := os.ReadFile(filename)
 	if err != nil {
@@ -34,4 +36,17 @@ func Load(filename string) (*Game, error) {
 		return nil, err
 	}
 	return &g, nil
+}
+
+func (g *Game) Write(filename string) error {
+	log.Printf("jdb: saving %s\n", filename)
+	b, err := json.MarshalIndent(g, "", "\t")
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(filename, b, 0666)
+	if err != nil {
+		return err
+	}
+	return nil
 }

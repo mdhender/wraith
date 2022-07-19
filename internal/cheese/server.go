@@ -289,13 +289,19 @@ func (s *server) serve() error {
 					return
 				}
 				gamePath := filepath.Clean(filepath.Join("D:\\wraith\\testdata\\games", game, fmt.Sprintf("%04d", year), fmt.Sprintf("%d", quarter)))
+				log.Printf("hey: gamePath %s\n", gamePath)
 				jg, err := jdb.Load(filepath.Join(gamePath, "game.json"))
 				if err != nil {
 					log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
 					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 					return
 				}
-				e := adapters.JdbGameToWraithEngine(jg)
+				e, err := adapters.JdbGameToWraithEngine(jg)
+				if err != nil {
+					log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
 
 				bw := bytes.NewBuffer([]byte(fmt.Sprintf("<body><h1>Player %d</h1><code><pre>", playerId)))
 				err = e.Report(bw, playerId)

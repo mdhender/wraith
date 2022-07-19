@@ -21,15 +21,20 @@ package wraith
 import (
 	"fmt"
 	"math"
+	"time"
 )
 
 type Engine struct {
 	Version string
 	Game    struct {
+		Id   int
 		Code string
+		Name string
 		Turn struct {
 			Year    int
 			Quarter int
+			StartDt time.Time
+			EndDt   time.Time
 		}
 	}
 	Colonies      map[string]*CorS

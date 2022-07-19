@@ -30,10 +30,6 @@ import (
 )
 
 func (e *Engine) Report(w io.Writer, playerIds ...int) error {
-	return e.ReportWriter(w, playerIds...)
-}
-
-func (e *Engine) ReportWriter(w io.Writer, playerIds ...int) error {
 	p := message.NewPrinter(language.English)
 
 	asOfTurn := fmt.Sprintf("%04d/%d", e.Game.Turn.Year, e.Game.Turn.Quarter)

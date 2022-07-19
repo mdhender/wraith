@@ -72,6 +72,40 @@ func (g *Game) extractGame(db *sql.DB) error {
 		}
 	}
 
+	// error correction for built by fields
+	if g.Turn.Year == 0 && g.Turn.Quarter == 0 {
+		for _, colony := range g.EnclosedColonies {
+			if colony.BuiltByNationId == 0 {
+				for _, player := range g.Players {
+					if player.Id == colony.ControlledByPlayerId {
+						colony.BuiltByNationId = player.MemberOf
+						break
+					}
+				}
+			}
+		}
+		for _, colony := range g.OrbitalColonies {
+			if colony.BuiltByNationId == 0 {
+				for _, player := range g.Players {
+					if player.Id == colony.ControlledByPlayerId {
+						colony.BuiltByNationId = player.MemberOf
+						break
+					}
+				}
+			}
+		}
+		for _, colony := range g.SurfaceColonies {
+			if colony.BuiltByNationId == 0 {
+				for _, player := range g.Players {
+					if player.Id == colony.ControlledByPlayerId {
+						colony.BuiltByNationId = player.MemberOf
+						break
+					}
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
