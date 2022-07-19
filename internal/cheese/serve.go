@@ -25,12 +25,8 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/mdhender/wraith/engine"
-	"github.com/mdhender/wraith/internal/adapters"
-	"github.com/mdhender/wraith/storage/jdb"
 	"log"
 	"net/http"
-	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -174,113 +170,7 @@ func (s *Server) serve() error {
 				bw.Write([]byte("</pre></code></body>"))
 				_, _ = w.Write(bw.Bytes())
 			})
-			r.Get("/games/{game}/nations/{nation}/turn/{year}/{quarter}/report", func(w http.ResponseWriter, r *http.Request) {
-				_, claims, _ := jwtauth.FromContext(r.Context())
-				claim, ok := s.claims[strings.ToLower(claims["user_id"].(string))]
-				if !ok {
-					log.Printf("%s: %s: fetchClaims: not ok\n", r.Method, r.URL.Path)
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
-				}
-				pNation := chi.URLParam(r, "nation")
-				nationNo, err := strconv.Atoi(pNation)
-				if err != nil {
-					log.Printf("%s: %s: nation: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
-				} else if nationNo != claim.NationNo {
-					log.Printf("%s: %s: nation: claim.NationNo %d: nationNo %d\n", r.Method, r.URL.Path, claim.NationNo, nationNo)
-					http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-					return
-				}
-
-				game, pYear, pQuarter := chi.URLParam(r, "game"), chi.URLParam(r, "year"), chi.URLParam(r, "quarter")
-				year, err := strconv.Atoi(pYear)
-				if err != nil {
-					log.Printf("%s: %s: year: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
-				}
-				quarter, err := strconv.Atoi(pQuarter)
-				if err != nil {
-					log.Printf("%s: %s: quarter: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
-				}
-				e, err := engine.Open(s.store)
-				if err != nil {
-					log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
-				}
-				bw := bytes.NewBuffer([]byte(fmt.Sprintf("<body><h1>Nation %d</h1><code><pre>", nationNo)))
-				err = e.Report(bw, game, nationNo, year, quarter)
-				if err != nil {
-					log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
-				}
-				bw.Write([]byte("</pre></code></body>"))
-				_, _ = w.Write(bw.Bytes())
-			})
-			r.Get("/reports/{game}/{year}/{quarter}/{player}", func(w http.ResponseWriter, r *http.Request) {
-				_, claims, _ := jwtauth.FromContext(r.Context())
-				claim, ok := s.claims[strings.ToLower(claims["user_id"].(string))]
-				if !ok {
-					log.Printf("%s: %s: fetchClaims: not ok\n", r.Method, r.URL.Path)
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
-				}
-				pPlayer := chi.URLParam(r, "player")
-				playerId, err := strconv.Atoi(pPlayer)
-				if err != nil {
-					log.Printf("%s: %s: player: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-					return
-				} else if playerId != claim.PlayerId {
-					log.Printf("%s: %s: player: claim.PlayerName %q: claim.PlayerId %d: playerId %d\n", r.Method, r.URL.Path, claim.PlayerName, claim.PlayerId, playerId)
-					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-					return
-				}
-
-				game, pYear, pQuarter := chi.URLParam(r, "game"), chi.URLParam(r, "year"), chi.URLParam(r, "quarter")
-				year, err := strconv.Atoi(pYear)
-				if err != nil {
-					log.Printf("%s: %s: year: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-					return
-				}
-				quarter, err := strconv.Atoi(pQuarter)
-				if err != nil {
-					log.Printf("%s: %s: quarter: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-					return
-				}
-				gamePath := filepath.Clean(filepath.Join("D:\\wraith\\testdata\\games", game, fmt.Sprintf("%04d", year), fmt.Sprintf("%d", quarter)))
-				log.Printf("hey: gamePath %s\n", gamePath)
-				jg, err := jdb.Load(filepath.Join(gamePath, "game.json"))
-				if err != nil {
-					log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-					return
-				}
-				e, err := adapters.JdbGameToWraithEngine(jg)
-				if err != nil {
-					log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
-				}
-
-				bw := bytes.NewBuffer([]byte(fmt.Sprintf("<body><h1>Player %d</h1><code><pre>", playerId)))
-				err = e.Report(bw, playerId)
-				if err != nil {
-					log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
-				}
-				bw.Write([]byte("</pre></code></body>"))
-				_, _ = w.Write(bw.Bytes())
-			})
+			r.Get("/reports/{game}/{year}/{quarter}/{player}", s.reportsGetHandler(s.templates))
 			r.Get("/games/{game}/orders", s.ordersGetRedirect())
 			r.Get("/games/{game}/orders/{year}/{quarter}", s.ordersGetHandler(s.templates))
 			r.Post("/games/{game}/orders/{year}/{quarter}", s.ordersPostHandler())
