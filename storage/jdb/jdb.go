@@ -96,6 +96,7 @@ func (g *Game) extractGame(db *sql.DB) error {
 		for _, colony := range g.OrbitalColonies {
 			totalPop := colony.Population.ProfessionalQty + colony.Population.SoldierQty + colony.Population.UnskilledQty + colony.Population.UnemployedQty
 			totalCngd := (375*colony.Population.ProfessionalQty + 250*colony.Population.SoldierQty + 125*colony.Population.UnskilledQty) / 1000
+
 			if colony.BuiltByNationId == 0 {
 				for _, player := range g.Players {
 					if player.Id == colony.ControlledByPlayerId {

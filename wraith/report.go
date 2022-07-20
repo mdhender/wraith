@@ -129,12 +129,12 @@ func (e *Engine) Report(w io.Writer, playerIds ...int) error {
 					}
 				}
 
-				fuelPerTurn := int(math.Ceil(float64(item.TotalQty) * item.Unit.FuelPerUnitPerTurn))
+				fuelPerTurn := int(math.Ceil(float64(item.ActiveQty) * item.Unit.FuelPerUnitPerTurn))
 				operMass, operVolume, suOper, fuOper = operMass+mu, operVolume+emu, suOper+su, fuOper+fuelPerTurn
 				if showSUs {
-					_, _ = p.Fprintf(w, "  %-7s  %12d  %11d  %11d  %11d  %11d\n", item.Unit.Code, item.TotalQty, mu, emu, fuelPerTurn, su)
+					_, _ = p.Fprintf(w, "  %-7s  %12d  %11d  %11d  %11d  %11d\n", item.Unit.Code, item.ActiveQty, mu, emu, fuelPerTurn, su)
 				} else {
-					_, _ = p.Fprintf(w, "  %-7s  %12d  %11d  %11d  %11d\n", item.Unit.Code, item.TotalQty, mu, emu, fuelPerTurn)
+					_, _ = p.Fprintf(w, "  %-7s  %12d  %11d  %11d  %11d\n", item.Unit.Code, item.ActiveQty, mu, emu, fuelPerTurn)
 				}
 			}
 			_, _ = p.Fprintf(w, "  -------  ------------  -----------  -----------  -----------\n")
@@ -152,7 +152,7 @@ func (e *Engine) Report(w io.Writer, playerIds ...int) error {
 			for _, item := range cs.Inventory {
 				mu := item.totalMass()
 				if item.Unit.Code == "STUN" || item.Unit.Code == "LTSU" || item.Unit.Code == "SLSU" {
-					availSUs += item.TotalQty - item.StowedQty
+					availSUs += item.ActiveQty
 				}
 				emu, su := item.totalVolume(), 0
 				switch cs.Kind {
@@ -166,9 +166,9 @@ func (e *Engine) Report(w io.Writer, playerIds ...int) error {
 					panic(fmt.Sprintf("assert(cs.Kind != %q)", cs.Kind))
 				}
 				if showSUs {
-					_, _ = p.Fprintf(w, "  %-7s  %12d  %12d  %13d  %12d  %12d  %13d\n", item.Unit.Code, item.TotalQty-item.StowedQty, item.StowedQty, item.TotalQty, mu, emu, su)
+					_, _ = p.Fprintf(w, "  %-7s  %12d  %12d  %13d  %12d  %12d  %13d\n", item.Unit.Code, item.ActiveQty, item.StowedQty, item.ActiveQty+item.StowedQty, mu, emu, su)
 				} else {
-					_, _ = p.Fprintf(w, "  %-7s  %12d  %12d  %13d  %12d  %12d\n", item.Unit.Code, item.TotalQty-item.StowedQty, item.StowedQty, item.TotalQty, mu, emu)
+					_, _ = p.Fprintf(w, "  %-7s  %12d  %12d  %13d  %12d  %12d\n", item.Unit.Code, item.ActiveQty, item.StowedQty, item.ActiveQty+item.StowedQty, mu, emu)
 				}
 				cargoMass, cargoVolume, suCargo = cargoMass+mu, cargoVolume+emu, suCargo+su
 			}
@@ -184,10 +184,10 @@ func (e *Engine) Report(w io.Writer, playerIds ...int) error {
 			for _, group := range cs.FarmGroups {
 				_, _ = p.Fprintf(w, "  Group: %2d  Produces: %s\n", group.No, food.Code)
 				for _, unit := range group.Units {
-					fuelPerTurn := int(math.Ceil(float64(unit.TotalQty) * unit.Unit.FuelPerUnitPerTurn))
-					proLabor, uskLabor := 1*unit.TotalQty, 3*unit.TotalQty
+					fuelPerTurn := int(math.Ceil(float64(unit.ActiveQty) * unit.Unit.FuelPerUnitPerTurn))
+					proLabor, uskLabor := 1*unit.ActiveQty, 3*unit.ActiveQty
 					_, _ = p.Fprintf(w, "     Input:  Farms__  Quantity_____  Professionals  Unskilled____  FUEL/Turn____\n")
-					_, _ = p.Fprintf(w, "             %-7s  %13d  %13d  %13d  %13d\n", unit.Unit.Code, unit.TotalQty, proLabor, uskLabor, fuelPerTurn)
+					_, _ = p.Fprintf(w, "             %-7s  %13d  %13d  %13d  %13d\n", unit.Unit.Code, unit.ActiveQty, proLabor, uskLabor, fuelPerTurn)
 				}
 				_, _ = p.Fprintf(w, "    Output:  Unit___  Stage_1______  Stage_2______  Stage_3______\n")
 				_, _ = p.Fprintf(w, "             %-7s  %13d  %13d  %13d\n", food.Code, group.StageQty[0], group.StageQty[1], group.StageQty[2])

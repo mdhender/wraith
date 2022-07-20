@@ -20,6 +20,7 @@ package wraith
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"time"
 )
@@ -63,8 +64,8 @@ type CorS struct {
 	TechLevel     int     // tech level of this colony or ship
 	ControlledBy  *Player // player that controls this colony or ship
 	Planet        *Planet // planet the colony or ship is located at
-	Hull          []*HullUnit
-	Inventory     []*InventoryUnit
+	Hull          InventoryUnits
+	Inventory     InventoryUnits
 	Population    Population
 	Pay           Pay
 	Rations       Rations
@@ -76,7 +77,173 @@ type CorS struct {
 		allocated int
 		used      int
 	}
-	nonCombatDeaths int
+	population population
+}
+
+//func (cs *CorS) allocateFuel(k string) {
+//	for _, u := range cs.Hull {
+//		if cs.fuel.available <= 0 {
+//			break
+//		} else if u.Unit.Kind != k {
+//			continue
+//		}
+//		u.fuel.needed = u.Unit.fuelUsed(u.ActiveQty)
+//		if cs.fuel.available < u.fuel.needed {
+//			u.activeQty = cs.fuel.available / u.Unit.fuelUsed(1)
+//			u.fuel.allocated = u.Unit.fuelUsed(u.activeQty)
+//		} else {
+//			u.activeQty = u.ActiveQty
+//			u.fuel.allocated = u.fuel.needed
+//		}
+//		cs.fuel.available -= u.fuel.allocated
+//	}
+//}
+
+func (cs *CorS) farmProduction(pos []*PhaseOrders) {
+	var playerName string
+	if cs.ControlledBy != nil {
+		playerName = cs.ControlledBy.Name
+	} else {
+		playerName = "nobody"
+	}
+
+	for _, group := range cs.FarmGroups {
+		unitsProduced := 0
+		for _, moe := range group.Units {
+			unitsActive := maxCapacity(cs, moe)
+
+			// allocate fuel
+			moe.fuel.needed = moe.Unit.fuelUsed(moe.ActiveQty)
+			moe.fuel.allocated = moe.Unit.fuelUsed(unitsActive)
+			cs.fuel.available -= moe.fuel.allocated
+
+			// allocate professional labor
+			moe.pro.needed = moe.ActiveQty
+			moe.pro.allocated = unitsActive
+			cs.population.professional -= moe.pro.allocated
+
+			// allocate unskilled labor
+			// TODO: allow automation units to replace unskilled labor
+			moe.uns.needed = 3 * moe.pro.needed
+			moe.uns.allocated = 3 * unitsActive
+			cs.population.unskilled -= moe.uns.allocated
+
+			//log.Printf("cors: farmProduction: %-20s: %-6s: group %2d: %-7s %8d: sol %-5v qty %8d fuel %8d\n", playerName, cs.HullId, group.No, moe.Unit.Code, moe.ActiveQty, solarPowered, moe.activeQty, moe.fuel.allocated)
+			log.Printf("cors: farmProduction: %-20s: %-6s: group %2d: fuel %8d / %8d: pro %8d / %8d: uns %8d / %8d\n",
+				playerName, cs.HullId, group.No, moe.fuel.allocated, moe.fuel.needed, moe.pro.needed, moe.pro.allocated, moe.uns.allocated, moe.uns.allocated)
+
+			// determine number of units produced
+			if moe.Unit.TechLevel == 1 {
+				unitsProduced = unitsActive * 100
+			} else {
+				unitsProduced = unitsActive * 20 * moe.Unit.TechLevel
+			}
+			// convert from units per year to units per turn
+			unitsProduced = unitsProduced / 4
+		}
+
+		// push the newly produced units through the pipeline
+		if group.StageQty[2] > unitsProduced {
+			group.StageQty[3] = unitsProduced
+			group.StageQty[2] -= unitsProduced
+		} else {
+			group.StageQty[3] = group.StageQty[2]
+			group.StageQty[2] = 0
+		}
+		if group.StageQty[1] > unitsProduced {
+			group.StageQty[2] += unitsProduced
+			group.StageQty[1] -= unitsProduced
+		} else {
+			group.StageQty[2] += group.StageQty[1]
+			group.StageQty[1] = 0
+		}
+		if group.StageQty[0] > unitsProduced {
+			group.StageQty[1] += unitsProduced
+			group.StageQty[0] -= unitsProduced
+		} else {
+			group.StageQty[1] += group.StageQty[0]
+			group.StageQty[0] = 0
+		}
+		group.StageQty[0] += unitsProduced
+	}
+
+}
+
+// laborInitialization updates the available labor pool.
+// it allocates first to construction crews and then to spy teams.
+// if there are not enough people to fill those crews or teams,
+// we allocate as many as we can.
+// the remaining population can be used as needed.
+func (cs *CorS) laborInitialization(pos []*PhaseOrders) {
+	cs.population.professional = cs.Population.ProfessionalQty
+	cs.population.soldier = cs.Population.SoldierQty
+	cs.population.unskilled = cs.Population.UnskilledQty
+	cs.population.unemployed = cs.Population.UnemployedQty
+
+	// TODO: let automation units replace unskilled workers
+	cs.population.construction = cs.Population.ConstructionCrewQty
+	if cs.population.construction > 0 {
+		if cs.population.professional < cs.population.construction {
+			cs.population.construction = cs.population.professional
+		}
+		if cs.population.unskilled < cs.population.construction {
+			cs.population.construction = cs.population.unskilled
+		}
+		cs.population.professional -= cs.population.construction
+		cs.population.unskilled -= cs.population.construction
+	}
+
+	cs.population.spy = cs.Population.SpyTeamQty
+	if cs.population.spy > 0 {
+		cs.population.spy = cs.Population.SpyTeamQty
+		if cs.population.professional < cs.population.spy {
+			cs.population.spy = cs.population.professional
+		}
+		if cs.population.soldier < cs.population.spy {
+			cs.population.spy = cs.population.soldier
+		}
+		cs.population.professional -= cs.population.spy
+		cs.population.soldier -= cs.population.spy
+	}
+
+	return
+}
+
+func (cs *CorS) lifeSupportCheck() {
+	if !(cs.Kind == "enclosed" || cs.Kind == "orbital" || cs.Kind == "ship") {
+		return
+	}
+	var playerName string
+	if cs.ControlledBy != nil {
+		playerName = cs.ControlledBy.Name
+	} else {
+		playerName = "nobody"
+	}
+	if cs.population.total() <= cs.population.lifeSupportCapacity {
+		return
+	}
+	deaths := cs.population.total() - cs.population.lifeSupportCapacity
+	log.Printf("execute: life-support: %q: %q: deaths %d\n", playerName, cs.HullId, deaths)
+	cs.population.killProportionally(deaths)
+	cs.population.nonCombatDeaths += deaths
+}
+
+func (cs *CorS) lifeSupportInitialization(pos []*PhaseOrders) {
+	cs.population.lifeSupportCapacity = 0
+	if !(cs.Kind == "enclosed" || cs.Kind == "orbital" || cs.Kind == "ship") {
+		return
+	}
+	for _, u := range cs.Hull {
+		if cs.fuel.available <= 0 {
+			break
+		} else if u.Unit.Kind != "life-support" {
+			continue
+		}
+		// allocateFuel will set activeQty
+		cs.fuel.available -= u.allocateFuel(cs.fuel.available)
+		// capacity is number of units times the unit's tech level squared
+		cs.population.lifeSupportCapacity += u.activeQty * u.Unit.TechLevel * u.Unit.TechLevel
+	}
 }
 
 type CorSs []*CorS
@@ -151,58 +318,71 @@ type FactoryGroupUnits struct {
 
 // FarmGroup is a group of farm units on a ship or colony.
 type FarmGroup struct {
-	CorS     *CorS             // ship or colony that controls the group
-	Id       int               // unique identifier
-	No       int               // group number, range 1...10
-	Units    []*FarmGroupUnits // farm units in the group
-	StageQty [4]int            // assumes four turns to produce a single unit
+	CorS     *CorS          // ship or colony that controls the group
+	Id       int            // unique identifier
+	No       int            // group number, range 1...10
+	Product  *Unit          // unit being produced by the group
+	Units    InventoryUnits // units assigned to the group
+	StageQty [4]int         // assumes four turns to produce a single unit
 }
 
 type FarmGroups []*FarmGroup
 
-// FarmGroupUnits is the number of farms working together in the group
-type FarmGroupUnits struct {
-	Unit     *Unit // farm unit growing the food
-	TotalQty int   // number of farm units in the group
-}
-
-type HullUnit struct {
-	Unit      *Unit
-	TotalQty  int // number of units
-	activeQty int
-	fuel      struct {
-		needed    int
-		allocated int
-		used      int
-	}
-}
-
-func (u *HullUnit) totalMass() int {
-	return int(math.Ceil(float64(u.TotalQty) * u.Unit.MassPerUnit))
-}
-
-func (u *HullUnit) totalVolume() int {
-	return int(math.Ceil(float64(u.TotalQty) * u.Unit.VolumePerUnit))
+type requisition struct {
+	needed    int
+	allocated int
+	used      int
 }
 
 type InventoryUnit struct {
-	Unit      *Unit
-	TotalQty  int // number of units
-	StowedQty int // number of units that are disassembled for storage
-	activeQty int
-	fuel      struct {
-		needed    int
-		allocated int
-		used      int
+	Unit           *Unit
+	ActiveQty      int // number of active/operational units
+	StowedQty      int // number of units that are disassembled for storage
+	activeQty      int
+	fuel, pro, uns requisition
+}
+
+// allocateFuel activates as many units as it can given the amount of fuel available.
+// it returns the amount actually used.
+func (u *InventoryUnit) allocateFuel(fuelAvailable int) int {
+	u.fuel.needed, u.fuel.allocated, u.fuel.used = 0, 0, 0
+
+	u.fuel.needed = int(math.Ceil(u.Unit.FuelPerUnitPerTurn * float64(u.ActiveQty)))
+	if u.fuel.needed == 0 {
+		// nothing to do
+		return 0
+	} else if fuelAvailable < u.fuel.needed {
+		// activate as many units as we can
+		u.activeQty = int(float64(fuelAvailable) / u.Unit.FuelPerUnitPerTurn)
+		u.fuel.allocated = int(math.Ceil(u.Unit.FuelPerUnitPerTurn * float64(u.ActiveQty)))
+	} else {
+		u.activeQty = u.ActiveQty
+		u.fuel.allocated = u.fuel.needed
 	}
+
+	return u.fuel.allocated
 }
 
 func (u *InventoryUnit) totalMass() int {
-	return int(math.Ceil(float64(u.TotalQty) * u.Unit.MassPerUnit))
+	return int(math.Ceil(float64(u.ActiveQty+u.StowedQty) * u.Unit.MassPerUnit))
 }
 
 func (u *InventoryUnit) totalVolume() int {
-	return int(math.Ceil(float64(u.TotalQty-u.StowedQty)*u.Unit.VolumePerUnit)) + int(math.Ceil(float64(u.StowedQty)*u.Unit.StowedVolumePerUnit))
+	return int(math.Ceil(float64(u.ActiveQty)*u.Unit.VolumePerUnit)) + int(math.Ceil(float64(u.StowedQty)*u.Unit.StowedVolumePerUnit))
+}
+
+type InventoryUnits []*InventoryUnit
+
+func (u InventoryUnits) Len() int {
+	return len(u)
+}
+
+func (u InventoryUnits) Less(i, j int) bool {
+	return u[i].Unit.Id < u[j].Unit.Id
+}
+
+func (u InventoryUnits) Swap(i, j int) {
+	u[i], u[j] = u[j], u[i]
 }
 
 // MineGroup is a group of mines working a single deposit.
@@ -299,40 +479,72 @@ type Population struct {
 	NaturalDeathsPriorTurn int
 }
 
-// KillProportionally kills by proportion
-func (p *Population) KillProportionally(n int) {
-	for n > 0 && p.Total() > 0 {
-		pct := float64(n) / float64(p.Total())
-		if p.ProfessionalQty > 0 {
-			k := int(pct * float64(p.ProfessionalQty))
+type population struct {
+	professional        int
+	soldier             int
+	unskilled           int
+	unemployed          int
+	construction        int
+	spy                 int
+	lifeSupportCapacity int
+	nonCombatDeaths     int
+}
+
+// killProportionally kills by proportion.
+// tricky bit is dealing with crews and teams since they each have 2 population units
+func (p *population) killProportionally(n int) {
+	for n > 0 && p.total() > 0 {
+		pct := float64(n) / float64(p.total())
+		if p.professional > 0 {
+			k := int(pct * float64(p.professional))
 			n -= k
-			p.ProfessionalQty -= k
+			p.professional -= k
 		}
-		if p.SoldierQty > 0 {
-			k := int(pct * float64(p.SoldierQty))
+		if p.soldier > 0 {
+			k := int(pct * float64(p.soldier))
 			if k < 1 {
 				k = 1
 			}
 			n -= k
-			p.SoldierQty -= k
+			p.soldier -= k
 		}
-		if p.UnskilledQty > 0 {
-			k := int(pct * float64(p.UnskilledQty))
+		if p.unskilled > 0 {
+			k := int(pct * float64(p.unskilled))
 			if k < 1 {
 				k = 1
 			}
 			n -= k
-			p.UnskilledQty -= k
+			p.unskilled -= k
 		}
-		if p.UnemployedQty > 0 {
-			k := int(pct * float64(p.UnemployedQty))
+		if p.unemployed > 0 {
+			k := int(pct * float64(p.unemployed))
 			if k < 1 {
 				k = 1
 			}
 			n -= k
-			p.UnemployedQty -= k
+			p.unemployed -= k
+		}
+		if p.construction > 0 {
+			k := int(pct * float64(p.construction))
+			if k < 1 {
+				k = 1
+			}
+			n -= 2 * k
+			p.construction -= k
+		}
+		if p.spy > 0 {
+			k := int(pct * float64(p.spy))
+			if k < 1 {
+				k = 1
+			}
+			n -= 2 * k
+			p.spy -= k
 		}
 	}
+}
+
+func (p *population) total() int {
+	return p.professional + p.soldier + p.unskilled + p.unemployed + 2*p.construction + 2*p.spy
 }
 
 func (p Population) Total() int {

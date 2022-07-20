@@ -113,8 +113,15 @@ func JdbGameToWraithEngine(jg *jdb.Game) (*wraith.Engine, error) {
 		e.FactoryGroups[g.Id] = g
 	}
 
+	var food *wraith.Unit
+	for _, u := range e.Units {
+		if u.Code == "FOOD" {
+			food = u
+			break
+		}
+	}
 	for _, group := range jg.FarmGroups {
-		g := jdbFarmGroupToWraithFarmGroup(group, e.CorSById, e.Units)
+		g := jdbFarmGroupToWraithFarmGroup(group, food, e.CorSById, e.Units)
 		e.FarmGroups[g.Id] = g
 	}
 
@@ -242,9 +249,9 @@ func jdbEnclosedColonyToWraithColony(colony *jdb.EnclosedColony, factoryGroup ma
 	}
 	for _, unit := range colony.Hull {
 		if u, ok := units[unit.UnitId]; ok {
-			cors.Hull = append(cors.Hull, &wraith.HullUnit{
-				Unit:     u,
-				TotalQty: unit.TotalQty,
+			cors.Hull = append(cors.Hull, &wraith.InventoryUnit{
+				Unit:      u,
+				ActiveQty: unit.TotalQty,
 			})
 		}
 	}
@@ -252,7 +259,7 @@ func jdbEnclosedColonyToWraithColony(colony *jdb.EnclosedColony, factoryGroup ma
 		if u, ok := units[unit.UnitId]; ok {
 			cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{
 				Unit:      u,
-				TotalQty:  unit.TotalQty,
+				ActiveQty: unit.TotalQty - unit.StowedQty,
 				StowedQty: unit.StowedQty,
 			})
 		}
@@ -277,17 +284,18 @@ func jdbFactoryGroupToWraithFactoryGroup(group *jdb.FactoryGroup, cors map[int]*
 	return g
 }
 
-func jdbFarmGroupToWraithFarmGroup(group *jdb.FarmGroup, cors map[int]*wraith.CorS, units map[int]*wraith.Unit) *wraith.FarmGroup {
+func jdbFarmGroupToWraithFarmGroup(group *jdb.FarmGroup, food *wraith.Unit, cors map[int]*wraith.CorS, units map[int]*wraith.Unit) *wraith.FarmGroup {
 	g := &wraith.FarmGroup{
 		CorS:     cors[group.CorSId],
 		Id:       group.Id,
 		No:       group.No,
+		Product:  food,
 		StageQty: [4]int{group.Stage1Qty, group.Stage2Qty, group.Stage3Qty, group.Stage4Qty},
 	}
 	for _, u := range group.Units {
-		g.Units = append(g.Units, &wraith.FarmGroupUnits{
-			Unit:     units[u.UnitId],
-			TotalQty: u.TotalQty,
+		g.Units = append(g.Units, &wraith.InventoryUnit{
+			Unit:      units[u.UnitId],
+			ActiveQty: u.TotalQty,
 		})
 	}
 	return g
@@ -363,9 +371,9 @@ func jdbOrbitalColonyToWraithColony(colony *jdb.OrbitalColony, factoryGroup map[
 	}
 	for _, unit := range colony.Hull {
 		if u, ok := units[unit.UnitId]; ok {
-			cors.Hull = append(cors.Hull, &wraith.HullUnit{
-				Unit:     u,
-				TotalQty: unit.TotalQty,
+			cors.Hull = append(cors.Hull, &wraith.InventoryUnit{
+				Unit:      u,
+				ActiveQty: unit.TotalQty,
 			})
 		}
 	}
@@ -373,7 +381,7 @@ func jdbOrbitalColonyToWraithColony(colony *jdb.OrbitalColony, factoryGroup map[
 		if u, ok := units[unit.UnitId]; ok {
 			cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{
 				Unit:      u,
-				TotalQty:  unit.TotalQty,
+				ActiveQty: unit.TotalQty - unit.StowedQty,
 				StowedQty: unit.StowedQty,
 			})
 		}
@@ -433,9 +441,9 @@ func jdbShipToWraithShip(ship *jdb.Ship, factoryGroup map[int]*wraith.FactoryGro
 	}
 	for _, unit := range ship.Hull {
 		if u, ok := units[unit.UnitId]; ok {
-			cors.Hull = append(cors.Hull, &wraith.HullUnit{
-				Unit:     u,
-				TotalQty: unit.TotalQty,
+			cors.Hull = append(cors.Hull, &wraith.InventoryUnit{
+				Unit:      u,
+				ActiveQty: unit.TotalQty,
 			})
 		}
 	}
@@ -443,7 +451,7 @@ func jdbShipToWraithShip(ship *jdb.Ship, factoryGroup map[int]*wraith.FactoryGro
 		if u, ok := units[unit.UnitId]; ok {
 			cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{
 				Unit:      u,
-				TotalQty:  unit.TotalQty,
+				ActiveQty: unit.TotalQty - unit.StowedQty,
 				StowedQty: unit.StowedQty,
 			})
 		}
@@ -496,9 +504,9 @@ func jdbSurfaceColonyToWraithColony(colony *jdb.SurfaceColony, factoryGroup map[
 	}
 	for _, unit := range colony.Hull {
 		if u, ok := units[unit.UnitId]; ok {
-			cors.Hull = append(cors.Hull, &wraith.HullUnit{
-				Unit:     u,
-				TotalQty: unit.TotalQty,
+			cors.Hull = append(cors.Hull, &wraith.InventoryUnit{
+				Unit:      u,
+				ActiveQty: unit.TotalQty,
 			})
 		}
 	}
@@ -506,7 +514,7 @@ func jdbSurfaceColonyToWraithColony(colony *jdb.SurfaceColony, factoryGroup map[
 		if u, ok := units[unit.UnitId]; ok {
 			cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{
 				Unit:      u,
-				TotalQty:  unit.TotalQty,
+				ActiveQty: unit.TotalQty - unit.StowedQty,
 				StowedQty: unit.StowedQty,
 			})
 		}

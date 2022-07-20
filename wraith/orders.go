@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/mdhender/wraith/internal/orders"
 	"log"
+	"sort"
 	"strings"
 )
 
@@ -104,14 +105,27 @@ type NameShipOrder struct {
 func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 	if indexOf("fuel-allocation", phases) != -1 {
 		log.Printf("execute: fuel-allocation phase\n")
-		e.ExecuteFuelAllocationPhase(pos)
+		for _, err := range e.ExecuteFuelAllocationPhase(pos) {
+			log.Printf("execute: fuel-allocation: %v\n", err)
+		}
+	}
+	if indexOf("labor-allocation", phases) != -1 {
+		log.Printf("execute: labor-allocation\n")
+		for _, err := range e.ExecuteLaborAllocationPhase(pos) {
+			log.Printf("execute: labor-allocation: %v\n", err)
+		}
 	}
 	if indexOf("life-support", phases) != -1 {
 		log.Printf("execute: life-support phase\n")
-		e.ExecuteLifeSupportPhase(pos)
+		for _, err := range e.ExecuteLifeSupportPhase(pos) {
+			log.Printf("execute: life-support: %v\n", err)
+		}
 	}
 	if indexOf("farm-production", phases) != -1 {
-		log.Printf("execute: farm-production phase: not implemented\n")
+		log.Printf("execute: farm-production\n")
+		for _, err := range e.ExecuteFarmProductionPhase(pos) {
+			log.Printf("execute: farm-production: %v\n", err)
+		}
 	}
 	if indexOf("mine-production", phases) != -1 {
 		log.Printf("execute: mine-production phase: not implemented\n")
@@ -168,34 +182,49 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 	}
 
 	// bookkeeping
-	for _, player := range e.Players {
-		for _, colony := range player.Colonies {
-			colony.Population.BirthsPriorTurn = 0
-			colony.Population.NaturalDeathsPriorTurn = colony.nonCombatDeaths
-			foundFuel := false
-			for _, u := range colony.Inventory {
-				if u.Unit.Kind == "fuel" {
-					if foundFuel {
-						u.TotalQty, u.StowedQty = 0, 0
-					} else {
-						foundFuel, u.TotalQty, u.StowedQty = true, colony.fuel.available, colony.fuel.available
-					}
+	for _, cs := range e.CorSById {
+		// population changes
+		if cs.Kind == "ship" {
+			cs.Population.BirthsPriorTurn = 0
+		} else {
+			// TODO: create a standard of living metric and change rate to 0.25% to 2.5%
+			birthRate := 0.0025 // 0.25% per year baseline
+			cs.Population.BirthsPriorTurn = int(float64(cs.population.total()) * birthRate / 4)
+		}
+		cs.Population.ProfessionalQty = cs.population.professional
+		cs.Population.SoldierQty = cs.population.soldier
+		cs.Population.UnskilledQty = cs.population.unskilled
+		cs.Population.UnemployedQty = cs.population.unemployed + cs.Population.BirthsPriorTurn
+		cs.Population.NaturalDeathsPriorTurn = cs.population.nonCombatDeaths
+
+		// update fuel depot
+		foundFuel := false
+		for _, u := range cs.Inventory {
+			if u.Unit.Kind == "fuel" {
+				if foundFuel {
+					u.ActiveQty, u.StowedQty = 0, 0
+				} else {
+					foundFuel, u.ActiveQty, u.StowedQty = true, 0, cs.fuel.available
 				}
 			}
 		}
-		for _, ship := range player.Ships {
-			ship.Population.BirthsPriorTurn = 0
-			ship.Population.NaturalDeathsPriorTurn = ship.nonCombatDeaths
-			foundFuel := false
-			for _, u := range ship.Inventory {
-				if u.Unit.Kind == "fuel" {
-					if foundFuel {
-						u.TotalQty, u.StowedQty = 0, 0
-					} else {
-						foundFuel, u.TotalQty, u.StowedQty = true, ship.fuel.available, ship.fuel.available
-					}
+
+		// inventory changes
+		for _, group := range cs.FarmGroups {
+			var unit *InventoryUnit
+			for _, u := range cs.Inventory {
+				if u.Unit.Id == group.Product.Id {
+					unit = u
+					break
 				}
 			}
+			if unit == nil {
+				unit = &InventoryUnit{Unit: group.Product}
+				cs.Inventory = append(cs.Inventory, unit)
+				sort.Sort(cs.Inventory)
+			}
+			unit.StowedQty += group.StageQty[3]
+			group.StageQty[3] = 0
 		}
 	}
 
@@ -210,7 +239,7 @@ func (e *Engine) ExecuteFuelAllocationPhase(pos []*PhaseOrders) (errs []error) {
 				if u.Unit.Kind != "fuel" {
 					continue
 				}
-				colony.fuel.available += u.TotalQty
+				colony.fuel.available += u.ActiveQty + u.StowedQty
 			}
 		}
 		for _, ship := range player.Ships {
@@ -218,7 +247,7 @@ func (e *Engine) ExecuteFuelAllocationPhase(pos []*PhaseOrders) (errs []error) {
 				if u.Unit.Kind != "fuel" {
 					continue
 				}
-				ship.fuel.available += u.TotalQty
+				ship.fuel.available += u.ActiveQty + u.StowedQty
 			}
 		}
 	}
@@ -227,55 +256,27 @@ func (e *Engine) ExecuteFuelAllocationPhase(pos []*PhaseOrders) (errs []error) {
 
 // ExecuteLifeSupportPhase runs all the orders in the life support phase.
 func (e *Engine) ExecuteLifeSupportPhase(pos []*PhaseOrders) (errs []error) {
-	for _, player := range e.Players {
-		for _, colony := range player.Colonies {
-			if !(colony.Kind == "enclosed" || colony.Kind == "orbital") {
-				continue
-			}
-			lsuPopulation := 0
-			for _, u := range colony.Hull {
-				if colony.fuel.available <= 0 {
-					break
-				} else if u.Unit.Kind != "life-support" {
-					continue
-				}
-				u.fuel.needed = u.Unit.fuelUsed(u.TotalQty)
-				if colony.fuel.available < u.fuel.needed {
-					u.activeQty = colony.fuel.available / u.Unit.fuelUsed(1)
-					u.fuel.allocated = u.Unit.fuelUsed(u.activeQty)
-				} else {
-					u.activeQty = u.TotalQty
-					u.fuel.allocated = u.fuel.needed
-				}
-				colony.fuel.available -= u.fuel.allocated
-				lsuPopulation = lsuPopulation + u.activeQty*u.Unit.TechLevel*u.Unit.TechLevel
-			}
-			if deaths := colony.Population.Total() - lsuPopulation; deaths > 0 {
-				log.Printf("execute: life-support: %q: %q: deaths %d\n", player.Name, colony.HullId, deaths)
-				colony.Population.KillProportionally(deaths)
-				colony.nonCombatDeaths += deaths
-			}
-		}
-		for _, ship := range player.Ships {
-			lsuPopulation := 0
-			for _, u := range ship.Hull {
-				if ship.fuel.available <= 0 {
-					break
-				} else if u.Unit.Kind != "life-support" {
-					continue
-				}
-				u.fuel.needed = u.Unit.fuelUsed(u.TotalQty)
-				if ship.fuel.available < u.fuel.needed {
-					u.activeQty = ship.fuel.available / u.Unit.fuelUsed(1)
-					u.fuel.allocated = u.Unit.fuelUsed(u.activeQty)
-				} else {
-					u.activeQty = u.TotalQty
-					u.fuel.allocated = u.fuel.needed
-				}
-				ship.fuel.available -= u.fuel.allocated
-				lsuPopulation = lsuPopulation + u.activeQty*u.Unit.TechLevel*u.Unit.TechLevel
-			}
-		}
+	for _, cors := range e.CorSById {
+		cors.lifeSupportInitialization(pos)
+	}
+	for _, cors := range e.CorSById {
+		cors.lifeSupportCheck()
+	}
+	return errs
+}
+
+// ExecuteLaborAllocationPhase runs all the orders in the fuel allocation phase.
+func (e *Engine) ExecuteLaborAllocationPhase(pos []*PhaseOrders) (errs []error) {
+	for _, cors := range e.CorSById {
+		cors.laborInitialization(pos)
+	}
+	return errs
+}
+
+// ExecuteFarmProductionPhase runs all the orders in the farm production phase.
+func (e *Engine) ExecuteFarmProductionPhase(pos []*PhaseOrders) (errs []error) {
+	for _, cors := range e.CorSById {
+		cors.farmProduction(pos)
 	}
 	return errs
 }

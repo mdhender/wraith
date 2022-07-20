@@ -272,7 +272,7 @@ func wraithColonyToJdbEnclosedColony(colony *wraith.CorS, game *jdb.Game) *jdb.E
 		for _, unit := range group.Units {
 			fg.Units = append(fg.Units, &jdb.FarmGroupUnits{
 				UnitId:   unit.Unit.Id,
-				TotalQty: unit.TotalQty,
+				TotalQty: unit.ActiveQty,
 			})
 		}
 		game.FarmGroups = append(game.FarmGroups, fg)
@@ -281,7 +281,7 @@ func wraithColonyToJdbEnclosedColony(colony *wraith.CorS, game *jdb.Game) *jdb.E
 	for _, unit := range colony.Hull {
 		c.Hull = append(c.Hull, &jdb.HullUnit{
 			UnitId:   unit.Unit.Id,
-			TotalQty: unit.TotalQty,
+			TotalQty: unit.ActiveQty + unit.StowedQty,
 		})
 	}
 	sort.Sort(c.Hull)
@@ -289,7 +289,7 @@ func wraithColonyToJdbEnclosedColony(colony *wraith.CorS, game *jdb.Game) *jdb.E
 	for _, unit := range colony.Inventory {
 		c.Inventory = append(c.Inventory, &jdb.InventoryUnit{
 			UnitId:    unit.Unit.Id,
-			TotalQty:  unit.TotalQty,
+			TotalQty:  unit.ActiveQty + unit.StowedQty,
 			StowedQty: unit.StowedQty,
 		})
 	}
@@ -382,7 +382,7 @@ func wraithColonyToJdbOrbitalColony(colony *wraith.CorS, game *jdb.Game) *jdb.Or
 		for _, unit := range group.Units {
 			fg.Units = append(fg.Units, &jdb.FarmGroupUnits{
 				UnitId:   unit.Unit.Id,
-				TotalQty: unit.TotalQty,
+				TotalQty: unit.ActiveQty,
 			})
 		}
 		game.FarmGroups = append(game.FarmGroups, fg)
@@ -391,7 +391,7 @@ func wraithColonyToJdbOrbitalColony(colony *wraith.CorS, game *jdb.Game) *jdb.Or
 	for _, unit := range colony.Hull {
 		c.Hull = append(c.Hull, &jdb.HullUnit{
 			UnitId:   unit.Unit.Id,
-			TotalQty: unit.TotalQty,
+			TotalQty: unit.ActiveQty + unit.StowedQty,
 		})
 	}
 	sort.Sort(c.Hull)
@@ -399,7 +399,7 @@ func wraithColonyToJdbOrbitalColony(colony *wraith.CorS, game *jdb.Game) *jdb.Or
 	for _, unit := range colony.Inventory {
 		c.Inventory = append(c.Inventory, &jdb.InventoryUnit{
 			UnitId:    unit.Unit.Id,
-			TotalQty:  unit.TotalQty,
+			TotalQty:  unit.ActiveQty + unit.StowedQty,
 			StowedQty: unit.StowedQty,
 		})
 	}
@@ -476,7 +476,7 @@ func wraithColonyToJdbSurfaceColony(colony *wraith.CorS, game *jdb.Game) *jdb.Su
 		for _, unit := range group.Units {
 			fg.Units = append(fg.Units, &jdb.FarmGroupUnits{
 				UnitId:   unit.Unit.Id,
-				TotalQty: unit.TotalQty,
+				TotalQty: unit.ActiveQty,
 			})
 		}
 		game.FarmGroups = append(game.FarmGroups, fg)
@@ -485,7 +485,7 @@ func wraithColonyToJdbSurfaceColony(colony *wraith.CorS, game *jdb.Game) *jdb.Su
 	for _, unit := range colony.Hull {
 		c.Hull = append(c.Hull, &jdb.HullUnit{
 			UnitId:   unit.Unit.Id,
-			TotalQty: unit.TotalQty,
+			TotalQty: unit.ActiveQty + unit.StowedQty,
 		})
 	}
 	sort.Sort(c.Hull)
@@ -493,7 +493,7 @@ func wraithColonyToJdbSurfaceColony(colony *wraith.CorS, game *jdb.Game) *jdb.Su
 	for _, unit := range colony.Inventory {
 		c.Inventory = append(c.Inventory, &jdb.InventoryUnit{
 			UnitId:    unit.Unit.Id,
-			TotalQty:  unit.TotalQty,
+			TotalQty:  unit.ActiveQty + unit.StowedQty,
 			StowedQty: unit.StowedQty,
 		})
 	}
@@ -587,7 +587,7 @@ func wraithShipToJdbShip(ship *wraith.CorS, game *jdb.Game) *jdb.Ship {
 		for _, unit := range group.Units {
 			fg.Units = append(fg.Units, &jdb.FarmGroupUnits{
 				UnitId:   unit.Unit.Id,
-				TotalQty: unit.TotalQty,
+				TotalQty: unit.ActiveQty,
 			})
 		}
 		game.FarmGroups = append(game.FarmGroups, fg)
@@ -596,7 +596,7 @@ func wraithShipToJdbShip(ship *wraith.CorS, game *jdb.Game) *jdb.Ship {
 	for _, unit := range ship.Hull {
 		s.Hull = append(s.Hull, &jdb.HullUnit{
 			UnitId:   unit.Unit.Id,
-			TotalQty: unit.TotalQty,
+			TotalQty: unit.ActiveQty + unit.StowedQty,
 		})
 	}
 	sort.Sort(s.Hull)
@@ -604,7 +604,7 @@ func wraithShipToJdbShip(ship *wraith.CorS, game *jdb.Game) *jdb.Ship {
 	for _, unit := range ship.Inventory {
 		s.Inventory = append(s.Inventory, &jdb.InventoryUnit{
 			UnitId:    unit.Unit.Id,
-			TotalQty:  unit.TotalQty,
+			TotalQty:  unit.ActiveQty + unit.StowedQty,
 			StowedQty: unit.StowedQty,
 		})
 	}

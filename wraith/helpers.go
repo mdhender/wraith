@@ -96,3 +96,41 @@ func indexOf(s string, sl []string) int {
 	}
 	return -1
 }
+
+func isSolarPowered(u *Unit, cs *CorS) bool {
+	switch u.Kind {
+	case "farm":
+		return cs.Planet.OrbitNo <= 5 && cs.Kind == "orbital" && ("FRM-2" <= u.Code && u.Code <= "FRM-5")
+	}
+	return false
+}
+
+func isZero(n float64) bool {
+	return n < 0.001
+}
+
+// TODO: logic for factory groups efficiency, automation units, and construction crews
+func maxCapacity(cs *CorS, u *InventoryUnit) int {
+	// assume maximum capacity
+	maxUnits := u.ActiveQty
+
+	// limit capacity based on available fuel
+	if !(isSolarPowered(u.Unit, cs) || isZero(u.Unit.FuelPerUnitPerTurn)) {
+		fuelCapacity := int(float64(cs.fuel.available) / u.Unit.FuelPerUnitPerTurn)
+		if maxUnits > fuelCapacity {
+			maxUnits = fuelCapacity
+		}
+	}
+
+	// limit capacity based on available professionals
+	if maxUnits > cs.population.professional {
+		maxUnits = cs.population.professional
+	}
+
+	// limit capacity based on available unskilled workers
+	if maxUnits > cs.population.unskilled/3 {
+		maxUnits = cs.population.unskilled / 3
+	}
+
+	return maxUnits
+}
