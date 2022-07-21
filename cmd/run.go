@@ -27,6 +27,8 @@ import (
 	"github.com/mdhender/wraith/storage/jdb"
 	"github.com/mdhender/wraith/wraith"
 	"github.com/spf13/cobra"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 	"log"
 	"os"
 	"path/filepath"
@@ -87,25 +89,36 @@ var cmdRun = &cobra.Command{
 		log.Printf("loaded engine version %q\n", e.Version)
 		log.Printf("loaded game %s: turn %04d/%d\n", e.Game.Code, e.Game.Turn.Year, e.Game.Turn.Quarter)
 
+		for _, player := range e.Players {
+			loggerFile := filepath.Join(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", globalRun.Year), fmt.Sprintf("%d", globalRun.Quarter), fmt.Sprintf("%d.log.txt", player.Id)))
+			player.Logger.W, err = os.OpenFile(loggerFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 666)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			player.Logger.MP = message.NewPrinter(language.English)
+		}
+
 		var pos []*wraith.PhaseOrders
-		for _, user := range e.Players {
-			ordersFile := filepath.Join(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", globalRun.Year), fmt.Sprintf("%d", globalRun.Quarter), fmt.Sprintf("%d.orders.txt", user.Id)))
+		for _, player := range e.Players {
+			player.Log("player %4d handle %-32q nation %3d\n\n", player.Id, player.Name, player.MemberOf.No)
+
+			ordersFile := filepath.Join(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", globalRun.Year), fmt.Sprintf("%d", globalRun.Quarter), fmt.Sprintf("%d.orders.txt", player.Id)))
 
 			b, err := os.ReadFile(ordersFile)
 			if err != nil {
-				log.Printf("run: %+v\n", err)
+				player.Log("orders: read: %+v\n\n", err)
 				continue
 			}
-			log.Printf("run: load %s\n", ordersFile)
+			player.Log("orders: loaded %s\n", ordersFile)
 
 			o, err := orders.Parse([]byte(b))
 			if err != nil {
-				log.Printf("run: nation %3d handle %-32q pid %4d: %+v\n", user.MemberOf.No, user.Name, user.Id, err)
+				player.Log("orders: parser: %+v\n\n", err)
 				continue
 			}
-			//log.Printf("run: nation %3d handle %-32q pid %4d: orders:\n%s\n", user.MemberOf.No, user.Name, user.Id, "...")
 
-			pos = append(pos, adapters.OrdersToPhaseOrders(e.Players[user.Id], o...))
+			pos = append(pos, adapters.OrdersToPhaseOrders(e.Players[player.Id], o...))
 		}
 
 		phases := strings.Split(globalRun.Phases, ",")

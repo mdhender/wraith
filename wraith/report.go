@@ -215,7 +215,7 @@ func (e *Engine) Report(w io.Writer, playerIds ...int) error {
 					metsPerTurn := int(math.Ceil(float64(unit.TotalQty) * unit.Unit.MetsPerUnitPerTurn))
 					nonMetsPerTurn := int(math.Ceil(float64(unit.TotalQty) * unit.Unit.NonMetsPerUnitPerTurn))
 					proLabor, uskLabor := 1*unit.TotalQty, 3*unit.TotalQty
-					_, _ = p.Fprintf(w, "     Input:  Facts__  Quantity_____  Professionals  Unskilled____  METS/Turn____  NMTS/Turn____  FUEL/Turn____\n")
+					_, _ = p.Fprintf(w, "     Input:  Facts__  Quantity_____  Professionals  Unskilled____  FUEL/Turn____  METS/Turn____  NMTS/Turn____\n")
 					_, _ = p.Fprintf(w, "             %-7s  %13d  %13d  %13d  %13d  %13d  %13d\n", unit.Unit.Code, unit.TotalQty, proLabor, uskLabor, fuelPerTurn, metsPerTurn, nonMetsPerTurn)
 				}
 				_, _ = p.Fprintf(w, "    Output:  Unit___  Stage_1______  Stage_2______  Stage_3______\n")

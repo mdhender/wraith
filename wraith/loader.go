@@ -20,6 +20,8 @@ package wraith
 
 import (
 	"fmt"
+	"golang.org/x/text/message"
+	"io"
 	"log"
 	"math"
 	"time"
@@ -78,76 +80,6 @@ type CorS struct {
 		used      int
 	}
 	population population
-}
-
-func (cs *CorS) farmProduction(pos []*PhaseOrders) {
-	playerId := 0
-	var playerName string
-	if cs.ControlledBy != nil {
-		playerId, playerName = cs.ControlledBy.Id, cs.ControlledBy.Name
-	} else {
-		playerName = "nobody"
-	}
-
-	for _, group := range cs.FarmGroups {
-		unitsProduced := 0
-		for _, moe := range group.Units {
-			unitsActive := maxCapacity(cs, moe)
-
-			// allocate fuel
-			moe.fuel.needed = moe.Unit.fuelUsed(moe.ActiveQty)
-			moe.fuel.allocated = moe.Unit.fuelUsed(unitsActive)
-			cs.fuel.available -= moe.fuel.allocated
-
-			// allocate professional labor
-			moe.pro.needed = moe.ActiveQty
-			moe.pro.allocated = unitsActive
-			cs.population.professional -= moe.pro.allocated
-
-			// allocate unskilled labor
-			// TODO: allow automation units to replace unskilled labor
-			moe.uns.needed = 3 * moe.pro.needed
-			moe.uns.allocated = 3 * unitsActive
-			cs.population.unskilled -= moe.uns.allocated
-
-			//log.Printf("cors: farmProduction: %-20s: %-6s: group %2d: %-7s %8d: sol %-5v qty %8d fuel %8d\n", playerName, cs.HullId, group.No, moe.Unit.Code, moe.ActiveQty, solarPowered, moe.activeQty, moe.fuel.allocated)
-			log.Printf("cors: farmProduction: %2d: %-20s: %-6s: group %2d: fuel %8d / %8d: pro %8d / %8d: uns %8d / %8d\n",
-				playerId, playerName, cs.HullId, group.No, moe.fuel.allocated, moe.fuel.needed, moe.pro.needed, moe.pro.allocated, moe.uns.allocated, moe.uns.allocated)
-
-			// determine number of units produced
-			if moe.Unit.TechLevel == 1 {
-				unitsProduced = unitsActive * 100
-			} else {
-				unitsProduced = unitsActive * 20 * moe.Unit.TechLevel
-			}
-			// convert from units per year to units per turn
-			unitsProduced = unitsProduced / 4
-		}
-
-		// push the newly produced units through the pipeline
-		if group.StageQty[2] > unitsProduced {
-			group.StageQty[3] = unitsProduced
-			group.StageQty[2] -= unitsProduced
-		} else {
-			group.StageQty[3] = group.StageQty[2]
-			group.StageQty[2] = 0
-		}
-		if group.StageQty[1] > unitsProduced {
-			group.StageQty[2] += unitsProduced
-			group.StageQty[1] -= unitsProduced
-		} else {
-			group.StageQty[2] += group.StageQty[1]
-			group.StageQty[1] = 0
-		}
-		if group.StageQty[0] > unitsProduced {
-			group.StageQty[1] += unitsProduced
-			group.StageQty[0] -= unitsProduced
-		} else {
-			group.StageQty[1] += group.StageQty[0]
-			group.StageQty[0] = 0
-		}
-		group.StageQty[0] += unitsProduced
-	}
 }
 
 // laborInitialization updates the available labor pool.
@@ -225,6 +157,10 @@ func (cs *CorS) lifeSupportInitialization(pos []*PhaseOrders) {
 		// capacity is number of units times the unit's tech level squared
 		cs.population.lifeSupportCapacity += u.activeQty * u.Unit.TechLevel * u.Unit.TechLevel
 	}
+}
+
+func (cs *CorS) Log(format string, args ...interface{}) {
+	cs.ControlledBy.Log(format, args...)
 }
 
 type CorSs []*CorS
@@ -432,6 +368,16 @@ type Player struct {
 	ReportsTo *Player // player that this player reports to
 	Colonies  CorSs   // colonies controlled by this player
 	Ships     CorSs   // ships controlled by this player
+	Logger    struct {
+		MP *message.Printer
+		W  io.Writer
+	}
+}
+
+func (p *Player) Log(format string, args ...interface{}) {
+	if p != nil && p.Logger.MP != nil && p.Logger.W != nil {
+		_, _ = p.Logger.MP.Fprintf(p.Logger.W, format, args...)
+	}
 }
 
 // Planet is an orbit. It may be empty.

@@ -310,16 +310,26 @@ func (e *Engine) ExecuteLaborAllocationPhase(pos []*PhaseOrders) (errs []error) 
 
 // ExecuteFarmProductionPhase runs all the orders in the farm production phase.
 func (e *Engine) ExecuteFarmProductionPhase(pos []*PhaseOrders) (errs []error) {
-	for _, cors := range e.CorSById {
-		cors.farmProduction(pos)
+	for _, o := range pos {
+		o.Player.Log("\n\nFarm Production -------------------------------------------------\n")
+	}
+	for _, cs := range e.CorSById {
+		if len(cs.FarmGroups) != 0 {
+			farmProduction(cs, pos)
+		}
 	}
 	return errs
 }
 
 // ExecuteMineProductionPhase runs all the orders in the farm production phase.
 func (e *Engine) ExecuteMineProductionPhase(pos []*PhaseOrders) (errs []error) {
-	for _, cors := range e.CorSById {
-		mineProduction(cors, pos)
+	for _, o := range pos {
+		o.Player.Log("\n\nMine Production -------------------------------------------------\n")
+	}
+	for _, cs := range e.CorSById {
+		if len(cs.MineGroups) != 0 {
+			mineProduction(cs, pos)
+		}
 	}
 	return errs
 }

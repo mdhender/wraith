@@ -19,7 +19,6 @@
 package wraith
 
 import (
-	"log"
 	"math"
 )
 
@@ -77,6 +76,71 @@ func (e *Engine) ClusterScan(origin Coordinates) ClusterList {
 		})
 	}
 	return cl
+}
+
+func farmProduction(cs *CorS, pos []*PhaseOrders) {
+	cs.Log("Colony: %-10s   Kind: %-10s  Name: %s\n", cs.HullId, cs.Kind, cs.Name)
+	for _, group := range cs.FarmGroups {
+		unitsProduced := 0
+		for _, moe := range group.Units {
+			unitsActive := maxCapacity(cs, moe)
+
+			// allocate fuel
+			moe.fuel.needed = moe.Unit.fuelUsed(moe.ActiveQty)
+			moe.fuel.allocated = moe.Unit.fuelUsed(unitsActive)
+			cs.fuel.available -= moe.fuel.allocated
+
+			// allocate professional labor
+			moe.pro.needed = moe.ActiveQty
+			moe.pro.allocated = unitsActive
+			cs.population.professional -= moe.pro.allocated
+
+			// allocate unskilled labor
+			// TODO: allow automation units to replace unskilled labor
+			moe.uns.needed = 3 * moe.pro.needed
+			moe.uns.allocated = 3 * unitsActive
+			cs.population.unskilled -= moe.uns.allocated
+
+			cs.Log("  Group %2d: fuel %8d / %8d: pro %8d / %8d: uns %8d / %8d\n",
+				group.No, moe.fuel.allocated, moe.fuel.needed, moe.pro.needed, moe.pro.allocated, moe.uns.allocated, moe.uns.allocated)
+
+			// determine number of units produced
+			if moe.Unit.TechLevel == 1 {
+				unitsProduced = unitsActive * 100
+			} else {
+				unitsProduced = unitsActive * 20 * moe.Unit.TechLevel
+			}
+			// convert from units per year to units per turn
+			unitsProduced = unitsProduced / 4
+		}
+
+		// push the newly produced units through the pipeline
+		if group.StageQty[2] > unitsProduced {
+			group.StageQty[3] = unitsProduced
+			group.StageQty[2] -= unitsProduced
+		} else {
+			group.StageQty[3] = group.StageQty[2]
+			group.StageQty[2] = 0
+		}
+		if group.StageQty[1] > unitsProduced {
+			group.StageQty[2] += unitsProduced
+			group.StageQty[1] -= unitsProduced
+		} else {
+			group.StageQty[2] += group.StageQty[1]
+			group.StageQty[1] = 0
+		}
+		if group.StageQty[0] > unitsProduced {
+			group.StageQty[1] += unitsProduced
+			group.StageQty[0] -= unitsProduced
+		} else {
+			group.StageQty[1] += group.StageQty[0]
+			group.StageQty[0] = 0
+		}
+		group.StageQty[0] += unitsProduced
+		cs.Log("            25%%: %13d\n", group.StageQty[0])
+		cs.Log("            50%%: %13d\n", group.StageQty[1])
+		cs.Log("            75%%: %13d  finished: %13d %s\n", group.StageQty[2], group.StageQty[3], group.Product.Code)
+	}
 }
 
 func (e *Engine) findColony(id string) (*CorS, bool) {
@@ -137,14 +201,7 @@ func maxCapacity(cs *CorS, u *InventoryUnit) int {
 }
 
 func mineProduction(cs *CorS, pos []*PhaseOrders) {
-	playerId := 0
-	var playerName string
-	if cs.ControlledBy != nil {
-		playerId, playerName = cs.ControlledBy.Id, cs.ControlledBy.Name
-	} else {
-		playerName = "nobody"
-	}
-
+	cs.Log("Colony: %-10s   Kind: %-10s  Name: %s\n", cs.HullId, cs.Kind, cs.Name)
 	for _, group := range cs.MineGroups {
 		unitsProduced := 0
 		moe := group.Unit
@@ -166,8 +223,10 @@ func mineProduction(cs *CorS, pos []*PhaseOrders) {
 		moe.uns.allocated = 3 * unitsActive
 		cs.population.unskilled -= moe.uns.allocated
 
-		log.Printf("cors: mineProduction: %2d: %-20s: %-6s: group %2d: fuel %8d / %8d: pro %8d / %8d: uns %8d / %8d\n",
-			playerId, playerName, cs.HullId, group.No, moe.fuel.allocated, moe.fuel.needed, moe.pro.needed, moe.pro.allocated, moe.uns.allocated, moe.uns.allocated)
+		cs.Log("  Group %2d: %-6s      yield: %7.3f%%     reserves: %13d tonnes\n",
+			group.No, group.Deposit.Product.Code, 100*group.Deposit.YieldPct, group.Deposit.RemainingQty)
+		cs.Log("            fuel %8d / %8d: pro %8d / %8d: uns %8d / %8d\n",
+			moe.fuel.allocated, moe.fuel.needed, moe.pro.needed, moe.pro.allocated, moe.uns.allocated, moe.uns.allocated)
 
 		// determine number of units produced
 		unitsProduced = unitsActive * 100 * moe.Unit.TechLevel
@@ -176,10 +235,10 @@ func mineProduction(cs *CorS, pos []*PhaseOrders) {
 
 		// push the newly produced units through the pipeline
 		if group.StageQty[2] > unitsProduced {
-			group.StageQty[3] = unitsProduced
+			group.StageQty[3] = int(math.Ceil(float64(unitsProduced) * group.Deposit.YieldPct))
 			group.StageQty[2] -= unitsProduced
 		} else {
-			group.StageQty[3] = group.StageQty[2]
+			group.StageQty[3] = int(math.Ceil(float64(group.StageQty[2]) * group.Deposit.YieldPct))
 			group.StageQty[2] = 0
 		}
 		if group.StageQty[1] > unitsProduced {
@@ -197,6 +256,8 @@ func mineProduction(cs *CorS, pos []*PhaseOrders) {
 			group.StageQty[0] = 0
 		}
 		group.Deposit.RemainingQty -= unitsProduced
-		group.StageQty[0] += int(math.Ceil(float64(unitsProduced) * group.Deposit.YieldPct))
+		group.StageQty[0] += unitsProduced
+		cs.Log("            25%%: %13d       50%%: %13d\n", group.StageQty[0], group.StageQty[1])
+		cs.Log("            75%%: %13d  finished: %13d %s\n", group.StageQty[2], group.StageQty[3], group.Deposit.Product.Code)
 	}
 }
