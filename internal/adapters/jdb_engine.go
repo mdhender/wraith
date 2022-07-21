@@ -257,11 +257,16 @@ func jdbEnclosedColonyToWraithColony(colony *jdb.EnclosedColony, factoryGroup ma
 	}
 	for _, unit := range colony.Inventory {
 		if u, ok := units[unit.UnitId]; ok {
-			cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{
-				Unit:      u,
-				ActiveQty: unit.TotalQty - unit.StowedQty,
-				StowedQty: unit.StowedQty,
-			})
+			switch u.Kind {
+			case "consumer-goods", "fuel", "metallics", "military-supplies", "non-metallics":
+				cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{Unit: u, StowedQty: unit.TotalQty})
+			default:
+				cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{
+					Unit:      u,
+					ActiveQty: unit.TotalQty - unit.StowedQty,
+					StowedQty: unit.StowedQty,
+				})
+			}
 		}
 	}
 	return cors
@@ -303,12 +308,15 @@ func jdbFarmGroupToWraithFarmGroup(group *jdb.FarmGroup, food *wraith.Unit, cors
 
 func jdbMineGroupToWraithMineGroup(group *jdb.MineGroup, cors map[int]*wraith.CorS, deposits map[int]*wraith.Deposit, units map[int]*wraith.Unit) *wraith.MineGroup {
 	g := &wraith.MineGroup{
-		CorS:     cors[group.ColonyId],
-		Id:       group.Id,
-		No:       group.No,
-		Deposit:  deposits[group.DepositId],
-		Unit:     units[group.UnitId],
-		TotalQty: group.TotalQty,
+		CorS:    cors[group.ColonyId],
+		Id:      group.Id,
+		No:      group.No,
+		Deposit: deposits[group.DepositId],
+		Unit: &wraith.InventoryUnit{
+			Unit:      units[group.UnitId],
+			ActiveQty: group.TotalQty,
+			StowedQty: 0,
+		},
 		StageQty: [4]int{group.Stage1Qty, group.Stage2Qty, group.Stage3Qty, group.Stage4Qty},
 	}
 	return g
@@ -379,11 +387,16 @@ func jdbOrbitalColonyToWraithColony(colony *jdb.OrbitalColony, factoryGroup map[
 	}
 	for _, unit := range colony.Inventory {
 		if u, ok := units[unit.UnitId]; ok {
-			cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{
-				Unit:      u,
-				ActiveQty: unit.TotalQty - unit.StowedQty,
-				StowedQty: unit.StowedQty,
-			})
+			switch u.Kind {
+			case "consumer-goods", "fuel", "metallics", "military-supplies", "non-metallics":
+				cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{Unit: u, StowedQty: unit.TotalQty})
+			default:
+				cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{
+					Unit:      u,
+					ActiveQty: unit.TotalQty - unit.StowedQty,
+					StowedQty: unit.StowedQty,
+				})
+			}
 		}
 	}
 	return cors
@@ -449,11 +462,16 @@ func jdbShipToWraithShip(ship *jdb.Ship, factoryGroup map[int]*wraith.FactoryGro
 	}
 	for _, unit := range ship.Inventory {
 		if u, ok := units[unit.UnitId]; ok {
-			cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{
-				Unit:      u,
-				ActiveQty: unit.TotalQty - unit.StowedQty,
-				StowedQty: unit.StowedQty,
-			})
+			switch u.Kind {
+			case "consumer-goods", "fuel", "metallics", "military-supplies", "non-metallics":
+				cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{Unit: u, StowedQty: unit.TotalQty})
+			default:
+				cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{
+					Unit:      u,
+					ActiveQty: unit.TotalQty - unit.StowedQty,
+					StowedQty: unit.StowedQty,
+				})
+			}
 		}
 	}
 	return cors
@@ -512,11 +530,16 @@ func jdbSurfaceColonyToWraithColony(colony *jdb.SurfaceColony, factoryGroup map[
 	}
 	for _, unit := range colony.Inventory {
 		if u, ok := units[unit.UnitId]; ok {
-			cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{
-				Unit:      u,
-				ActiveQty: unit.TotalQty - unit.StowedQty,
-				StowedQty: unit.StowedQty,
-			})
+			switch u.Kind {
+			case "consumer-goods", "fuel", "metallics", "military-supplies", "non-metallics":
+				cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{Unit: u, StowedQty: unit.TotalQty})
+			default:
+				cors.Inventory = append(cors.Inventory, &wraith.InventoryUnit{
+					Unit:      u,
+					ActiveQty: unit.TotalQty - unit.StowedQty,
+					StowedQty: unit.StowedQty,
+				})
+			}
 		}
 	}
 	return cors

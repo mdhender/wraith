@@ -196,11 +196,12 @@ func (e *Engine) Report(w io.Writer, playerIds ...int) error {
 			_, _ = p.Fprintf(w, "\n")
 			_, _ = p.Fprintf(w, "  Mining ---------------------------------------------------------------------------------------------------------\n")
 			for _, group := range cs.MineGroups {
-				_, _ = p.Fprintf(w, "  Group: %2d  Deposit: DP%-3d   Produces: %s\n", group.No, group.Deposit.No, group.Deposit.Product.Code)
-				fuelPerTurn := int(math.Ceil(float64(group.TotalQty) * group.Unit.FuelPerUnitPerTurn))
-				proLabor, uskLabor := 1*group.TotalQty, 3*group.TotalQty
-				_, _ = p.Fprintf(w, "     Input:  Mines__  Quantity_____  Professionals  Unskilled____  FUEL/Turn____\n")
-				_, _ = p.Fprintf(w, "             %-7s  %13d  %13d  %13d  %13d\n", group.Unit.Code, group.TotalQty, proLabor, uskLabor, fuelPerTurn)
+				_, _ = p.Fprintf(w, "  Group: %2d  Deposit: DP%-3d   Yield %6.3f%%    Remaining: %13d %-5s\n", group.No, group.Deposit.No, 100*group.Deposit.YieldPct, group.Deposit.RemainingQty, group.Deposit.Product.Code)
+				fuelPerTurn := int(math.Ceil(float64(group.Unit.ActiveQty) * group.Unit.Unit.FuelPerUnitPerTurn))
+				extractPerTurn := group.Unit.ActiveQty * 100 * group.Unit.Unit.TechLevel / 4
+				proLabor, uskLabor := 1*group.Unit.ActiveQty, 3*group.Unit.ActiveQty
+				_, _ = p.Fprintf(w, "     Input:  Mines__  Quantity_____  Professionals  Unskilled____  FUEL/Turn____  Extract/Turn_  Yield/Turn___\n")
+				_, _ = p.Fprintf(w, "             %-7s  %13d  %13d  %13d  %13d  %13d  %13d\n", group.Unit.Unit.Code, group.Unit.ActiveQty, proLabor, uskLabor, fuelPerTurn, extractPerTurn, int(math.Ceil(float64(extractPerTurn)*group.Deposit.YieldPct)))
 				_, _ = p.Fprintf(w, "    Output:  Unit___  Stage_1______  Stage_2______  Stage_3______\n")
 				_, _ = p.Fprintf(w, "             %-7s  %13d  %13d  %13d\n", group.Deposit.Product.Code, group.StageQty[0], group.StageQty[1], group.StageQty[2])
 			}

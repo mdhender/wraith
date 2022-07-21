@@ -80,29 +80,11 @@ type CorS struct {
 	population population
 }
 
-//func (cs *CorS) allocateFuel(k string) {
-//	for _, u := range cs.Hull {
-//		if cs.fuel.available <= 0 {
-//			break
-//		} else if u.Unit.Kind != k {
-//			continue
-//		}
-//		u.fuel.needed = u.Unit.fuelUsed(u.ActiveQty)
-//		if cs.fuel.available < u.fuel.needed {
-//			u.activeQty = cs.fuel.available / u.Unit.fuelUsed(1)
-//			u.fuel.allocated = u.Unit.fuelUsed(u.activeQty)
-//		} else {
-//			u.activeQty = u.ActiveQty
-//			u.fuel.allocated = u.fuel.needed
-//		}
-//		cs.fuel.available -= u.fuel.allocated
-//	}
-//}
-
 func (cs *CorS) farmProduction(pos []*PhaseOrders) {
+	playerId := 0
 	var playerName string
 	if cs.ControlledBy != nil {
-		playerName = cs.ControlledBy.Name
+		playerId, playerName = cs.ControlledBy.Id, cs.ControlledBy.Name
 	} else {
 		playerName = "nobody"
 	}
@@ -129,8 +111,8 @@ func (cs *CorS) farmProduction(pos []*PhaseOrders) {
 			cs.population.unskilled -= moe.uns.allocated
 
 			//log.Printf("cors: farmProduction: %-20s: %-6s: group %2d: %-7s %8d: sol %-5v qty %8d fuel %8d\n", playerName, cs.HullId, group.No, moe.Unit.Code, moe.ActiveQty, solarPowered, moe.activeQty, moe.fuel.allocated)
-			log.Printf("cors: farmProduction: %-20s: %-6s: group %2d: fuel %8d / %8d: pro %8d / %8d: uns %8d / %8d\n",
-				playerName, cs.HullId, group.No, moe.fuel.allocated, moe.fuel.needed, moe.pro.needed, moe.pro.allocated, moe.uns.allocated, moe.uns.allocated)
+			log.Printf("cors: farmProduction: %2d: %-20s: %-6s: group %2d: fuel %8d / %8d: pro %8d / %8d: uns %8d / %8d\n",
+				playerId, playerName, cs.HullId, group.No, moe.fuel.allocated, moe.fuel.needed, moe.pro.needed, moe.pro.allocated, moe.uns.allocated, moe.uns.allocated)
 
 			// determine number of units produced
 			if moe.Unit.TechLevel == 1 {
@@ -166,7 +148,6 @@ func (cs *CorS) farmProduction(pos []*PhaseOrders) {
 		}
 		group.StageQty[0] += unitsProduced
 	}
-
 }
 
 // laborInitialization updates the available labor pool.
@@ -391,10 +372,9 @@ type MineGroup struct {
 	CorS     *CorS // colony that controls the group
 	Id       int   // unique identifier
 	No       int
-	Deposit  *Deposit // deposit being mined
-	Unit     *Unit    // mine units in the group
-	TotalQty int      // number of mine units in the group
-	StageQty [4]int   // assumes four turns to produce a single unit
+	Deposit  *Deposit       // deposit being mined
+	Unit     *InventoryUnit // mine units in the group
+	StageQty [4]int         // assumes four turns to produce a single unit
 }
 
 type MineGroups []*MineGroup

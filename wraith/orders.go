@@ -128,7 +128,10 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 		}
 	}
 	if indexOf("mine-production", phases) != -1 {
-		log.Printf("execute: mine-production phase: not implemented\n")
+		log.Printf("execute: mine-production phase\n")
+		for _, err := range e.ExecuteMineProductionPhase(pos) {
+			log.Printf("execute: mine-production: %v\n", err)
+		}
 	}
 	if indexOf("factory-production", phases) != -1 {
 		log.Printf("execute: factory-production phase: not implemented\n")
@@ -226,6 +229,38 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 			unit.StowedQty += group.StageQty[3]
 			group.StageQty[3] = 0
 		}
+		for _, group := range cs.MineGroups {
+			var unit *InventoryUnit
+			for _, u := range cs.Inventory {
+				if u.Unit.Id == group.Deposit.Product.Id {
+					unit = u
+					break
+				}
+			}
+			if unit == nil {
+				unit = &InventoryUnit{Unit: group.Deposit.Product}
+				cs.Inventory = append(cs.Inventory, unit)
+				sort.Sort(cs.Inventory)
+			}
+			unit.StowedQty += group.StageQty[3]
+			group.StageQty[3] = 0
+		}
+		for _, group := range cs.FactoryGroups {
+			var unit *InventoryUnit
+			for _, u := range cs.Inventory {
+				if u.Unit.Id == group.Product.Id {
+					unit = u
+					break
+				}
+			}
+			if unit == nil {
+				unit = &InventoryUnit{Unit: group.Product}
+				cs.Inventory = append(cs.Inventory, unit)
+				sort.Sort(cs.Inventory)
+			}
+			unit.StowedQty += group.StageQty[3]
+			group.StageQty[3] = 0
+		}
 	}
 
 	return nil
@@ -277,6 +312,14 @@ func (e *Engine) ExecuteLaborAllocationPhase(pos []*PhaseOrders) (errs []error) 
 func (e *Engine) ExecuteFarmProductionPhase(pos []*PhaseOrders) (errs []error) {
 	for _, cors := range e.CorSById {
 		cors.farmProduction(pos)
+	}
+	return errs
+}
+
+// ExecuteMineProductionPhase runs all the orders in the farm production phase.
+func (e *Engine) ExecuteMineProductionPhase(pos []*PhaseOrders) (errs []error) {
+	for _, cors := range e.CorSById {
+		mineProduction(cors, pos)
 	}
 	return errs
 }

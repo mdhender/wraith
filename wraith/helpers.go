@@ -19,6 +19,7 @@
 package wraith
 
 import (
+	"log"
 	"math"
 )
 
@@ -133,4 +134,69 @@ func maxCapacity(cs *CorS, u *InventoryUnit) int {
 	}
 
 	return maxUnits
+}
+
+func mineProduction(cs *CorS, pos []*PhaseOrders) {
+	playerId := 0
+	var playerName string
+	if cs.ControlledBy != nil {
+		playerId, playerName = cs.ControlledBy.Id, cs.ControlledBy.Name
+	} else {
+		playerName = "nobody"
+	}
+
+	for _, group := range cs.MineGroups {
+		unitsProduced := 0
+		moe := group.Unit
+		unitsActive := maxCapacity(cs, moe)
+
+		// allocate fuel
+		moe.fuel.needed = moe.Unit.fuelUsed(moe.ActiveQty)
+		moe.fuel.allocated = moe.Unit.fuelUsed(unitsActive)
+		cs.fuel.available -= moe.fuel.allocated
+
+		// allocate professional labor
+		moe.pro.needed = moe.ActiveQty
+		moe.pro.allocated = unitsActive
+		cs.population.professional -= moe.pro.allocated
+
+		// allocate unskilled labor
+		// TODO: allow automation units to replace unskilled labor
+		moe.uns.needed = 3 * moe.pro.needed
+		moe.uns.allocated = 3 * unitsActive
+		cs.population.unskilled -= moe.uns.allocated
+
+		log.Printf("cors: mineProduction: %2d: %-20s: %-6s: group %2d: fuel %8d / %8d: pro %8d / %8d: uns %8d / %8d\n",
+			playerId, playerName, cs.HullId, group.No, moe.fuel.allocated, moe.fuel.needed, moe.pro.needed, moe.pro.allocated, moe.uns.allocated, moe.uns.allocated)
+
+		// determine number of units produced
+		unitsProduced = unitsActive * 100 * moe.Unit.TechLevel
+		// convert from units per year to units per turn
+		unitsProduced = unitsProduced / 4
+
+		// push the newly produced units through the pipeline
+		if group.StageQty[2] > unitsProduced {
+			group.StageQty[3] = unitsProduced
+			group.StageQty[2] -= unitsProduced
+		} else {
+			group.StageQty[3] = group.StageQty[2]
+			group.StageQty[2] = 0
+		}
+		if group.StageQty[1] > unitsProduced {
+			group.StageQty[2] += unitsProduced
+			group.StageQty[1] -= unitsProduced
+		} else {
+			group.StageQty[2] += group.StageQty[1]
+			group.StageQty[1] = 0
+		}
+		if group.StageQty[0] > unitsProduced {
+			group.StageQty[1] += unitsProduced
+			group.StageQty[0] -= unitsProduced
+		} else {
+			group.StageQty[1] += group.StageQty[0]
+			group.StageQty[0] = 0
+		}
+		group.Deposit.RemainingQty -= unitsProduced
+		group.StageQty[0] += int(math.Ceil(float64(unitsProduced) * group.Deposit.YieldPct))
+	}
 }
