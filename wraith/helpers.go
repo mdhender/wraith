@@ -78,9 +78,13 @@ func (e *Engine) ClusterScan(origin Coordinates) ClusterList {
 	return cl
 }
 
-func farmProduction(cs *CorS, pos []*PhaseOrders) {
+func factoryProduction(cs *CorS, pos []*PhaseOrders) {
 	cs.Log("Colony: %-10s   Kind: %-10s  Name: %s\n", cs.HullId, cs.Kind, cs.Name)
-	for _, group := range cs.FarmGroups {
+	cs.Log("  PRO %13d  SOL %13d  UNS %13d  FUEL %13d\n  UEM %13d  CON %13d  SPY %13d\n",
+		availablePro(cs), availableSol(cs), availableUns(cs), availableFuel(cs),
+		availableUem(cs), availableCon(cs), availableSpy(cs))
+
+	for _, group := range cs.FactoryGroups {
 		unitsProduced := 0
 		for _, moe := range group.Units {
 			unitsActive := maxCapacity(cs, moe)
@@ -91,15 +95,16 @@ func farmProduction(cs *CorS, pos []*PhaseOrders) {
 			cs.fuel.available -= moe.fuel.allocated
 
 			// allocate professional labor
+			// TODO: add in factory efficiency
 			moe.pro.needed = moe.ActiveQty
 			moe.pro.allocated = unitsActive
-			cs.population.professional -= moe.pro.allocated
+			cs.pro.allocated += moe.pro.allocated
 
 			// allocate unskilled labor
 			// TODO: allow automation units to replace unskilled labor
 			moe.uns.needed = 3 * moe.pro.needed
 			moe.uns.allocated = 3 * unitsActive
-			cs.population.unskilled -= moe.uns.allocated
+			cs.uns.allocated += moe.uns.allocated
 
 			cs.Log("  Group %2d: fuel %8d / %8d: pro %8d / %8d: uns %8d / %8d\n",
 				group.No, moe.fuel.allocated, moe.fuel.needed, moe.pro.needed, moe.pro.allocated, moe.uns.allocated, moe.uns.allocated)
@@ -140,6 +145,83 @@ func farmProduction(cs *CorS, pos []*PhaseOrders) {
 		cs.Log("            25%%: %13d\n", group.StageQty[0])
 		cs.Log("            50%%: %13d\n", group.StageQty[1])
 		cs.Log("            75%%: %13d  finished: %13d %s\n", group.StageQty[2], group.StageQty[3], group.Product.Code)
+
+		cs.Log("  PRO %13d  SOL %13d  UNS %13d  FUEL %13d\n  UEM %13d  CON %13d  SPY %13d\n",
+			availablePro(cs), availableSol(cs), availableUns(cs), availableFuel(cs),
+			availableUem(cs), availableCon(cs), availableSpy(cs))
+	}
+}
+
+func farmProduction(cs *CorS, pos []*PhaseOrders) {
+	cs.Log("Colony: %-10s   Kind: %-10s  Name: %s\n", cs.HullId, cs.Kind, cs.Name)
+	cs.Log("  PRO %13d  SOL %13d  UNS %13d  FUEL %13d\n  UEM %13d  CON %13d  SPY %13d\n",
+		availablePro(cs), availableSol(cs), availableUns(cs), availableFuel(cs),
+		availableUem(cs), availableCon(cs), availableSpy(cs))
+
+	for _, group := range cs.FarmGroups {
+		unitsProduced := 0
+		for _, moe := range group.Units {
+			unitsActive := maxCapacity(cs, moe)
+
+			// allocate fuel
+			moe.fuel.needed = moe.Unit.fuelUsed(moe.ActiveQty)
+			moe.fuel.allocated = moe.Unit.fuelUsed(unitsActive)
+			cs.fuel.available -= moe.fuel.allocated
+
+			// allocate professional labor
+			moe.pro.needed = moe.ActiveQty
+			moe.pro.allocated = unitsActive
+			cs.pro.allocated += moe.pro.allocated
+
+			// allocate unskilled labor
+			// TODO: allow automation units to replace unskilled labor
+			moe.uns.needed = 3 * moe.pro.needed
+			moe.uns.allocated = 3 * unitsActive
+			cs.uns.allocated += moe.uns.allocated
+
+			cs.Log("  Group %2d: fuel %8d / %8d: pro %8d / %8d: uns %8d / %8d\n",
+				group.No, moe.fuel.allocated, moe.fuel.needed, moe.pro.needed, moe.pro.allocated, moe.uns.allocated, moe.uns.allocated)
+
+			// determine number of units produced
+			if moe.Unit.TechLevel == 1 {
+				unitsProduced = unitsActive * 100
+			} else {
+				unitsProduced = unitsActive * 20 * moe.Unit.TechLevel
+			}
+			// convert from units per year to units per turn
+			unitsProduced = unitsProduced / 4
+		}
+
+		// push the newly produced units through the pipeline
+		if group.StageQty[2] > unitsProduced {
+			group.StageQty[3] = unitsProduced
+			group.StageQty[2] -= unitsProduced
+		} else {
+			group.StageQty[3] = group.StageQty[2]
+			group.StageQty[2] = 0
+		}
+		if group.StageQty[1] > unitsProduced {
+			group.StageQty[2] += unitsProduced
+			group.StageQty[1] -= unitsProduced
+		} else {
+			group.StageQty[2] += group.StageQty[1]
+			group.StageQty[1] = 0
+		}
+		if group.StageQty[0] > unitsProduced {
+			group.StageQty[1] += unitsProduced
+			group.StageQty[0] -= unitsProduced
+		} else {
+			group.StageQty[1] += group.StageQty[0]
+			group.StageQty[0] = 0
+		}
+		group.StageQty[0] += unitsProduced
+		cs.Log("            25%%: %13d\n", group.StageQty[0])
+		cs.Log("            50%%: %13d\n", group.StageQty[1])
+		cs.Log("            75%%: %13d  finished: %13d %s\n", group.StageQty[2], group.StageQty[3], group.Product.Code)
+
+		cs.Log("  PRO %13d  SOL %13d  UNS %13d  FUEL %13d\n  UEM %13d  CON %13d  SPY %13d\n",
+			availablePro(cs), availableSol(cs), availableUns(cs), availableFuel(cs),
+			availableUem(cs), availableCon(cs), availableSpy(cs))
 	}
 }
 
@@ -151,6 +233,17 @@ func (e *Engine) findColony(id string) (*CorS, bool) {
 func (e *Engine) findShip(id string) (*CorS, bool) {
 	s, ok := e.Ships[id]
 	return s, ok
+}
+
+func fuelInitialization(cs *CorS, pos []*PhaseOrders) {
+	cs.Log("Colony: %-10s   Kind: %-10s  Name: %s\n", cs.HullId, cs.Kind, cs.Name)
+	for _, u := range cs.Inventory {
+		if u.Unit.Kind != "fuel" {
+			continue
+		}
+		cs.fuel.available += u.ActiveQty + u.StowedQty
+	}
+	cs.Log("  FUEL %13d\n\n", cs.fuel.available)
 }
 
 func indexOf(s string, sl []string) int {
@@ -174,6 +267,108 @@ func isZero(n float64) bool {
 	return n < 0.001
 }
 
+// killProportionally kills by proportion.
+// deaths are booked as a reduction in the number of units available.
+// tricky bit is dealing with crews and teams since they each have 2 population units
+func killProportionally(cs *CorS, n int) {
+	for n > 0 && totalPop(cs) > 0 {
+		pct := float64(n) / float64(totalPop(cs))
+		if cs.pro.available > 0 {
+			k := int(pct * float64(cs.pro.available))
+			n -= k
+			cs.pro.available -= k
+		}
+		if cs.sol.available > 0 {
+			k := int(pct * float64(cs.sol.available))
+			if k < 1 {
+				k = 1
+			}
+			n -= k
+			cs.sol.available -= k
+		}
+		if cs.uns.available > 0 {
+			k := int(pct * float64(cs.uns.available))
+			if k < 1 {
+				k = 1
+			}
+			n -= k
+			cs.uns.available -= k
+		}
+		if cs.uem.available > 0 {
+			k := int(pct * float64(cs.uem.available))
+			if k < 1 {
+				k = 1
+			}
+			n -= k
+			cs.uem.available -= k
+		}
+		if cs.con.available > 0 {
+			k := int(pct * float64(cs.con.available))
+			if k < 1 {
+				k = 1
+			}
+			n -= 2 * k
+			cs.con.available -= k
+		}
+		if cs.spy.available > 0 {
+			k := int(pct * float64(cs.spy.available))
+			if k < 1 {
+				k = 1
+			}
+			n -= 2 * k
+			cs.spy.available -= k
+		}
+	}
+}
+
+// laborInitialization updates the available labor pool.
+// it allocates first to construction crews and then to spy teams.
+// if there are not enough people to fill those crews or teams,
+// we allocate as many as we can.
+// the remaining population are added to the appropriate pools.
+func laborInitialization(cs *CorS, pos []*PhaseOrders) {
+	cs.Log("Colony: %-10s   Kind: %-10s  Name: %s\n", cs.HullId, cs.Kind, cs.Name)
+	cs.Log("  PRO %13d  SOL %13d  UNS %13d  FUEL %13d\n  UEM %13d  CON %13d  SPY %13d\n",
+		cs.Population.ProfessionalQty, cs.Population.SoldierQty, cs.Population.UnskilledQty, cs.fuel.available,
+		cs.Population.UnemployedQty, cs.Population.ConstructionCrewQty, cs.Population.SpyTeamQty)
+
+	cs.pro.available = cs.Population.ProfessionalQty
+	cs.sol.available = cs.Population.SoldierQty
+	cs.uns.available = cs.Population.UnskilledQty
+	cs.uem.available = cs.Population.UnemployedQty
+
+	// TODO: let automation units replace unskilled workers
+	cs.con.available = cs.Population.ConstructionCrewQty
+	if cs.con.available > 0 {
+		if availablePro(cs) < cs.con.available {
+			cs.con.available = availablePro(cs)
+		}
+		if availableUns(cs) < cs.con.available {
+			cs.con.available = availableUns(cs)
+		}
+		cs.pro.allocated += cs.con.available
+		cs.uns.allocated += cs.con.available
+	}
+
+	cs.spy.available = cs.Population.SpyTeamQty
+	if cs.spy.available > 0 {
+		if availablePro(cs) < cs.spy.available {
+			cs.spy.available = availablePro(cs)
+		}
+		if availableSol(cs) < cs.spy.available {
+			cs.spy.available = availableSol(cs)
+		}
+		cs.pro.allocated += cs.spy.available
+		cs.sol.allocated += cs.spy.available
+	}
+
+	cs.Log("  PRO %13d  SOL %13d  UNS %13d  FUEL %13d\n  UEM %13d  CON %13d  SPY %13d\n",
+		availablePro(cs), availableSol(cs), availableUns(cs), availableFuel(cs),
+		availableUem(cs), availableCon(cs), availableSpy(cs))
+
+	return
+}
+
 // TODO: logic for factory groups efficiency, automation units, and construction crews
 func maxCapacity(cs *CorS, u *InventoryUnit) int {
 	// assume maximum capacity
@@ -188,13 +383,13 @@ func maxCapacity(cs *CorS, u *InventoryUnit) int {
 	}
 
 	// limit capacity based on available professionals
-	if maxUnits > cs.population.professional {
-		maxUnits = cs.population.professional
+	if maxUnits > availablePro(cs) {
+		maxUnits = availablePro(cs)
 	}
 
 	// limit capacity based on available unskilled workers
-	if maxUnits > cs.population.unskilled/3 {
-		maxUnits = cs.population.unskilled / 3
+	if maxUnits > availableUns(cs)/3 {
+		maxUnits = availableUns(cs) / 3
 	}
 
 	return maxUnits
@@ -202,6 +397,10 @@ func maxCapacity(cs *CorS, u *InventoryUnit) int {
 
 func mineProduction(cs *CorS, pos []*PhaseOrders) {
 	cs.Log("Colony: %-10s   Kind: %-10s  Name: %s\n", cs.HullId, cs.Kind, cs.Name)
+	cs.Log("  PRO %13d  SOL %13d  UNS %13d  FUEL %13d\n  UEM %13d  CON %13d  SPY %13d\n",
+		availablePro(cs), availableSol(cs), availableUns(cs), availableFuel(cs),
+		availableUem(cs), availableCon(cs), availableSpy(cs))
+
 	for _, group := range cs.MineGroups {
 		unitsProduced := 0
 		moe := group.Unit
@@ -215,13 +414,13 @@ func mineProduction(cs *CorS, pos []*PhaseOrders) {
 		// allocate professional labor
 		moe.pro.needed = moe.ActiveQty
 		moe.pro.allocated = unitsActive
-		cs.population.professional -= moe.pro.allocated
+		cs.pro.allocated += moe.pro.allocated
 
 		// allocate unskilled labor
 		// TODO: allow automation units to replace unskilled labor
 		moe.uns.needed = 3 * moe.pro.needed
 		moe.uns.allocated = 3 * unitsActive
-		cs.population.unskilled -= moe.uns.allocated
+		cs.uns.allocated += moe.uns.allocated
 
 		cs.Log("  Group %2d: %-6s      yield: %7.3f%%     reserves: %13d tonnes\n",
 			group.No, group.Deposit.Product.Code, 100*group.Deposit.YieldPct, group.Deposit.RemainingQty)
@@ -259,5 +458,34 @@ func mineProduction(cs *CorS, pos []*PhaseOrders) {
 		group.StageQty[0] += unitsProduced
 		cs.Log("            25%%: %13d       50%%: %13d\n", group.StageQty[0], group.StageQty[1])
 		cs.Log("            75%%: %13d  finished: %13d %s\n", group.StageQty[2], group.StageQty[3], group.Deposit.Product.Code)
+
+		cs.Log("  PRO %13d  SOL %13d  UNS %13d  FUEL %13d\n  UEM %13d  CON %13d  SPY %13d\n",
+			availablePro(cs), availableSol(cs), availableUns(cs), availableFuel(cs),
+			availableUem(cs), availableCon(cs), availableSpy(cs))
 	}
+}
+
+func totalPop(cs *CorS) int {
+	return cs.pro.available + cs.sol.available + cs.uns.available + cs.uem.available + 2*cs.con.available + 2*cs.spy.available
+}
+func availableCon(cs *CorS) int {
+	return cs.con.available - cs.con.allocated
+}
+func availableFuel(cs *CorS) int {
+	return cs.fuel.available - cs.fuel.allocated
+}
+func availablePro(cs *CorS) int {
+	return cs.pro.available - cs.pro.allocated
+}
+func availableSol(cs *CorS) int {
+	return cs.sol.available - cs.sol.allocated
+}
+func availableSpy(cs *CorS) int {
+	return cs.spy.available - cs.spy.allocated
+}
+func availableUem(cs *CorS) int {
+	return cs.uem.available - cs.uem.allocated
+}
+func availableUns(cs *CorS) int {
+	return cs.uns.available - cs.uns.allocated
 }

@@ -252,7 +252,7 @@ func wraithColonyToJdbEnclosedColony(colony *wraith.CorS, game *jdb.Game) *jdb.E
 		for _, unit := range group.Units {
 			fg.Units = append(fg.Units, &jdb.FactoryGroupUnits{
 				UnitId:   unit.Unit.Id,
-				TotalQty: unit.TotalQty,
+				TotalQty: unit.ActiveQty,
 			})
 		}
 		game.FactoryGroups = append(game.FactoryGroups, fg)
@@ -362,7 +362,7 @@ func wraithColonyToJdbOrbitalColony(colony *wraith.CorS, game *jdb.Game) *jdb.Or
 		for _, unit := range group.Units {
 			fg.Units = append(fg.Units, &jdb.FactoryGroupUnits{
 				UnitId:   unit.Unit.Id,
-				TotalQty: unit.TotalQty,
+				TotalQty: unit.ActiveQty,
 			})
 		}
 		game.FactoryGroups = append(game.FactoryGroups, fg)
@@ -456,7 +456,7 @@ func wraithColonyToJdbSurfaceColony(colony *wraith.CorS, game *jdb.Game) *jdb.Su
 		for _, unit := range group.Units {
 			fg.Units = append(fg.Units, &jdb.FactoryGroupUnits{
 				UnitId:   unit.Unit.Id,
-				TotalQty: unit.TotalQty,
+				TotalQty: unit.ActiveQty,
 			})
 		}
 		game.FactoryGroups = append(game.FactoryGroups, fg)
@@ -567,7 +567,7 @@ func wraithShipToJdbShip(ship *wraith.CorS, game *jdb.Game) *jdb.Ship {
 		for _, unit := range group.Units {
 			fg.Units = append(fg.Units, &jdb.FactoryGroupUnits{
 				UnitId:   unit.Unit.Id,
-				TotalQty: unit.TotalQty,
+				TotalQty: unit.ActiveQty,
 			})
 		}
 		game.FactoryGroups = append(game.FactoryGroups, fg)

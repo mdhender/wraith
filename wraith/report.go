@@ -211,12 +211,12 @@ func (e *Engine) Report(w io.Writer, playerIds ...int) error {
 			for _, group := range cs.FactoryGroups {
 				_, _ = p.Fprintf(w, "  Group: %2d  Produces: %s\n", group.No, group.Product.Code)
 				for _, unit := range group.Units {
-					fuelPerTurn := int(math.Ceil(float64(unit.TotalQty) * unit.Unit.FuelPerUnitPerTurn))
-					metsPerTurn := int(math.Ceil(float64(unit.TotalQty) * unit.Unit.MetsPerUnitPerTurn))
-					nonMetsPerTurn := int(math.Ceil(float64(unit.TotalQty) * unit.Unit.NonMetsPerUnitPerTurn))
-					proLabor, uskLabor := 1*unit.TotalQty, 3*unit.TotalQty
+					fuelPerTurn := int(math.Ceil(float64(unit.ActiveQty) * unit.Unit.FuelPerUnitPerTurn))
+					proLabor, uskLabor := 1*unit.ActiveQty, 3*unit.ActiveQty
+					metsPerTurn := int(math.Ceil(float64(unit.ActiveQty) * unit.Unit.MetsPerUnitPerTurn))
+					nonMetsPerTurn := int(math.Ceil(float64(unit.ActiveQty) * unit.Unit.NonMetsPerUnitPerTurn))
 					_, _ = p.Fprintf(w, "     Input:  Facts__  Quantity_____  Professionals  Unskilled____  FUEL/Turn____  METS/Turn____  NMTS/Turn____\n")
-					_, _ = p.Fprintf(w, "             %-7s  %13d  %13d  %13d  %13d  %13d  %13d\n", unit.Unit.Code, unit.TotalQty, proLabor, uskLabor, fuelPerTurn, metsPerTurn, nonMetsPerTurn)
+					_, _ = p.Fprintf(w, "             %-7s  %13d  %13d  %13d  %13d  %13d  %13d\n", unit.Unit.Code, unit.ActiveQty, proLabor, uskLabor, fuelPerTurn, metsPerTurn, nonMetsPerTurn)
 				}
 				_, _ = p.Fprintf(w, "    Output:  Unit___  Stage_1______  Stage_2______  Stage_3______\n")
 				_, _ = p.Fprintf(w, "             %-7s  %13d  %13d  %13d\n", group.Product.Code, group.StageQty[0], group.StageQty[1], group.StageQty[2])

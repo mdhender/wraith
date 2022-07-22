@@ -134,10 +134,16 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 		}
 	}
 	if indexOf("factory-production", phases) != -1 {
-		log.Printf("execute: factory-production phase: not implemented\n")
+		log.Printf("execute: factory-production phase\n")
+		for _, err := range e.ExecuteFactoryProductionPhase(pos) {
+			log.Printf("execute: factory-production: %v\n", err)
+		}
 	}
 	if indexOf("combat", phases) != -1 {
-		log.Printf("execute: combat phase: not implemented\n")
+		log.Printf("execute: combat phase\n")
+		for _, err := range e.ExecuteCombatPhase(pos) {
+			log.Printf("execute: combat: %v\n", err)
+		}
 	}
 	if indexOf("setup", phases) != -1 {
 		log.Printf("execute: setup phase: not implemented\n")
@@ -192,13 +198,13 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 		} else {
 			// TODO: create a standard of living metric and change rate to 0.25% to 2.5%
 			birthRate := 0.0025 // 0.25% per year baseline
-			cs.Population.BirthsPriorTurn = int(float64(cs.population.total()) * birthRate / 4)
+			cs.Population.BirthsPriorTurn = int(float64(totalPop(cs)) * birthRate / 4)
 		}
-		cs.Population.ProfessionalQty = cs.population.professional
-		cs.Population.SoldierQty = cs.population.soldier
-		cs.Population.UnskilledQty = cs.population.unskilled
-		cs.Population.UnemployedQty = cs.population.unemployed + cs.Population.BirthsPriorTurn
-		cs.Population.NaturalDeathsPriorTurn = cs.population.nonCombatDeaths
+		cs.Population.ProfessionalQty = cs.pro.available
+		cs.Population.SoldierQty = cs.sol.available
+		cs.Population.UnskilledQty = cs.uns.available
+		cs.Population.UnemployedQty = cs.uem.available + cs.Population.BirthsPriorTurn
+		cs.Population.NaturalDeathsPriorTurn = cs.nonCombatDeaths
 
 		// update fuel depot
 		foundFuel := false
@@ -268,29 +274,20 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 
 // ExecuteFuelAllocationPhase runs all the orders in the fuel allocation phase.
 func (e *Engine) ExecuteFuelAllocationPhase(pos []*PhaseOrders) (errs []error) {
-	for _, player := range e.Players {
-		for _, colony := range player.Colonies {
-			for _, u := range colony.Inventory {
-				if u.Unit.Kind != "fuel" {
-					continue
-				}
-				colony.fuel.available += u.ActiveQty + u.StowedQty
-			}
-		}
-		for _, ship := range player.Ships {
-			for _, u := range ship.Inventory {
-				if u.Unit.Kind != "fuel" {
-					continue
-				}
-				ship.fuel.available += u.ActiveQty + u.StowedQty
-			}
-		}
+	for _, o := range pos {
+		o.Player.Log("\n\nFuel Allocation -------------------------------------------------\n")
+	}
+	for _, cs := range e.CorSById {
+		fuelInitialization(cs, pos)
 	}
 	return errs
 }
 
 // ExecuteLifeSupportPhase runs all the orders in the life support phase.
 func (e *Engine) ExecuteLifeSupportPhase(pos []*PhaseOrders) (errs []error) {
+	for _, o := range pos {
+		o.Player.Log("\n\nLife Support ----------------------------------------------------\n")
+	}
 	for _, cors := range e.CorSById {
 		cors.lifeSupportInitialization(pos)
 	}
@@ -302,8 +299,11 @@ func (e *Engine) ExecuteLifeSupportPhase(pos []*PhaseOrders) (errs []error) {
 
 // ExecuteLaborAllocationPhase runs all the orders in the fuel allocation phase.
 func (e *Engine) ExecuteLaborAllocationPhase(pos []*PhaseOrders) (errs []error) {
-	for _, cors := range e.CorSById {
-		cors.laborInitialization(pos)
+	for _, o := range pos {
+		o.Player.Log("\n\nLabor Allocation ------------------------------------------------\n")
+	}
+	for _, cs := range e.CorSById {
+		laborInitialization(cs, pos)
 	}
 	return errs
 }
@@ -321,7 +321,7 @@ func (e *Engine) ExecuteFarmProductionPhase(pos []*PhaseOrders) (errs []error) {
 	return errs
 }
 
-// ExecuteMineProductionPhase runs all the orders in the farm production phase.
+// ExecuteMineProductionPhase runs all the orders in the mine production phase.
 func (e *Engine) ExecuteMineProductionPhase(pos []*PhaseOrders) (errs []error) {
 	for _, o := range pos {
 		o.Player.Log("\n\nMine Production -------------------------------------------------\n")
@@ -330,6 +330,28 @@ func (e *Engine) ExecuteMineProductionPhase(pos []*PhaseOrders) (errs []error) {
 		if len(cs.MineGroups) != 0 {
 			mineProduction(cs, pos)
 		}
+	}
+	return errs
+}
+
+// ExecuteFactoryProductionPhase runs all the orders in the factory production phase.
+func (e *Engine) ExecuteFactoryProductionPhase(pos []*PhaseOrders) (errs []error) {
+	for _, o := range pos {
+		o.Player.Log("\n\nFactory Production ----------------------------------------------\n")
+	}
+	for _, cs := range e.CorSById {
+		if len(cs.FactoryGroups) != 0 {
+			factoryProduction(cs, pos)
+		}
+	}
+	return errs
+}
+
+// ExecuteCombatPhase runs all the orders in the combat phase.
+func (e *Engine) ExecuteCombatPhase(pos []*PhaseOrders) (errs []error) {
+	for _, o := range pos {
+		o.Player.Log("\n\nCombat ----------------------------------------------------------\n")
+		o.Player.Log("  Not Implemented!\n")
 	}
 	return errs
 }

@@ -57,69 +57,26 @@ type Engine struct {
 
 // CorS is a colony or ship
 type CorS struct {
-	Id            int     // unique identifier
-	Kind          string  // orbital, ship, or surface
-	HullId        string  // S or C + MSN
-	MSN           int     // manufacturer serial number; in game id for the colony or ship
-	BuiltBy       *Nation // nation that originally built the colony or ship
-	Name          string  // name of this colony or ship
-	TechLevel     int     // tech level of this colony or ship
-	ControlledBy  *Player // player that controls this colony or ship
-	Planet        *Planet // planet the colony or ship is located at
-	Hull          InventoryUnits
-	Inventory     InventoryUnits
-	Population    Population
-	Pay           Pay
-	Rations       Rations
-	FactoryGroups FactoryGroups // list of the factory groups
-	FarmGroups    FarmGroups    // list of the farm groups
-	MineGroups    MineGroups    // list of the mine groups
-	fuel          struct {
-		available int
-		allocated int
-		used      int
-	}
-	population population
-}
-
-// laborInitialization updates the available labor pool.
-// it allocates first to construction crews and then to spy teams.
-// if there are not enough people to fill those crews or teams,
-// we allocate as many as we can.
-// the remaining population can be used as needed.
-func (cs *CorS) laborInitialization(pos []*PhaseOrders) {
-	cs.population.professional = cs.Population.ProfessionalQty
-	cs.population.soldier = cs.Population.SoldierQty
-	cs.population.unskilled = cs.Population.UnskilledQty
-	cs.population.unemployed = cs.Population.UnemployedQty
-
-	// TODO: let automation units replace unskilled workers
-	cs.population.construction = cs.Population.ConstructionCrewQty
-	if cs.population.construction > 0 {
-		if cs.population.professional < cs.population.construction {
-			cs.population.construction = cs.population.professional
-		}
-		if cs.population.unskilled < cs.population.construction {
-			cs.population.construction = cs.population.unskilled
-		}
-		cs.population.professional -= cs.population.construction
-		cs.population.unskilled -= cs.population.construction
-	}
-
-	cs.population.spy = cs.Population.SpyTeamQty
-	if cs.population.spy > 0 {
-		cs.population.spy = cs.Population.SpyTeamQty
-		if cs.population.professional < cs.population.spy {
-			cs.population.spy = cs.population.professional
-		}
-		if cs.population.soldier < cs.population.spy {
-			cs.population.spy = cs.population.soldier
-		}
-		cs.population.professional -= cs.population.spy
-		cs.population.soldier -= cs.population.spy
-	}
-
-	return
+	Id                                 int     // unique identifier
+	Kind                               string  // orbital, ship, or surface
+	HullId                             string  // S or C + MSN
+	MSN                                int     // manufacturer serial number; in game id for the colony or ship
+	BuiltBy                            *Nation // nation that originally built the colony or ship
+	Name                               string  // name of this colony or ship
+	TechLevel                          int     // tech level of this colony or ship
+	ControlledBy                       *Player // player that controls this colony or ship
+	Planet                             *Planet // planet the colony or ship is located at
+	Hull                               InventoryUnits
+	Inventory                          InventoryUnits
+	Population                         Population
+	Pay                                Pay
+	Rations                            Rations
+	FactoryGroups                      FactoryGroups // list of the factory groups
+	FarmGroups                         FarmGroups    // list of the farm groups
+	MineGroups                         MineGroups    // list of the mine groups
+	fuel, pro, sol, uns, uem, con, spy requisition
+	lifeSupportCapacity                int
+	nonCombatDeaths                    int
 }
 
 func (cs *CorS) lifeSupportCheck() {
@@ -132,17 +89,17 @@ func (cs *CorS) lifeSupportCheck() {
 	} else {
 		playerName = "nobody"
 	}
-	if cs.population.total() <= cs.population.lifeSupportCapacity {
+	if totalPop(cs) <= cs.lifeSupportCapacity {
 		return
 	}
-	deaths := cs.population.total() - cs.population.lifeSupportCapacity
+	deaths := totalPop(cs) - cs.lifeSupportCapacity
 	log.Printf("execute: life-support: %q: %q: deaths %d\n", playerName, cs.HullId, deaths)
-	cs.population.killProportionally(deaths)
-	cs.population.nonCombatDeaths += deaths
+	killProportionally(cs, deaths)
+	cs.nonCombatDeaths += deaths
 }
 
 func (cs *CorS) lifeSupportInitialization(pos []*PhaseOrders) {
-	cs.population.lifeSupportCapacity = 0
+	cs.lifeSupportCapacity = 0
 	if !(cs.Kind == "enclosed" || cs.Kind == "orbital" || cs.Kind == "ship") {
 		return
 	}
@@ -155,7 +112,7 @@ func (cs *CorS) lifeSupportInitialization(pos []*PhaseOrders) {
 		// allocateFuel will set activeQty
 		cs.fuel.available -= u.allocateFuel(cs.fuel.available)
 		// capacity is number of units times the unit's tech level squared
-		cs.population.lifeSupportCapacity += u.activeQty * u.Unit.TechLevel * u.Unit.TechLevel
+		cs.lifeSupportCapacity += u.activeQty * u.Unit.TechLevel * u.Unit.TechLevel
 	}
 }
 
@@ -217,12 +174,12 @@ func (d Deposits) Swap(i, j int) {
 // FactoryGroup is a group of factories on a ship or colony.
 // Each group is dedicated to manufacturing one type of unit.
 type FactoryGroup struct {
-	CorS     *CorS                // ship or colony that controls the group
-	Id       int                  // unique identifier
-	No       int                  // group number, range 1...255
-	Product  *Unit                // unit being manufactured
-	Units    []*FactoryGroupUnits // factory units in the group
-	StageQty [4]int               // assumes four turns to produce a single unit
+	CorS     *CorS          // ship or colony that controls the group
+	Id       int            // unique identifier
+	No       int            // group number, range 1...255
+	Product  *Unit          // unit being produced by the group
+	Units    InventoryUnits // units assigned to the group
+	StageQty [4]int         // assumes four turns to produce a single unit
 }
 
 type FactoryGroups []*FactoryGroup
@@ -246,6 +203,7 @@ type FarmGroup struct {
 type FarmGroups []*FarmGroup
 
 type requisition struct {
+	available int
 	needed    int
 	allocated int
 	used      int
@@ -414,59 +372,6 @@ type population struct {
 	spy                 int
 	lifeSupportCapacity int
 	nonCombatDeaths     int
-}
-
-// killProportionally kills by proportion.
-// tricky bit is dealing with crews and teams since they each have 2 population units
-func (p *population) killProportionally(n int) {
-	for n > 0 && p.total() > 0 {
-		pct := float64(n) / float64(p.total())
-		if p.professional > 0 {
-			k := int(pct * float64(p.professional))
-			n -= k
-			p.professional -= k
-		}
-		if p.soldier > 0 {
-			k := int(pct * float64(p.soldier))
-			if k < 1 {
-				k = 1
-			}
-			n -= k
-			p.soldier -= k
-		}
-		if p.unskilled > 0 {
-			k := int(pct * float64(p.unskilled))
-			if k < 1 {
-				k = 1
-			}
-			n -= k
-			p.unskilled -= k
-		}
-		if p.unemployed > 0 {
-			k := int(pct * float64(p.unemployed))
-			if k < 1 {
-				k = 1
-			}
-			n -= k
-			p.unemployed -= k
-		}
-		if p.construction > 0 {
-			k := int(pct * float64(p.construction))
-			if k < 1 {
-				k = 1
-			}
-			n -= 2 * k
-			p.construction -= k
-		}
-		if p.spy > 0 {
-			k := int(pct * float64(p.spy))
-			if k < 1 {
-				k = 1
-			}
-			n -= 2 * k
-			p.spy -= k
-		}
-	}
 }
 
 func (p *population) total() int {

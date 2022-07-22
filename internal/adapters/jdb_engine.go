@@ -281,9 +281,9 @@ func jdbFactoryGroupToWraithFactoryGroup(group *jdb.FactoryGroup, cors map[int]*
 		StageQty: [4]int{group.Stage1Qty, group.Stage2Qty, group.Stage3Qty, group.Stage4Qty},
 	}
 	for _, u := range group.Units {
-		g.Units = append(g.Units, &wraith.FactoryGroupUnits{
-			Unit:     units[u.UnitId],
-			TotalQty: u.TotalQty,
+		g.Units = append(g.Units, &wraith.InventoryUnit{
+			Unit:      units[u.UnitId],
+			ActiveQty: u.TotalQty,
 		})
 	}
 	return g
