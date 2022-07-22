@@ -50,16 +50,17 @@ type AssemblyPhaseOrder struct {
 	MiningGroup  *AssembleMiningGroupOrder
 }
 type AssembleFactoryGroupOrder struct {
-	CorS     string // id of ship or colony to assemble in
-	Quantity int
-	Unit     string
-	Product  string
+	CorS       string // id of ship or colony to assemble in
+	Quantity   int
+	Unit       string
+	Product    string
+	cons, fuel requisition
 }
 type AssembleMiningGroupOrder struct {
 	CorS     string // id of ship or colony to assemble in
 	Quantity int
 	Unit     string
-	Product  string
+	Group    string
 }
 
 type RetoolPhaseOrder struct {
@@ -268,6 +269,13 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 			}
 			unit.StowedQty += group.StageQty[3]
 			group.StageQty[3] = 0
+
+			//for _, u := range group.Units {
+			//	log.Printf("%-6s: fg: %d %s: unit %s %d %d\n",
+			//		cs.HullId, group.No, group.Product.Code,
+			//		u.Unit.Code, u.ActiveQty, u.activeQty)
+			//	u.ActiveQty = 995876
+			//}
 		}
 	}
 
@@ -362,9 +370,153 @@ func (e *Engine) ExecuteCombatPhase(pos []*PhaseOrders) (errs []error) {
 func (e *Engine) ExecuteAssemblyPhase(pos []*PhaseOrders) (errs []error) {
 	for _, o := range pos {
 		o.Player.Log("\n\nAssembly --------------------------------------------------------\n")
-
+		for _, order := range o.Assembly {
+			if err := order.FactoryGroup.Execute(e, o.Player); err != nil {
+				errs = append(errs, err)
+			}
+			if err := order.MiningGroup.Execute(e, o.Player); err != nil {
+				errs = append(errs, err)
+			}
+		}
 	}
 	return errs
+}
+
+// Execute assembles a factory group on the colony or ship.
+// Will fail if the colony or ship is not controlled by the player.
+func (o *AssembleFactoryGroupOrder) Execute(e *Engine, p *Player) error {
+	if o == nil {
+		return nil
+	}
+
+	// find colony or ship
+	cs, ok := e.findColony(o.CorS)
+	if !ok {
+		if cs, ok = e.findShip(o.CorS); !ok {
+			p.Log("  assemble %s: no such colony or ship\n", o.CorS)
+			return fmt.Errorf("no such colony or ship %q", o.CorS)
+		}
+	}
+	// fail if controlled by another player
+	if cs.ControlledBy != nil && cs.ControlledBy != p {
+		p.Log("  assemble %s: no such colony or ship\n", o.CorS)
+		return fmt.Errorf("no such colony or ship %q", o.CorS)
+	}
+
+	// find the factory and product in the order
+	factory, ok := unitFromString(e, o.Unit)
+	if !ok {
+		p.Log("  assemble %s: no such unit %q\n", o.CorS, o.Unit)
+		return fmt.Errorf("no such unit %q", o.Unit)
+	} else if factory.TechLevel > cs.TechLevel {
+		p.Log("  assemble %s: unit %q: invalid tech level\n", o.CorS, o.Unit)
+		return fmt.Errorf("invalid tech level %q", o.Product)
+	}
+	product, ok := unitFromString(e, o.Product)
+	if !ok {
+		p.Log("  assemble %s: no such unit %q product %q\n", o.CorS, o.Unit, o.Product)
+		return fmt.Errorf("no such unit %q", o.Product)
+	} else if product.TechLevel > cs.TechLevel {
+		p.Log("  assemble %s: unit %q product %q: invalid tech level\n", o.CorS, o.Unit, o.Product)
+		return fmt.Errorf("invalid tech level %q", o.Product)
+	}
+
+	// is there a group already producing this product or must we create a new group?
+	var fg *FactoryGroup
+	for _, group := range cs.FactoryGroups {
+		if group.Product.Code == product.Code {
+			// an existing group
+			fg = group
+			break
+		}
+	}
+	if fg == nil {
+		fg = &FactoryGroup{
+			CorS:    cs,
+			Id:      e.NextSeq(),
+			No:      0,
+			Product: product,
+		}
+		var idx [30]bool
+		for _, group := range cs.FactoryGroups {
+			idx[group.No] = true
+		}
+		for no := 1; fg.No == 0 && no < 30; no++ {
+			if !idx[no] {
+				fg.No = no
+			}
+		}
+		if fg.No == 0 {
+			p.Log("  assemble %s: unit %q product %q: no factory groups available", o.CorS, o.Unit, o.Product)
+			return fmt.Errorf("no factory groups available")
+		}
+		cs.FactoryGroups = append(cs.FactoryGroups, fg)
+		sort.Sort(cs.FactoryGroups)
+	}
+	p.Log("  assemble %s: group %2d: %-11s product %s\n", o.CorS, fg.No, factory.Name, product.Name)
+
+	// no fuel required to assemble factory units!
+	o.fuel.needed = 0
+
+	// allocate labor. 1 CON per 500 tonnes.
+	o.cons.needed = o.Quantity
+	if availableCon(cs) < o.cons.needed {
+		o.cons.allocated = availableCon(cs)
+	} else {
+		o.cons.allocated = o.cons.needed
+	}
+	cs.cons.allocated += o.cons.allocated
+
+	// are there already units in the group or must we add them?
+	var unit *InventoryUnit
+	for _, u := range fg.Units {
+		if u.Unit.Code == factory.Code {
+			unit = u
+			break
+		}
+	}
+	if unit == nil {
+		unit = &InventoryUnit{Unit: factory}
+		fg.Units = append(fg.Units, unit)
+		sort.Sort(fg.Units)
+	}
+	unit.ActiveQty += o.Quantity
+
+	return nil
+}
+
+// Execute assembles a mine group on the colony or ship.
+// Will fail if the colony or ship is not controlled by the player.
+func (o *AssembleMiningGroupOrder) Execute(e *Engine, p *Player) error {
+	if o == nil {
+		return nil
+	}
+	mine, ok := unitFromString(e, o.Unit)
+	if !ok {
+		p.Log("  assemble %s: no such unit %q\n", o.CorS, o.Unit)
+		return fmt.Errorf("no such unit %q", o.Unit)
+	}
+	//product, ok := unitFromString(e, o.Product)
+	//if !ok {
+	//	p.Log("  assemble %s: no such unit %q %q:\n%v\n", o.CorS, o.Unit, o.Product, o)
+	//	return fmt.Errorf("no such unit %q", o.Product)
+	//}
+	p.Log("  assemble %s: mine %q group %q\n", o.CorS, mine.Code, o.Group)
+
+	// find colony or ship
+	var cs *CorS
+	if cs, ok = e.findColony(o.CorS); !ok {
+		if cs, ok = e.findShip(o.CorS); !ok {
+			p.Log("  assemble %s: no such colony or ship\n", o.CorS)
+			return fmt.Errorf("no such colony or ship %q", o.CorS)
+		}
+	}
+	// fail if controlled by another player
+	if cs.ControlledBy != nil && cs.ControlledBy != p {
+		p.Log("  assemble %s: no such colony or ship\n", o.CorS)
+		return fmt.Errorf("no such colony or ship %q", o.CorS)
+	}
+	return nil
 }
 
 // ExecuteControlPhase runs all the orders in the control phase.

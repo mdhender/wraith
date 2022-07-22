@@ -23,6 +23,7 @@ import (
 	"github.com/mdhender/wraith/storage/jdb"
 	"github.com/mdhender/wraith/wraith"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -31,20 +32,21 @@ func JdbGameToWraithEngine(jg *jdb.Game) (*wraith.Engine, error) {
 	var err error
 
 	e := &wraith.Engine{
-		Version:       "0.1.0",
-		Colonies:      make(map[string]*wraith.CorS),
-		CorSById:      make(map[int]*wraith.CorS),
-		Deposits:      make(map[int]*wraith.Deposit),
-		FactoryGroups: make(map[int]*wraith.FactoryGroup),
-		FarmGroups:    make(map[int]*wraith.FarmGroup),
-		MineGroups:    make(map[int]*wraith.MineGroup),
-		Nations:       make(map[int]*wraith.Nation),
-		Planets:       make(map[int]*wraith.Planet),
-		Players:       make(map[int]*wraith.Player),
-		Ships:         make(map[string]*wraith.CorS),
-		Stars:         make(map[int]*wraith.Star),
-		Systems:       make(map[int]*wraith.System),
-		Units:         make(map[int]*wraith.Unit),
+		Version:         "0.1.0",
+		Colonies:        make(map[string]*wraith.CorS),
+		CorSById:        make(map[int]*wraith.CorS),
+		Deposits:        make(map[int]*wraith.Deposit),
+		FactoryGroups:   make(map[int]*wraith.FactoryGroup),
+		FarmGroups:      make(map[int]*wraith.FarmGroup),
+		MineGroups:      make(map[int]*wraith.MineGroup),
+		Nations:         make(map[int]*wraith.Nation),
+		Planets:         make(map[int]*wraith.Planet),
+		Players:         make(map[int]*wraith.Player),
+		Ships:           make(map[string]*wraith.CorS),
+		Stars:           make(map[int]*wraith.Star),
+		Systems:         make(map[int]*wraith.System),
+		Units:           make(map[int]*wraith.Unit),
+		UnitsFromString: make(map[string]*wraith.Unit),
 	}
 
 	e.Game.Id = jg.Id
@@ -60,7 +62,10 @@ func JdbGameToWraithEngine(jg *jdb.Game) (*wraith.Engine, error) {
 	}
 
 	for _, unit := range jg.Units {
-		e.Units[unit.Id] = jdbUnitToWraithUnit(unit)
+		u := jdbUnitToWraithUnit(unit)
+		e.Units[unit.Id] = u
+		e.UnitsFromString[unit.Code] = u
+		e.UnitsFromString[strings.ToLower(u.Name)] = u
 	}
 
 	// two loops to create players.
@@ -188,6 +193,61 @@ func JdbGameToWraithEngine(jg *jdb.Game) (*wraith.Engine, error) {
 		sort.Sort(player.Ships)
 	}
 
+	for _, cs := range e.CorSById {
+		if cs.Id > e.Seq {
+			e.Seq = cs.Id
+		}
+	}
+	for _, dp := range e.Deposits {
+		if dp.Id > e.Seq {
+			e.Seq = dp.Id
+		}
+	}
+	for _, fg := range e.FactoryGroups {
+		if fg.Id > e.Seq {
+			e.Seq = fg.Id
+		}
+	}
+	for _, fg := range e.FarmGroups {
+		if fg.Id > e.Seq {
+			e.Seq = fg.Id
+		}
+	}
+	for _, mg := range e.MineGroups {
+		if mg.Id > e.Seq {
+			e.Seq = mg.Id
+		}
+	}
+	for _, n := range e.Nations {
+		if n.Id > e.Seq {
+			e.Seq = n.Id
+		}
+	}
+	for _, p := range e.Planets {
+		if p.Id > e.Seq {
+			e.Seq = p.Id
+		}
+	}
+	for _, p := range e.Players {
+		if p.Id > e.Seq {
+			e.Seq = p.Id
+		}
+	}
+	for _, s := range e.Stars {
+		if s.Id > e.Seq {
+			e.Seq = s.Id
+		}
+	}
+	for _, s := range e.Systems {
+		if s.Id > e.Seq {
+			e.Seq = s.Id
+		}
+	}
+	for _, u := range e.Units {
+		if u.Id > e.Seq {
+			e.Seq = u.Id
+		}
+	}
 	return e, nil
 }
 

@@ -59,50 +59,6 @@ func ModelsPlayerToEnginePlayer(mp *models.Player) *engine.Player {
 	return &ep
 }
 
-// OrdersToEnginePhaseOrders converts orders into the Engine's expected format while splitting them into buckets for each phase.
-// Because it appends to the bucket, it does not change the relative order of commands in a phase.
-// Invalid or unknown orders are dropped.
-func OrdersToEnginePhaseOrders(o ...*orders.Order) *engine.PhaseOrders {
-	var epo engine.PhaseOrders
-	for _, order := range o {
-		if order == nil || order.Verb == nil || order.Errors != nil || order.Reject != nil {
-			continue
-		}
-		switch order.Verb.Kind {
-		case tokens.AssembleFactoryGroup:
-			epo.Assembly = append(epo.Assembly, &engine.AssemblyPhaseOrder{FactoryGroup: &engine.AssembleFactoryGroupOrder{
-				CorS:     string(order.Args[0].Text),
-				Quantity: order.Args[1].Integer,
-				Unit:     "",
-				Product:  "",
-			}})
-		case tokens.AssembleMiningGroup:
-			epo.Assembly = append(epo.Assembly, &engine.AssemblyPhaseOrder{MiningGroup: &engine.AssembleMiningGroupOrder{
-				CorS:     string(order.Args[0].Text),
-				Quantity: order.Args[1].Integer,
-				Unit:     "",
-				Product:  "",
-			}})
-		case tokens.Control:
-			id := string(order.Args[0].Text)
-			if order.Args[0].Kind == tokens.ColonyId {
-				epo.Control = append(epo.Control, &engine.ControlPhaseOrder{ControlColony: &engine.ControlColonyOrder{Id: id}})
-			} else if order.Args[0].Kind == tokens.ShipId {
-				epo.Control = append(epo.Control, &engine.ControlPhaseOrder{ControlShip: &engine.ControlShipOrder{Id: id}})
-			}
-		case tokens.Name:
-			id := string(order.Args[0].Text)
-			name := string(order.Args[1].Text)
-			if order.Args[0].Kind == tokens.ColonyId {
-				epo.Control = append(epo.Control, &engine.ControlPhaseOrder{NameColony: &engine.NameColonyOrder{Id: id, Name: name}})
-			} else if order.Args[0].Kind == tokens.ShipId {
-				epo.Control = append(epo.Control, &engine.ControlPhaseOrder{NameShip: &engine.NameShipOrder{Id: id, Name: name}})
-			}
-		}
-	}
-	return &epo
-}
-
 // OrdersToPhaseOrders converts orders into the Engine's expected format while splitting them into buckets for each phase.
 // Because it appends to the bucket, it does not change the relative order of commands in a phase.
 // Invalid or unknown orders are dropped.
@@ -114,18 +70,19 @@ func OrdersToPhaseOrders(p *wraith.Player, o ...*orders.Order) *wraith.PhaseOrde
 		}
 		switch order.Verb.Kind {
 		case tokens.AssembleFactoryGroup:
-			epo.Assembly = append(epo.Assembly, &wraith.AssemblyPhaseOrder{FactoryGroup: &wraith.AssembleFactoryGroupOrder{
+			o := &wraith.AssembleFactoryGroupOrder{
 				CorS:     string(order.Args[0].Text),
 				Quantity: order.Args[1].Integer,
-				Unit:     "",
-				Product:  "",
-			}})
+				Unit:     order.Args[2].String(),
+				Product:  order.Args[3].String(),
+			}
+			epo.Assembly = append(epo.Assembly, &wraith.AssemblyPhaseOrder{FactoryGroup: o})
 		case tokens.AssembleMiningGroup:
 			epo.Assembly = append(epo.Assembly, &wraith.AssemblyPhaseOrder{MiningGroup: &wraith.AssembleMiningGroupOrder{
 				CorS:     string(order.Args[0].Text),
 				Quantity: order.Args[1].Integer,
-				Unit:     "",
-				Product:  "",
+				Unit:     order.Args[2].String(),
+				Group:    order.Args[3].String(),
 			}})
 		case tokens.Control:
 			id := string(order.Args[0].Text)

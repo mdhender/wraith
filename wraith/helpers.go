@@ -20,6 +20,7 @@ package wraith
 
 import (
 	"math"
+	"strings"
 )
 
 type ClusterList []*ClusterListItem
@@ -243,7 +244,7 @@ func fuelInitialization(cs *CorS, pos []*PhaseOrders) {
 		}
 		cs.fuel.available += u.ActiveQty + u.StowedQty
 	}
-	cs.Log("  FUEL %13d\n\n", cs.fuel.available)
+	cs.Log("  %13d FUEL available for use\n\n", cs.fuel.available)
 }
 
 func indexOf(s string, sl []string) int {
@@ -302,13 +303,13 @@ func killProportionally(cs *CorS, n int) {
 			n -= k
 			cs.uem.available -= k
 		}
-		if cs.con.available > 0 {
-			k := int(pct * float64(cs.con.available))
+		if cs.cons.available > 0 {
+			k := int(pct * float64(cs.cons.available))
 			if k < 1 {
 				k = 1
 			}
 			n -= 2 * k
-			cs.con.available -= k
+			cs.cons.available -= k
 		}
 		if cs.spy.available > 0 {
 			k := int(pct * float64(cs.spy.available))
@@ -338,16 +339,16 @@ func laborInitialization(cs *CorS, pos []*PhaseOrders) {
 	cs.uem.available = cs.Population.UnemployedQty
 
 	// TODO: let automation units replace unskilled workers
-	cs.con.available = cs.Population.ConstructionCrewQty
-	if cs.con.available > 0 {
-		if availablePro(cs) < cs.con.available {
-			cs.con.available = availablePro(cs)
+	cs.cons.available = cs.Population.ConstructionCrewQty
+	if cs.cons.available > 0 {
+		if availablePro(cs) < cs.cons.available {
+			cs.cons.available = availablePro(cs)
 		}
-		if availableUns(cs) < cs.con.available {
-			cs.con.available = availableUns(cs)
+		if availableUns(cs) < cs.cons.available {
+			cs.cons.available = availableUns(cs)
 		}
-		cs.pro.allocated += cs.con.available
-		cs.uns.allocated += cs.con.available
+		cs.pro.allocated += cs.cons.available
+		cs.uns.allocated += cs.cons.available
 	}
 
 	cs.spy.available = cs.Population.SpyTeamQty
@@ -466,10 +467,10 @@ func mineProduction(cs *CorS, pos []*PhaseOrders) {
 }
 
 func totalPop(cs *CorS) int {
-	return cs.pro.available + cs.sol.available + cs.uns.available + cs.uem.available + 2*cs.con.available + 2*cs.spy.available
+	return cs.pro.available + cs.sol.available + cs.uns.available + cs.uem.available + 2*cs.cons.available + 2*cs.spy.available
 }
 func availableCon(cs *CorS) int {
-	return cs.con.available - cs.con.allocated
+	return cs.cons.available - cs.cons.allocated
 }
 func availableFuel(cs *CorS) int {
 	return cs.fuel.available - cs.fuel.allocated
@@ -488,4 +489,14 @@ func availableUem(cs *CorS) int {
 }
 func availableUns(cs *CorS) int {
 	return cs.uns.available - cs.uns.allocated
+}
+
+func unitFromString(e *Engine, s string) (*Unit, bool) {
+	// try code first
+	u, ok := e.UnitsFromString[strings.ToUpper(s)]
+	if !ok {
+		// try long name
+		u, ok = e.UnitsFromString[strings.ToLower(s)]
+	}
+	return u, ok
 }

@@ -40,43 +40,50 @@ type Engine struct {
 			EndDt   time.Time
 		}
 	}
-	Colonies      map[string]*CorS
-	CorSById      map[int]*CorS
-	Deposits      map[int]*Deposit
-	FactoryGroups map[int]*FactoryGroup
-	FarmGroups    map[int]*FarmGroup
-	MineGroups    map[int]*MineGroup
-	Nations       map[int]*Nation
-	Planets       map[int]*Planet
-	Players       map[int]*Player
-	Ships         map[string]*CorS
-	Stars         map[int]*Star
-	Systems       map[int]*System
-	Units         map[int]*Unit
+	Colonies        map[string]*CorS
+	CorSById        map[int]*CorS
+	Deposits        map[int]*Deposit
+	FactoryGroups   map[int]*FactoryGroup
+	FarmGroups      map[int]*FarmGroup
+	MineGroups      map[int]*MineGroup
+	Nations         map[int]*Nation
+	Planets         map[int]*Planet
+	Players         map[int]*Player
+	Ships           map[string]*CorS
+	Stars           map[int]*Star
+	Systems         map[int]*System
+	Units           map[int]*Unit
+	UnitsFromString map[string]*Unit
+	Seq             int
+}
+
+func (e *Engine) NextSeq() int {
+	e.Seq++
+	return e.Seq
 }
 
 // CorS is a colony or ship
 type CorS struct {
-	Id                                 int     // unique identifier
-	Kind                               string  // orbital, ship, or surface
-	HullId                             string  // S or C + MSN
-	MSN                                int     // manufacturer serial number; in game id for the colony or ship
-	BuiltBy                            *Nation // nation that originally built the colony or ship
-	Name                               string  // name of this colony or ship
-	TechLevel                          int     // tech level of this colony or ship
-	ControlledBy                       *Player // player that controls this colony or ship
-	Planet                             *Planet // planet the colony or ship is located at
-	Hull                               InventoryUnits
-	Inventory                          InventoryUnits
-	Population                         Population
-	Pay                                Pay
-	Rations                            Rations
-	FactoryGroups                      FactoryGroups // list of the factory groups
-	FarmGroups                         FarmGroups    // list of the farm groups
-	MineGroups                         MineGroups    // list of the mine groups
-	fuel, pro, sol, uns, uem, con, spy requisition
-	lifeSupportCapacity                int
-	nonCombatDeaths                    int
+	Id                                  int     // unique identifier
+	Kind                                string  // orbital, ship, or surface
+	HullId                              string  // S or C + MSN
+	MSN                                 int     // manufacturer serial number; in game id for the colony or ship
+	BuiltBy                             *Nation // nation that originally built the colony or ship
+	Name                                string  // name of this colony or ship
+	TechLevel                           int     // tech level of this colony or ship
+	ControlledBy                        *Player // player that controls this colony or ship
+	Planet                              *Planet // planet the colony or ship is located at
+	Hull                                InventoryUnits
+	Inventory                           InventoryUnits
+	Population                          Population
+	Pay                                 Pay
+	Rations                             Rations
+	FactoryGroups                       FactoryGroups // list of the factory groups
+	FarmGroups                          FarmGroups    // list of the farm groups
+	MineGroups                          MineGroups    // list of the mine groups
+	fuel, pro, sol, uns, uem, cons, spy requisition
+	lifeSupportCapacity                 int
+	nonCombatDeaths                     int
 }
 
 func (cs *CorS) lifeSupportCheck() {
@@ -183,6 +190,18 @@ type FactoryGroup struct {
 }
 
 type FactoryGroups []*FactoryGroup
+
+func (f FactoryGroups) Len() int {
+	return len(f)
+}
+
+func (f FactoryGroups) Less(i, j int) bool {
+	return f[i].No < f[j].No
+}
+
+func (f FactoryGroups) Swap(i, j int) {
+	f[i], f[j] = f[j], f[i]
+}
 
 // FactoryGroupUnits is the number of factories working together in the group
 type FactoryGroupUnits struct {
