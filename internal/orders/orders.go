@@ -85,8 +85,13 @@ func (o *Order) expectAssemble(z *tokens.Tokenizer) bool {
 		o.Args = append(o.Args, t)
 		return o.expectFactoryGroup(z)
 	}
+	if t = accept(z, tokens.FarmUnit); t != nil {
+		o.Verb.Kind = tokens.AssembleFarmGroup
+		o.Args = append(o.Args, t)
+		return o.expectFarmGroup(z)
+	}
 	if t = accept(z, tokens.MineUnit); t != nil {
-		o.Verb.Kind = tokens.AssembleMiningGroup
+		o.Verb.Kind = tokens.AssembleMineGroup
 		o.Args = append(o.Args, t)
 		return o.expectMineGroup(z)
 	}
@@ -126,6 +131,22 @@ func (o *Order) expectFactoryGroup(z *tokens.Tokenizer) bool {
 	o.Args = append(o.Args, t)
 	if t = accept(z, tokens.EOL, tokens.EOF); t == nil {
 		o.Errors = append(o.Errors, fmt.Errorf("%d: unexpected input on assemble factory group order", o.Line))
+		o.reject(z)
+		return false
+	}
+	return true
+}
+
+func (o *Order) expectFarmGroup(z *tokens.Tokenizer) bool {
+	var t *tokens.Token
+	if t = accept(z, tokens.FoodUnit); t == nil {
+		o.Errors = append(o.Errors, fmt.Errorf("%d: expected unit to produce", o.Line))
+		o.reject(z)
+		return false
+	}
+	o.Args = append(o.Args, t)
+	if t = accept(z, tokens.EOL, tokens.EOF); t == nil {
+		o.Errors = append(o.Errors, fmt.Errorf("%d: unexpected input on assemble farm group order", o.Line))
 		o.reject(z)
 		return false
 	}

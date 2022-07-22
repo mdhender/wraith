@@ -161,17 +161,32 @@ func (z *Tokenizer) Next() *Token {
 	if bytes.HasPrefix(word, []byte("farm-")) {
 		return &Token{Line: z.line, Kind: FarmUnit, Text: word}
 	}
+	if bytes.Equal(word, []byte("food")) {
+		return &Token{Line: z.line, Kind: FoodUnit, Text: word}
+	}
+	if bytes.Equal(word, []byte("fuel")) {
+		return &Token{Line: z.line, Kind: FuelUnit, Text: word}
+	}
+	if bytes.Equal(word, []byte("gold")) {
+		return &Token{Line: z.line, Kind: GoldUnit, Text: word}
+	}
 	if bytes.HasPrefix(word, []byte("hyper-drive-")) {
 		return &Token{Line: z.line, Kind: HyperDriveUnit, Text: word}
 	}
 	if bytes.HasPrefix(word, []byte("life-support-")) {
 		return &Token{Line: z.line, Kind: LifeSupportUnit, Text: word}
 	}
+	if bytes.Equal(word, []byte("metallics")) {
+		return &Token{Line: z.line, Kind: MetallicsUnit, Text: word}
+	}
 	if bytes.HasPrefix(word, []byte("mine-")) {
 		return &Token{Line: z.line, Kind: MineUnit, Text: word}
 	}
 	if bytes.Equal(word, []byte("name")) {
 		return &Token{Line: z.line, Kind: Name, Text: word}
+	}
+	if bytes.Equal(word, []byte("non-metallics")) {
+		return &Token{Line: z.line, Kind: NonMetallicsUnit, Text: word}
 	}
 	if bytes.Equal(word, []byte("research")) {
 		return &Token{Line: z.line, Kind: ResearchUnit, Text: word}

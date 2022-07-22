@@ -77,12 +77,20 @@ func OrdersToPhaseOrders(p *wraith.Player, o ...*orders.Order) *wraith.PhaseOrde
 				Product:  order.Args[3].String(),
 			}
 			epo.Assembly = append(epo.Assembly, &wraith.AssemblyPhaseOrder{FactoryGroup: o})
-		case tokens.AssembleMiningGroup:
-			epo.Assembly = append(epo.Assembly, &wraith.AssemblyPhaseOrder{MiningGroup: &wraith.AssembleMiningGroupOrder{
+		case tokens.AssembleFarmGroup:
+			o := &wraith.AssembleFarmGroupOrder{
 				CorS:     string(order.Args[0].Text),
 				Quantity: order.Args[1].Integer,
 				Unit:     order.Args[2].String(),
-				Group:    order.Args[3].String(),
+				Product:  order.Args[3].String(),
+			}
+			epo.Assembly = append(epo.Assembly, &wraith.AssemblyPhaseOrder{FarmGroup: o})
+		case tokens.AssembleMineGroup:
+			epo.Assembly = append(epo.Assembly, &wraith.AssemblyPhaseOrder{MiningGroup: &wraith.AssembleMineGroupOrder{
+				CorS:     string(order.Args[0].Text),
+				Quantity: order.Args[1].Integer,
+				Unit:     order.Args[2].String(),
+				Deposit:  order.Args[3].String(),
 			}})
 		case tokens.Control:
 			id := string(order.Args[0].Text)

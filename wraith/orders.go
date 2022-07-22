@@ -47,7 +47,8 @@ type PhaseOrders struct {
 
 type AssemblyPhaseOrder struct {
 	FactoryGroup *AssembleFactoryGroupOrder
-	MiningGroup  *AssembleMiningGroupOrder
+	FarmGroup    *AssembleFarmGroupOrder
+	MiningGroup  *AssembleMineGroupOrder
 }
 type AssembleFactoryGroupOrder struct {
 	CorS       string // id of ship or colony to assemble in
@@ -56,11 +57,19 @@ type AssembleFactoryGroupOrder struct {
 	Product    string
 	cons, fuel requisition
 }
-type AssembleMiningGroupOrder struct {
-	CorS     string // id of ship or colony to assemble in
-	Quantity int
-	Unit     string
-	Group    string
+type AssembleFarmGroupOrder struct {
+	CorS       string // id of ship or colony to assemble in
+	Quantity   int
+	Unit       string
+	Product    string
+	cons, fuel requisition
+}
+type AssembleMineGroupOrder struct {
+	CorS       string // id of ship or colony to assemble in
+	Quantity   int
+	Unit       string
+	Deposit    string
+	cons, fuel requisition
 }
 
 type RetoolPhaseOrder struct {
@@ -374,6 +383,9 @@ func (e *Engine) ExecuteAssemblyPhase(pos []*PhaseOrders) (errs []error) {
 			if err := order.FactoryGroup.Execute(e, o.Player); err != nil {
 				errs = append(errs, err)
 			}
+			if err := order.FarmGroup.Execute(e, o.Player); err != nil {
+				errs = append(errs, err)
+			}
 			if err := order.MiningGroup.Execute(e, o.Player); err != nil {
 				errs = append(errs, err)
 			}
@@ -485,27 +497,16 @@ func (o *AssembleFactoryGroupOrder) Execute(e *Engine, p *Player) error {
 	return nil
 }
 
-// Execute assembles a mine group on the colony or ship.
+// Execute assembles a farm group on the colony or ship.
 // Will fail if the colony or ship is not controlled by the player.
-func (o *AssembleMiningGroupOrder) Execute(e *Engine, p *Player) error {
+func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 	if o == nil {
 		return nil
 	}
-	mine, ok := unitFromString(e, o.Unit)
-	if !ok {
-		p.Log("  assemble %s: no such unit %q\n", o.CorS, o.Unit)
-		return fmt.Errorf("no such unit %q", o.Unit)
-	}
-	//product, ok := unitFromString(e, o.Product)
-	//if !ok {
-	//	p.Log("  assemble %s: no such unit %q %q:\n%v\n", o.CorS, o.Unit, o.Product, o)
-	//	return fmt.Errorf("no such unit %q", o.Product)
-	//}
-	p.Log("  assemble %s: mine %q group %q\n", o.CorS, mine.Code, o.Group)
 
 	// find colony or ship
-	var cs *CorS
-	if cs, ok = e.findColony(o.CorS); !ok {
+	cs, ok := e.findColony(o.CorS)
+	if !ok {
 		if cs, ok = e.findShip(o.CorS); !ok {
 			p.Log("  assemble %s: no such colony or ship\n", o.CorS)
 			return fmt.Errorf("no such colony or ship %q", o.CorS)
@@ -516,6 +517,182 @@ func (o *AssembleMiningGroupOrder) Execute(e *Engine, p *Player) error {
 		p.Log("  assemble %s: no such colony or ship\n", o.CorS)
 		return fmt.Errorf("no such colony or ship %q", o.CorS)
 	}
+
+	// find the farm and product in the order
+	factory, ok := unitFromString(e, o.Unit)
+	if !ok {
+		p.Log("  assemble %s: no such unit %q\n", o.CorS, o.Unit)
+		return fmt.Errorf("no such unit %q", o.Unit)
+	} else if factory.TechLevel > cs.TechLevel {
+		p.Log("  assemble %s: unit %q: invalid tech level\n", o.CorS, o.Unit)
+		return fmt.Errorf("invalid tech level %q", o.Unit)
+	}
+	product, ok := unitFromString(e, o.Product)
+	if !ok {
+		p.Log("  assemble %s: no such unit %q product %q\n", o.CorS, o.Unit, o.Product)
+		return fmt.Errorf("no such unit %q", o.Product)
+	} else if product.Code != "FOOD" {
+		p.Log("  assemble %s: unit %q product %q: invalid food\n", o.CorS, o.Unit, o.Product)
+		return fmt.Errorf("invalid food %q", o.Product)
+	} else if product.TechLevel > cs.TechLevel {
+		p.Log("  assemble %s: unit %q product %q: invalid tech level\n", o.CorS, o.Unit, o.Product)
+		return fmt.Errorf("invalid tech level %q", o.Product)
+	}
+
+	// is there a group already producing this product or must we create a new group?
+	var fg *FactoryGroup
+	for _, group := range cs.FactoryGroups {
+		if group.Product.Code == product.Code {
+			// an existing group
+			fg = group
+			break
+		}
+	}
+	if fg == nil {
+		fg = &FactoryGroup{
+			CorS:    cs,
+			Id:      e.NextSeq(),
+			No:      0,
+			Product: product,
+		}
+		var idx [30]bool
+		for _, group := range cs.FactoryGroups {
+			idx[group.No] = true
+		}
+		for no := 1; fg.No == 0 && no < 30; no++ {
+			if !idx[no] {
+				fg.No = no
+			}
+		}
+		if fg.No == 0 {
+			p.Log("  assemble %s: unit %q product %q: no farm groups available", o.CorS, o.Unit, o.Product)
+			return fmt.Errorf("no factory groups available")
+		}
+		cs.FactoryGroups = append(cs.FactoryGroups, fg)
+		sort.Sort(cs.FactoryGroups)
+	}
+	p.Log("  assemble %s: group %2d: %-11s product %s\n", o.CorS, fg.No, factory.Name, product.Name)
+
+	// no fuel required to assemble farm units!
+	o.fuel.needed = 0
+
+	// allocate labor. 1 CON per 500 tonnes.
+	o.cons.needed = o.Quantity
+	if availableCon(cs) < o.cons.needed {
+		o.cons.allocated = availableCon(cs)
+	} else {
+		o.cons.allocated = o.cons.needed
+	}
+	cs.cons.allocated += o.cons.allocated
+
+	// are there already units in the group or must we add them?
+	var unit *InventoryUnit
+	for _, u := range fg.Units {
+		if u.Unit.Code == factory.Code {
+			unit = u
+			break
+		}
+	}
+	if unit == nil {
+		unit = &InventoryUnit{Unit: factory}
+		fg.Units = append(fg.Units, unit)
+		sort.Sort(fg.Units)
+	}
+	unit.ActiveQty += o.Quantity
+
+	return nil
+}
+
+// Execute assembles a mine group on the colony or ship.
+// Will fail if the colony or ship is not controlled by the player.
+func (o *AssembleMineGroupOrder) Execute(e *Engine, p *Player) error {
+	if o == nil {
+		return nil
+	}
+
+	// find colony or ship
+	cs, ok := e.findColony(o.CorS)
+	if !ok {
+		if cs, ok = e.findShip(o.CorS); !ok {
+			p.Log("  assemble %s: no such colony or ship\n", o.CorS)
+			return fmt.Errorf("no such colony or ship %q", o.CorS)
+		}
+	}
+	// fail if controlled by another player
+	if cs.ControlledBy != nil && cs.ControlledBy != p {
+		p.Log("  assemble %s: no such colony or ship\n", o.CorS)
+		return fmt.Errorf("no such colony or ship %q", o.CorS)
+	}
+
+	// find the mine and the deposit in the order
+	mine, ok := unitFromString(e, o.Unit)
+	if !ok {
+		p.Log("  assemble %s: no such unit %q\n", o.CorS, o.Unit)
+		return fmt.Errorf("no such unit %q", o.Unit)
+	} else if mine.TechLevel > cs.TechLevel {
+		p.Log("  assemble %s: unit %q: invalid tech level\n", o.CorS, o.Unit)
+		return fmt.Errorf("invalid tech level %q", o.Unit)
+	}
+	var deposit *Deposit
+	for _, d := range cs.Planet.Deposits {
+		if o.Deposit == fmt.Sprintf("DP%d", d.No) {
+			deposit = d
+			break
+		}
+	}
+	if deposit == nil {
+		p.Log("  assemble %s: no such unit %q deposit %q\n", o.CorS, o.Unit, o.Deposit)
+		return fmt.Errorf("no such deposit %q", o.Deposit)
+	} else if deposit.ControlledBy == nil {
+		// automatically claim ownership
+		deposit.ControlledBy = cs
+	} else if deposit.ControlledBy.Id != cs.Id {
+		p.Log("  assemble %s: deposit %s: not controlled by you\n", o.CorS, o.Deposit)
+		return fmt.Errorf("invalid deposit %q", o.Deposit)
+	}
+
+	// is there a group already mining this deposit or must we create a new group?
+	var mg *MineGroup
+	for _, group := range cs.MineGroups {
+		if group.Deposit.Id == deposit.Id {
+			// an existing group
+			mg = group
+			break
+		}
+	}
+	if mg != nil {
+		// all mine units working a deposit must be the same tech level
+		if mg.Unit.Unit.Id != mine.Id {
+			p.Log("  assemble %s: unit %q: invalid tech level\n", o.CorS, o.Unit)
+			return fmt.Errorf("invalid tech level %q", o.Unit)
+		}
+	} else {
+		mg = &MineGroup{
+			CorS:    cs,
+			Id:      e.NextSeq(),
+			No:      deposit.No,
+			Deposit: deposit,
+			Unit:    &InventoryUnit{Unit: mine},
+		}
+		cs.MineGroups = append(cs.MineGroups, mg)
+		sort.Sort(cs.MineGroups)
+	}
+	p.Log("  assemble %s: group %2d: %-11s product %s\n", o.CorS, mg.No, mine.Name, deposit.Product.Name)
+
+	// no fuel needed to assemble mine units!
+	o.fuel.needed = 0
+
+	// allocate labor. 1 CON per 500 tonnes.
+	o.cons.needed = o.Quantity
+	if availableCon(cs) < o.cons.needed {
+		o.cons.allocated = availableCon(cs)
+	} else {
+		o.cons.allocated = o.cons.needed
+	}
+	cs.cons.allocated += o.cons.allocated
+
+	mg.Unit.ActiveQty += o.Quantity
+
 	return nil
 }
 

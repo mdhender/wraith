@@ -292,6 +292,18 @@ type MineGroup struct {
 
 type MineGroups []*MineGroup
 
+func (m MineGroups) Len() int {
+	return len(m)
+}
+
+func (m MineGroups) Less(i, j int) bool {
+	return m[i].No < m[j].No
+}
+
+func (m MineGroups) Swap(i, j int) {
+	m[i], m[j] = m[j], m[i]
+}
+
 // Nation is a single nation in the game.
 // The controller of the nation rules it, and may designate other
 // players to control ships and colonies in the nation.

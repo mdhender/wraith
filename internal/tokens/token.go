@@ -61,7 +61,8 @@ const (
 
 	Assemble
 	AssembleFactoryGroup
-	AssembleMiningGroup
+	AssembleFarmGroup
+	AssembleMineGroup
 	Control
 	Name
 
@@ -71,9 +72,14 @@ const (
 	ConsumerGoodsUnit
 	FactoryUnit
 	FarmUnit
+	FoodUnit
+	FuelUnit
+	GoldUnit
 	HyperDriveUnit
 	LifeSupportUnit
+	MetallicsUnit
 	MineUnit
+	NonMetallicsUnit
 	ResearchUnit
 	SensorUnit
 	SpaceDriveUnit
