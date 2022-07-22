@@ -160,7 +160,9 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 	}
 	if indexOf("assembly", phases) != -1 {
 		log.Printf("execute: assembly phase\n")
-		e.ExecuteAssemblyPhase(pos)
+		for _, err := range e.ExecuteAssemblyPhase(pos) {
+			log.Printf("execute: assembly: %v\n", err)
+		}
 	}
 	if indexOf("trade", phases) != -1 {
 		log.Printf("execute: trade phase: not implemented\n")
@@ -358,29 +360,28 @@ func (e *Engine) ExecuteCombatPhase(pos []*PhaseOrders) (errs []error) {
 
 // ExecuteAssemblyPhase runs all the orders in the assembly phase.
 func (e *Engine) ExecuteAssemblyPhase(pos []*PhaseOrders) (errs []error) {
-	for _, po := range pos {
-		if len(po.Assembly) == 0 {
-			continue
-		}
-		log.Printf("execute: %s: assembly\n", po.Player.Name)
+	for _, o := range pos {
+		o.Player.Log("\n\nAssembly --------------------------------------------------------\n")
+
 	}
 	return errs
 }
 
 // ExecuteControlPhase runs all the orders in the control phase.
 func (e *Engine) ExecuteControlPhase(pos []*PhaseOrders) (errs []error) {
-	for _, po := range pos {
-		for _, order := range po.Control {
-			if err := order.ControlColony.Execute(e, po.Player); err != nil {
+	for _, o := range pos {
+		o.Player.Log("\n\nControl ---------------------------------------------------------\n")
+		for _, order := range o.Control {
+			if err := order.ControlColony.Execute(e, o.Player); err != nil {
 				errs = append(errs, err)
 			}
-			if err := order.ControlShip.Execute(e, po.Player); err != nil {
+			if err := order.ControlShip.Execute(e, o.Player); err != nil {
 				errs = append(errs, err)
 			}
-			if err := order.NameColony.Execute(e, po.Player); err != nil {
+			if err := order.NameColony.Execute(e, o.Player); err != nil {
 				errs = append(errs, err)
 			}
-			if err := order.NameShip.Execute(e, po.Player); err != nil {
+			if err := order.NameShip.Execute(e, o.Player); err != nil {
 				errs = append(errs, err)
 			}
 		}
@@ -394,18 +395,20 @@ func (o *ControlColonyOrder) Execute(e *Engine, p *Player) error {
 	if o == nil {
 		return nil
 	}
-	log.Printf("execute: %s: control: colony %q\n", p.Name, o.Id)
 	// find colony
 	c, ok := e.findColony(o.Id)
 	if !ok {
+		p.Log("  control %s: no such colony\n", o.Id)
 		return fmt.Errorf("no such colony %q", o.Id)
 	}
 	// fail if controlled by another player
 	if c.ControlledBy != nil && c.ControlledBy != p {
+		p.Log("  control %s: no such colony\n", o.Id)
 		return fmt.Errorf("no such colony %q", o.Id)
 	}
 	// update the controller to the player
 	c.ControlledBy = p
+	p.Log("  control %s: now controlled by %d\n", o.Id, p.Id)
 	return nil
 }
 
@@ -415,18 +418,21 @@ func (o *ControlShipOrder) Execute(e *Engine, p *Player) error {
 	if o == nil {
 		return nil
 	}
-	log.Printf("execute: %s: control: ship %q\n", p.Name, o.Id)
+	p.Log("execute: %s: control: ship %q\n", p.Name, o.Id)
 	// find ship
 	s, ok := e.findShip(o.Id)
 	if !ok {
+		p.Log("  control %s: no such ship\n", o.Id)
 		return fmt.Errorf("no such ship %q", o.Id)
 	}
 	// fail if controlled by another player
 	if s.ControlledBy != nil && s.ControlledBy != p {
+		p.Log("  control %s: no such ship\n", o.Id)
 		return fmt.Errorf("no such ship %q", o.Id)
 	}
 	// update the controller to the player
 	s.ControlledBy = p
+	p.Log("  control %s: now controlled by %d\n", o.Id, p.Id)
 	return nil
 }
 
@@ -436,18 +442,20 @@ func (o *NameColonyOrder) Execute(e *Engine, p *Player) error {
 	if o == nil {
 		return nil
 	}
-	log.Printf("execute: %s: name: colony %q %s\n", p.Name, o.Id, o.Name)
 	// find colony
 	c, ok := e.findColony(o.Id)
 	if !ok {
+		p.Log("  name %s: no such colony\n", o.Id)
 		return fmt.Errorf("no such colony %q", o.Id)
 	}
 	// fail if controlled by another player
 	if c.ControlledBy != p {
+		p.Log("  name %s: no such colony\n", o.Id)
 		return fmt.Errorf("no such colony %q", o.Id)
 	}
 	// update the name
 	c.Name = strings.Trim(o.Name, `"`)
+	p.Log("  name %s: now named %q\n", o.Id, c.Name)
 	return nil
 }
 
@@ -457,18 +465,20 @@ func (o *NameShipOrder) Execute(e *Engine, p *Player) error {
 	if o == nil {
 		return nil
 	}
-	log.Printf("execute: %s: name: ship %q %s\n", p.Name, o.Id, o.Name)
 	// find ship
 	s, ok := e.findShip(o.Id)
 	if !ok {
+		p.Log("  name %s: no such ship\n", o.Id)
 		return fmt.Errorf("no such ship %q", o.Id)
 	}
 	// fail if controlled by another player
 	if s.ControlledBy != nil && s.ControlledBy != p {
+		p.Log("  name %s: no such ship\n", o.Id)
 		return fmt.Errorf("no such ship %q", o.Id)
 	}
 	// update the name
 	s.Name = strings.Trim(o.Name, `"`)
+	p.Log("  name %s: now named %q\n", o.Id, s.Name)
 	return nil
 }
 
