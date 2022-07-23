@@ -188,7 +188,7 @@ func (z *Tokenizer) Next() *Token {
 	if bytes.Equal(word, []byte("non-metallics")) {
 		return &Token{Line: z.line, Kind: NonMetallicsUnit, Text: word}
 	}
-	if bytes.Equal(word, []byte("research")) {
+	if bytes.HasPrefix(word, []byte("research-")) {
 		return &Token{Line: z.line, Kind: ResearchUnit, Text: word}
 	}
 	if bytes.HasPrefix(word, []byte("sensor-")) {
