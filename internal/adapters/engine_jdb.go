@@ -461,6 +461,8 @@ func wraithColonyToJdbSurfaceColony(colony *wraith.CorS, game *jdb.Game) *jdb.Su
 		}
 		game.FactoryGroups = append(game.FactoryGroups, fg)
 	}
+	sort.Ints(c.FactoryGroupIds)
+	sort.Sort(game.FactoryGroups)
 
 	for _, group := range colony.FarmGroups {
 		c.FarmGroupIds = append(c.FarmGroupIds, group.Id)
@@ -481,6 +483,8 @@ func wraithColonyToJdbSurfaceColony(colony *wraith.CorS, game *jdb.Game) *jdb.Su
 		}
 		game.FarmGroups = append(game.FarmGroups, fg)
 	}
+	sort.Ints(c.FarmGroupIds)
+	sort.Sort(game.FarmGroups)
 
 	for _, unit := range colony.Hull {
 		c.Hull = append(c.Hull, &jdb.HullUnit{
@@ -515,6 +519,8 @@ func wraithColonyToJdbSurfaceColony(colony *wraith.CorS, game *jdb.Game) *jdb.Su
 		}
 		game.MineGroups = append(game.MineGroups, fg)
 	}
+	sort.Ints(c.MineGroupIds)
+	sort.Sort(game.MineGroups)
 
 	c.Pay.ProfessionalPct = colony.Pay.ProfessionalPct
 	c.Pay.SoldierPct = colony.Pay.SoldierPct

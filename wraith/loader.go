@@ -221,6 +221,18 @@ type FarmGroup struct {
 
 type FarmGroups []*FarmGroup
 
+func (f FarmGroups) Len() int {
+	return len(f)
+}
+
+func (f FarmGroups) Less(i, j int) bool {
+	return f[i].No < f[j].No
+}
+
+func (f FarmGroups) Swap(i, j int) {
+	f[i], f[j] = f[j], f[i]
+}
+
 type requisition struct {
 	available int
 	needed    int

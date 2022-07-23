@@ -278,13 +278,6 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 			}
 			unit.StowedQty += group.StageQty[3]
 			group.StageQty[3] = 0
-
-			//for _, u := range group.Units {
-			//	log.Printf("%-6s: fg: %d %s: unit %s %d %d\n",
-			//		cs.HullId, group.No, group.Product.Code,
-			//		u.Unit.Code, u.ActiveQty, u.activeQty)
-			//	u.ActiveQty = 995876
-			//}
 		}
 	}
 
@@ -519,11 +512,11 @@ func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 	}
 
 	// find the farm and product in the order
-	factory, ok := unitFromString(e, o.Unit)
+	farm, ok := unitFromString(e, o.Unit)
 	if !ok {
 		p.Log("  assemble %s: no such unit %q\n", o.CorS, o.Unit)
 		return fmt.Errorf("no such unit %q", o.Unit)
-	} else if factory.TechLevel > cs.TechLevel {
+	} else if farm.TechLevel > cs.TechLevel {
 		p.Log("  assemble %s: unit %q: invalid tech level\n", o.CorS, o.Unit)
 		return fmt.Errorf("invalid tech level %q", o.Unit)
 	}
@@ -540,8 +533,8 @@ func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 	}
 
 	// is there a group already producing this product or must we create a new group?
-	var fg *FactoryGroup
-	for _, group := range cs.FactoryGroups {
+	var fg *FarmGroup
+	for _, group := range cs.FarmGroups {
 		if group.Product.Code == product.Code {
 			// an existing group
 			fg = group
@@ -549,29 +542,16 @@ func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 		}
 	}
 	if fg == nil {
-		fg = &FactoryGroup{
+		fg = &FarmGroup{
 			CorS:    cs,
 			Id:      e.NextSeq(),
-			No:      0,
+			No:      product.TechLevel,
 			Product: product,
 		}
-		var idx [30]bool
-		for _, group := range cs.FactoryGroups {
-			idx[group.No] = true
-		}
-		for no := 1; fg.No == 0 && no < 30; no++ {
-			if !idx[no] {
-				fg.No = no
-			}
-		}
-		if fg.No == 0 {
-			p.Log("  assemble %s: unit %q product %q: no farm groups available", o.CorS, o.Unit, o.Product)
-			return fmt.Errorf("no factory groups available")
-		}
-		cs.FactoryGroups = append(cs.FactoryGroups, fg)
-		sort.Sort(cs.FactoryGroups)
+		cs.FarmGroups = append(cs.FarmGroups, fg)
+		sort.Sort(cs.FarmGroups)
 	}
-	p.Log("  assemble %s: group %2d: %-11s product %s\n", o.CorS, fg.No, factory.Name, product.Name)
+	p.Log("  assemble %s: group %2d: %-11s product %s\n", o.CorS, fg.No, farm.Name, product.Name)
 
 	// no fuel required to assemble farm units!
 	o.fuel.needed = 0
@@ -588,13 +568,13 @@ func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 	// are there already units in the group or must we add them?
 	var unit *InventoryUnit
 	for _, u := range fg.Units {
-		if u.Unit.Code == factory.Code {
+		if u.Unit.Code == farm.Code {
 			unit = u
 			break
 		}
 	}
 	if unit == nil {
-		unit = &InventoryUnit{Unit: factory}
+		unit = &InventoryUnit{Unit: farm}
 		fg.Units = append(fg.Units, unit)
 		sort.Sort(fg.Units)
 	}
