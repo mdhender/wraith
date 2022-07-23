@@ -556,8 +556,11 @@ func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 	// no fuel required to assemble farm units!
 	o.fuel.needed = 0
 
-	// allocate labor. 1 CON per 500 tonnes.
-	o.cons.needed = o.Quantity
+	// allocate labor. 1 CON per 512 tonnes.
+	o.cons.needed = o.Quantity / 512
+	if o.Quantity/512 != 0 {
+		o.cons.needed++
+	}
 	if availableCon(cs) < o.cons.needed {
 		o.cons.allocated = availableCon(cs)
 	} else {
