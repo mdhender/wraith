@@ -100,6 +100,20 @@ func (s *Server) clusterGetHandler(templates string) http.HandlerFunc {
 	}
 }
 
+func (s *Server) currentLogsGetHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, claims, _ := jwtauth.FromContext(r.Context())
+		claim, ok := s.claims[strings.ToLower(claims["user_id"].(string))]
+		if !ok {
+			log.Printf("%s: %s: fetchClaims: not ok\n", r.Method, r.URL.Path)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		game, year, quarter := chi.URLParam(r, "game"), 0, 0
+		http.Redirect(w, r, fmt.Sprintf("/ui/logs/%s/%04d/%d/%d", game, year, quarter, claim.PlayerId), http.StatusTemporaryRedirect)
+	}
+}
+
 func (s *Server) currentReportGetHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, claims, _ := jwtauth.FromContext(r.Context())
@@ -319,6 +333,59 @@ func (s *Server) logoutHandler(cookieName string) http.HandlerFunc {
 			HttpOnly: true,
 		})
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func (s *Server) logsGetHandler(templates string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, claims, _ := jwtauth.FromContext(r.Context())
+		claim, ok := s.claims[strings.ToLower(claims["user_id"].(string))]
+		if !ok {
+			log.Printf("%s: %s: fetchClaims: not ok\n", r.Method, r.URL.Path)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		pPlayer := chi.URLParam(r, "player")
+		playerId, err := strconv.Atoi(pPlayer)
+		if err != nil {
+			log.Printf("%s: %s: player: %v\n", r.Method, r.URL.Path, err)
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		} else if playerId != claim.PlayerId {
+			log.Printf("%s: %s: player: claim.PlayerName %q: claim.PlayerId %d: playerId %d\n", r.Method, r.URL.Path, claim.PlayerName, claim.PlayerId, playerId)
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+
+		game, pYear, pQuarter := chi.URLParam(r, "game"), chi.URLParam(r, "year"), chi.URLParam(r, "quarter")
+		year, err := strconv.Atoi(pYear)
+		if err != nil {
+			log.Printf("%s: %s: year: %v\n", r.Method, r.URL.Path, err)
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+		quarter, err := strconv.Atoi(pQuarter)
+		if err != nil {
+			log.Printf("%s: %s: quarter: %v\n", r.Method, r.URL.Path, err)
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+		gamePath := filepath.Clean(filepath.Join(s.gamesPath, game, fmt.Sprintf("%04d", year), fmt.Sprintf("%d", quarter)))
+		log.Printf("%s: %s: gamePath %s\n", r.Method, r.URL.Path, gamePath)
+		turnLogFile := filepath.Join(gamePath, fmt.Sprintf("%d.log.txt", claim.PlayerId))
+		log.Printf("%s: %s: turnLogFile %s\n", r.Method, r.URL.Path, turnLogFile)
+		b, err := os.ReadFile(turnLogFile)
+		if err != nil {
+			log.Printf("%s: %s: %v\n", r.Method, r.URL.Path, err)
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+
+		bw := bytes.NewBuffer([]byte(fmt.Sprintf("<body><h1>Player %d</h1><code><pre>", playerId)))
+		bw.Write(b)
+		bw.Write([]byte("</pre></code></body>"))
+
+		_, _ = w.Write(bw.Bytes())
 	}
 }
 
@@ -611,6 +678,7 @@ func (s *Server) reportsGetHandler(templates string) http.HandlerFunc {
 		_, _ = w.Write(bw.Bytes())
 	}
 }
+
 func (s *Server) unitsGetHandler(templates string) http.HandlerFunc {
 	units := s.store.FetchUnits()
 	t := osk.New(templates, "units.html")

@@ -143,6 +143,8 @@ func (s *Server) serve() error {
 			r.Get("/games/{game}/orders", s.ordersGetRedirect())
 			r.Get("/games/{game}/orders/{year}/{quarter}", s.ordersGetHandler(s.templates))
 			r.Post("/games/{game}/orders/{year}/{quarter}", s.ordersPostHandler())
+			r.Get("/logs/{game}/{year}/{quarter}/{player}", s.logsGetHandler(s.templates))
+			r.Get("/logs/{game}/current", s.currentLogsGetHandler())
 			r.Get("/reports/{game}/{year}/{quarter}/{player}", s.reportsGetHandler(s.templates))
 			r.Get("/reports/{game}/current", s.currentReportGetHandler())
 			r.Get("/units", s.unitsGetHandler(s.templates))

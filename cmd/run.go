@@ -91,7 +91,7 @@ var cmdRun = &cobra.Command{
 
 		for _, player := range e.Players {
 			loggerFile := filepath.Join(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", globalRun.Year), fmt.Sprintf("%d", globalRun.Quarter), fmt.Sprintf("%d.log.txt", player.Id)))
-			player.Logger.W, err = os.OpenFile(loggerFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 666)
+			player.Logger.W, err = os.OpenFile(loggerFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 			if err != nil {
 				log.Println(err)
 				continue

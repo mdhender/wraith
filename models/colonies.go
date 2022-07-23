@@ -148,9 +148,9 @@ func (s *Store) genHomeOpenColony(no int, planet *Planet, player *Player) *Colon
 	factoryGroup.Stages = []*FactoryGroupStages{{
 		Group:     factoryGroup,
 		Turn:      effTurn,
-		QtyStage1: 2_291_666,
-		QtyStage2: 2_291_666,
-		QtyStage3: 2_291_666,
+		QtyStage1: 2_291_000,
+		QtyStage2: 2_291_000,
+		QtyStage3: 2_291_000,
 		QtyStage4: 0,
 	}}
 	c.Factories = append(c.Factories, factoryGroup)
