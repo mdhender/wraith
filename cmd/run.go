@@ -102,6 +102,8 @@ var cmdRun = &cobra.Command{
 		var pos []*wraith.PhaseOrders
 		for _, player := range e.Players {
 			player.Log("player %4d handle %-32q nation %3d\n\n", player.Id, player.Name, player.MemberOf.No)
+			po := &wraith.PhaseOrders{Player: player}
+			pos = append(pos, po)
 
 			ordersFile := filepath.Join(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", globalRun.Year), fmt.Sprintf("%d", globalRun.Quarter), fmt.Sprintf("%d.orders.txt", player.Id)))
 
@@ -118,7 +120,7 @@ var cmdRun = &cobra.Command{
 				continue
 			}
 
-			pos = append(pos, adapters.OrdersToPhaseOrders(e.Players[player.Id], o...))
+			adapters.OrdersToPhaseOrders(po, o...)
 		}
 
 		phases := strings.Split(globalRun.Phases, ",")

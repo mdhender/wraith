@@ -62,8 +62,7 @@ func ModelsPlayerToEnginePlayer(mp *models.Player) *engine.Player {
 // OrdersToPhaseOrders converts orders into the Engine's expected format while splitting them into buckets for each phase.
 // Because it appends to the bucket, it does not change the relative order of commands in a phase.
 // Invalid or unknown orders are dropped.
-func OrdersToPhaseOrders(p *wraith.Player, o ...*orders.Order) *wraith.PhaseOrders {
-	epo := &wraith.PhaseOrders{Player: p}
+func OrdersToPhaseOrders(epo *wraith.PhaseOrders, o ...*orders.Order) *wraith.PhaseOrders {
 	for _, order := range o {
 		if order == nil || order.Verb == nil || order.Errors != nil || order.Reject != nil {
 			continue
