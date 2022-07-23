@@ -336,7 +336,7 @@ func (s *Server) ordersGetHandler(templates string) http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s: %s: ordersPath %q\n", r.Method, r.URL.Path, s.store.OrdersPath())
+		log.Printf("%s: %s: gamesPath %q\n", r.Method, r.URL.Path, s.gamesPath)
 
 		var claim *models.Claim
 		_, claims, _ := jwtauth.FromContext(r.Context())
@@ -347,6 +347,10 @@ func (s *Server) ordersGetHandler(templates string) http.HandlerFunc {
 		} else if claim, ok = s.claims[strings.ToLower(userId)]; !ok {
 			log.Printf("%s: %s: claims[%q]: not ok\n", r.Method, r.URL.Path, strings.ToLower(userId))
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		} else if claim.PlayerId == 0 {
+			log.Printf("%s: %s: player: claim.PlayerName %q: claim.PlayerId %d: playerId %q\n", r.Method, r.URL.Path, claim.PlayerName, claim.PlayerId)
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
 
@@ -375,7 +379,9 @@ func (s *Server) ordersGetHandler(templates string) http.HandlerFunc {
 			return
 		}
 
-		ordersFile := filepath.Join(s.store.OrdersPath(), fmt.Sprintf("%s.%s.%s.%d.txt", game.ShortName, chi.URLParam(r, "year"), chi.URLParam(r, "quarter"), claim.NationNo))
+		ordersFile := filepath.Join(filepath.Join(s.gamesPath, game.ShortName, chi.URLParam(r, "year"), chi.URLParam(r, "quarter"), fmt.Sprintf("%d.orders.txt", claim.PlayerId)))
+		log.Printf("%s: %s ordersFile %q\n", r.Method, r.URL.Path, ordersFile)
+
 		b, err := os.ReadFile(ordersFile)
 		if err == nil {
 			oe.Orders = string(b)
@@ -440,6 +446,10 @@ func (s *Server) ordersPostHandler() http.HandlerFunc {
 		if !ok {
 			log.Printf("%s: %s: claims[%q]: not ok\n", r.Method, r.URL.Path, strings.ToLower(userId))
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		} else if claim.PlayerId == 0 {
+			log.Printf("%s: %s: player: claim.PlayerName %q: claim.PlayerId %d: playerId %d\n", r.Method, r.URL.Path, claim.PlayerName, claim.PlayerId)
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
 
@@ -521,7 +531,9 @@ func (s *Server) ordersPostHandler() http.HandlerFunc {
 
 		//log.Printf("%s: %s: ordersPath %q\n", r.Method, r.URL.Path, s.store.OrdersPath())
 
-		ordersFile := filepath.Join(s.store.OrdersPath(), fmt.Sprintf("%s.%s.%s.%d.txt", pGameName, chi.URLParam(r, "year"), chi.URLParam(r, "quarter"), claim.NationNo))
+		ordersFile := filepath.Join(filepath.Join(s.gamesPath, pGameName, chi.URLParam(r, "year"), chi.URLParam(r, "quarter"), fmt.Sprintf("%d.orders.txt", claim.PlayerId)))
+		log.Printf("%s: %s ordersFile %q\n", r.Method, r.URL.Path, ordersFile)
+
 		date := time.Now().UTC().Format(time.RFC3339)
 		o = fmt.Sprintf(";; %s %d %s %s\n\n", pGameName, claim.NationNo, currentTurn, date) + o + "\n"
 		if err := os.WriteFile(ordersFile, []byte(o), 0644); err != nil {

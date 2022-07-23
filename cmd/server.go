@@ -31,9 +31,6 @@ import (
 var globalServer struct {
 	Host      string
 	Port      string
-	AuthnFile string
-	GameFile  string
-	GamesPath string
 	JwtFile   string
 	JwtKey    string
 	Templates string
@@ -46,10 +43,6 @@ var cmdServer = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if globalBase.ConfigFile == "" {
 			return errors.New("missing config file name")
-		}
-
-		if globalServer.GamesPath = strings.TrimSpace(globalServer.GamesPath); globalServer.GamesPath == "" {
-			return errors.New("missing games path")
 		}
 
 		if globalServer.JwtKey = strings.TrimSpace(globalServer.JwtKey); globalServer.JwtKey == "" {
@@ -65,6 +58,9 @@ var cmdServer = &cobra.Command{
 			log.Fatal(err)
 		}
 		log.Printf("loaded %q\n", cfg.Self)
+		if cfg.GamesPath == "" {
+			return errors.New("missing global config games path")
+		}
 
 		s, err := models.Open(cfg)
 		if err != nil {
@@ -75,7 +71,7 @@ var cmdServer = &cobra.Command{
 		opts := []cheese.Option{
 			cheese.WithHost(globalServer.Host),
 			cheese.WithPort(globalServer.Port),
-			cheese.WithGamesPath(globalServer.GamesPath),
+			cheese.WithGamesPath(cfg.GamesPath),
 			cheese.WithKey([]byte(globalServer.JwtKey)),
 			cheese.WithTemplates(globalServer.Templates),
 			cheese.WithStore(s),
@@ -91,12 +87,6 @@ var cmdServer = &cobra.Command{
 func init() {
 	cmdServer.Flags().StringVar(&globalServer.Host, "host", "", "host interface to listen on")
 	cmdServer.Flags().StringVar(&globalServer.Port, "port", "3000", "port to listen on")
-	cmdServer.Flags().StringVar(&globalServer.AuthnFile, "authn", "", "authentication data")
-	_ = cmdServer.MarkFlagRequired("authn")
-	cmdServer.Flags().StringVar(&globalServer.GameFile, "game", "", "game data")
-	_ = cmdServer.MarkFlagRequired("game")
-	cmdServer.Flags().StringVar(&globalServer.GamesPath, "games", "", "path to games data")
-	_ = cmdServer.MarkFlagRequired("games")
 	cmdServer.Flags().StringVar(&globalServer.JwtFile, "jwt", "", "jwt key data")
 	_ = cmdServer.MarkFlagRequired("jwt")
 	cmdServer.Flags().StringVar(&globalServer.JwtKey, "jwt-key", "", "jwt signing key")
