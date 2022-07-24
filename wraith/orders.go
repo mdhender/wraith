@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/mdhender/wraith/internal/orders"
 	"log"
+	"math"
 	"sort"
 	"strings"
 )
@@ -422,19 +423,22 @@ func (o *AssembleConstructionCrewOrder) Execute(e *Engine, p *Player) error {
 		return fmt.Errorf("no such colony or ship %q", o.CorS)
 	}
 
-	maxCapacity := o.Quantity
+	amtRequested := o.Quantity
 
 	// allocate labor. 1 CON requires 1 PRO and 1 UNS
 	o.pro.needed = o.Quantity
-	if availablePro(cs) < maxCapacity {
-		maxCapacity = availablePro(cs)
+	if availablePro(cs) < amtRequested {
+		amtRequested = availablePro(cs)
 	}
-	if availableUns(cs) < maxCapacity {
-		maxCapacity = availableUns(cs)
+	if availableUns(cs) < amtRequested {
+		amtRequested = availableUns(cs)
 	}
 
-	cs.cons.available += maxCapacity
-	p.Log("           %s: assembled %d, %d now available\n", o.CorS, maxCapacity, cs.cons.available)
+	cs.cons.available += amtRequested
+	cs.pro.allocated += amtRequested
+	cs.uns.allocated += amtRequested
+
+	p.Log("           %s: assembled %d, %d now available\n", o.CorS, amtRequested, availableCon(cs))
 
 	return nil
 }
@@ -595,13 +599,13 @@ func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 		p.Log("           %s: no such unit %q in inventory\n", o.CorS, o.Unit)
 		return fmt.Errorf("no such unit %q in inventory", o.Unit)
 	}
-	cs.Log("           %s: %-11s  %12d requested  %13d available\n", cs.HullId, farm.Name, o.Quantity, inventory.StowedQty)
+	p.Log("           %s: %-11s  %12d requested  %13d available\n", cs.HullId, farm.Name, o.Quantity, inventory.StowedQty)
 
-	maxCapacity := o.Quantity
-	if inventory.StowedQty < maxCapacity {
-		maxCapacity = inventory.StowedQty
+	unitsToAssemble := o.Quantity
+	if inventory.StowedQty < unitsToAssemble {
+		unitsToAssemble = inventory.StowedQty
 	}
-	if maxCapacity == 0 {
+	if unitsToAssemble == 0 {
 		p.Log("           %s: unit %q not available to assemble\n", o.CorS, o.Unit)
 		return fmt.Errorf("unit %q not available", o.Unit)
 	}
@@ -609,13 +613,13 @@ func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 	// fetch the product from the order
 	product, ok := unitFromString(e, o.Product)
 	if !ok {
-		p.Log("  assemble %s: no such unit %q product %q\n", o.CorS, o.Unit, o.Product)
+		p.Log("           %s: no such unit %q product %q\n", o.CorS, o.Unit, o.Product)
 		return fmt.Errorf("no such unit %q", o.Product)
 	} else if product.Code != "FOOD" {
-		p.Log("  assemble %s: unit %q product %q: invalid food\n", o.CorS, o.Unit, o.Product)
+		p.Log("           %s: unit %q product %q: invalid food\n", o.CorS, o.Unit, o.Product)
 		return fmt.Errorf("invalid food %q", o.Product)
 	} else if product.TechLevel > cs.TechLevel {
-		p.Log("  assemble %s: unit %q product %q: invalid tech level\n", o.CorS, o.Unit, o.Product)
+		p.Log("           %s: unit %q product %q: invalid tech level\n", o.CorS, o.Unit, o.Product)
 		return fmt.Errorf("invalid tech level %q", o.Product)
 	}
 
@@ -644,15 +648,14 @@ func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 	o.fuel.needed = 0
 
 	// allocate labor. 1 CON per 512 tonnes.
-	o.cons.needed = maxCapacity / 512
-	if o.Quantity/512 != 0 {
+	o.cons.needed = unitsToAssemble / 512
+	if unitsToAssemble/512 != 0 {
 		o.cons.needed++
 	}
 	// verify that we have enough crews to assemble.
 	// if we don't, then adjust the number of units that we're able to assemble.
 	if availableCon(cs) < o.cons.needed {
-
-		maxCapacity = availableCon(cs) * 512
+		unitsToAssemble = availableCon(cs) * 512
 	}
 
 	if availableCon(cs) < o.cons.needed {
@@ -679,7 +682,8 @@ func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 	unit.ActiveQty += o.Quantity
 	unit.StowedQty -= o.Quantity
 
-	cs.Log("        active %d stowed %d total %d\n", unit.ActiveQty, unit.StowedQty, unit.ActiveQty+unit.StowedQty)
+	p.Log("           %s: group %2d: %-11s product %s\n", o.CorS, fg.No, farm.Name, product.Name)
+	p.Log("                active %d stowed %d total %d\n", unit.ActiveQty, unit.StowedQty, unit.ActiveQty+unit.StowedQty)
 
 	return nil
 }
@@ -690,30 +694,59 @@ func (o *AssembleMineGroupOrder) Execute(e *Engine, p *Player) error {
 	if o == nil {
 		return nil
 	}
+	p.Log("  assemble %s: %-11s %13d %s\n", o.CorS, o.Unit, o.Quantity, o.Deposit)
+	if o.Quantity <= 0 {
+		p.Log("           %s: nothing to do\n", o.CorS)
+		return nil
+	}
 
 	// find colony or ship
 	cs, ok := e.findColony(o.CorS)
 	if !ok {
 		if cs, ok = e.findShip(o.CorS); !ok {
-			p.Log("  assemble %s: no such colony or ship\n", o.CorS)
+			p.Log("           %s: no such colony or ship\n", o.CorS)
 			return fmt.Errorf("no such colony or ship %q", o.CorS)
 		}
 	}
 	// fail if controlled by another player
 	if cs.ControlledBy != nil && cs.ControlledBy != p {
-		p.Log("  assemble %s: no such colony or ship\n", o.CorS)
+		p.Log("           %s: no such colony or ship\n", o.CorS)
 		return fmt.Errorf("no such colony or ship %q", o.CorS)
 	}
 
-	// find the mine and the deposit in the order
+	// find the mine unit to assemble and verify that we have it in inventory
 	mine, ok := unitFromString(e, o.Unit)
 	if !ok {
-		p.Log("  assemble %s: no such unit %q\n", o.CorS, o.Unit)
+		p.Log("           %s: no such unit %q\n", o.CorS, o.Unit)
 		return fmt.Errorf("no such unit %q", o.Unit)
 	} else if mine.TechLevel > cs.TechLevel {
-		p.Log("  assemble %s: unit %q: invalid tech level\n", o.CorS, o.Unit)
+		p.Log("           %s: unit %q: invalid tech level\n", o.CorS, o.Unit)
 		return fmt.Errorf("invalid tech level %q", o.Unit)
 	}
+	var inventory *InventoryUnit
+	for _, u := range cs.Inventory {
+		if u.Unit.Id == mine.Id {
+			inventory = u
+			break
+		}
+	}
+	if inventory == nil {
+		p.Log("           %s: no such unit %q in inventory\n", o.CorS, o.Unit)
+		return fmt.Errorf("no such unit %q in inventory", o.Unit)
+	}
+	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, mine.Name, o.Quantity, inventory.StowedQty)
+
+	unitsToAssemble := o.Quantity
+	if inventory.StowedQty < unitsToAssemble {
+		p.Log("           %s: not enough inventory to assemble %d %q\n", o.CorS, o.Quantity, o.Unit)
+		p.Log("                 reducing request to %d\n", inventory.StowedQty)
+		if inventory.StowedQty <= 0 {
+			return fmt.Errorf("unit %q not available", o.Unit)
+		}
+		unitsToAssemble = inventory.StowedQty
+	}
+
+	// fetch the deposit from the order
 	var deposit *Deposit
 	for _, d := range cs.Planet.Deposits {
 		if o.Deposit == fmt.Sprintf("DP%d", d.No) {
@@ -722,13 +755,13 @@ func (o *AssembleMineGroupOrder) Execute(e *Engine, p *Player) error {
 		}
 	}
 	if deposit == nil {
-		p.Log("  assemble %s: no such unit %q deposit %q\n", o.CorS, o.Unit, o.Deposit)
+		p.Log("           %s: no such unit %q deposit %q\n", o.CorS, o.Unit, o.Deposit)
 		return fmt.Errorf("no such deposit %q", o.Deposit)
 	} else if deposit.ControlledBy == nil {
 		// automatically claim ownership
 		deposit.ControlledBy = cs
 	} else if deposit.ControlledBy.Id != cs.Id {
-		p.Log("  assemble %s: deposit %s: not controlled by you\n", o.CorS, o.Deposit)
+		p.Log("           %s: deposit %s: not controlled by you\n", o.CorS, o.Deposit)
 		return fmt.Errorf("invalid deposit %q", o.Deposit)
 	}
 
@@ -744,7 +777,7 @@ func (o *AssembleMineGroupOrder) Execute(e *Engine, p *Player) error {
 	if mg != nil {
 		// all mine units working a deposit must be the same tech level
 		if mg.Unit.Unit.Id != mine.Id {
-			p.Log("  assemble %s: unit %q: invalid tech level\n", o.CorS, o.Unit)
+			p.Log("           %s: unit %q: invalid tech level\n", o.CorS, o.Unit)
 			return fmt.Errorf("invalid tech level %q", o.Unit)
 		}
 	} else {
@@ -758,22 +791,34 @@ func (o *AssembleMineGroupOrder) Execute(e *Engine, p *Player) error {
 		cs.MineGroups = append(cs.MineGroups, mg)
 		sort.Sort(cs.MineGroups)
 	}
-	p.Log("  assemble %s: group %2d: %-11s product %s\n", o.CorS, mg.No, mine.Name, deposit.Product.Name)
-
-	// no fuel needed to assemble mine units!
-	o.fuel.needed = 0
 
 	// allocate labor. 1 CON per 500 tonnes.
-	o.cons.needed = o.Quantity
+	// verify that we have enough crews to assemble.
+	// if we don't, then adjust the number of units that we're able to assemble.
+	o.cons.needed = int(math.Ceil(float64(unitsToAssemble) * mine.MassPerUnit / 500))
+	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, "construction-crews", o.cons.needed, availableCon(cs))
+	var consAllocated int
 	if availableCon(cs) < o.cons.needed {
-		o.cons.allocated = availableCon(cs)
+		p.Log("           %s: not enough CON to assemble %d %q\n", o.CorS, unitsToAssemble, o.Unit)
+		unitsToAssemble = int(math.Floor(float64(availableCon(cs)) * 500 / mine.MassPerUnit))
+		p.Log("                 reducing request to %d\n", unitsToAssemble)
+		if availableCon(cs) <= 0 {
+			p.Log("           %s: no construction crews available\n", o.CorS)
+			return fmt.Errorf("%s: no cons available", o.CorS)
+		}
+		consAllocated = availableCon(cs)
 	} else {
-		o.cons.allocated = o.cons.needed
+		consAllocated = o.cons.needed
 	}
-	cs.cons.allocated += o.cons.allocated
+	o.cons.allocated += consAllocated
 
-	mg.Unit.ActiveQty += o.Quantity
-	mg.Unit.StowedQty -= o.Quantity
+	inventory.activeQty += unitsToAssemble
+	inventory.StowedQty -= unitsToAssemble
+	mg.Unit.ActiveQty += unitsToAssemble
+	mg.Unit.StowedQty = 0 // we should never have stowed units in a mine group
+	cs.cons.allocated += consAllocated
+
+	p.Log("           %s: group %2d: %-11s product %s: capacity now %d\n", o.CorS, mg.No, mine.Name, deposit.Product.Name, mg.Unit.ActiveQty)
 
 	return nil
 }
