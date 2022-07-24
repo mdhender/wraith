@@ -60,6 +60,7 @@ const (
 	// order verbs
 
 	Assemble
+	AssembleConstructionCrew
 	AssembleFactoryGroup
 	AssembleFarmGroup
 	AssembleMineGroup
@@ -68,8 +69,14 @@ const (
 
 	// units
 
+	AntiMissileUnit
+	AssaultCraftUnit
+	AssaultWeaponUnit
 	AutomationUnit
 	ConsumerGoodsUnit
+	ConstructionWorkerUnit
+	EnergyShieldUnit
+	EnergyWeaponUnit
 	FactoryUnit
 	FarmUnit
 	FoodUnit
@@ -77,12 +84,18 @@ const (
 	GoldUnit
 	HyperDriveUnit
 	LifeSupportUnit
+	LightStructuralUnit
 	MetallicsUnit
+	MilitaryRobotUnit
+	MilitarySuppliesUnit
 	MineUnit
+	MissileUnit
+	MissileLauncherUnit
 	NonMetallicsUnit
 	ResearchUnit
 	SensorUnit
 	SpaceDriveUnit
 	StructuralUnit
+	SuperLightStructuralUnit
 	TransportUnit
 )

@@ -146,14 +146,32 @@ func (z *Tokenizer) Next() *Token {
 	if bytes.Equal(word, []byte("assemble")) {
 		return &Token{Line: z.line, Kind: Assemble, Text: word}
 	}
+	if bytes.HasPrefix(word, []byte("anti-missile-")) {
+		return &Token{Line: z.line, Kind: AntiMissileUnit, Text: word}
+	}
+	if bytes.HasPrefix(word, []byte("assault-craft-")) {
+		return &Token{Line: z.line, Kind: AssaultCraftUnit, Text: word}
+	}
+	if bytes.HasPrefix(word, []byte("assault-weapon-")) {
+		return &Token{Line: z.line, Kind: AssaultWeaponUnit, Text: word}
+	}
 	if bytes.HasPrefix(word, []byte("automation-")) {
 		return &Token{Line: z.line, Kind: AutomationUnit, Text: word}
 	}
 	if bytes.Equal(word, []byte("consumer-goods")) {
 		return &Token{Line: z.line, Kind: ConsumerGoodsUnit, Text: word}
 	}
+	if bytes.Equal(word, []byte("construction-worker")) {
+		return &Token{Line: z.line, Kind: ConstructionWorkerUnit, Text: word}
+	}
 	if bytes.Equal(word, []byte("control")) {
 		return &Token{Line: z.line, Kind: Control, Text: word}
+	}
+	if bytes.HasPrefix(word, []byte("energy-shield-")) {
+		return &Token{Line: z.line, Kind: EnergyShieldUnit, Text: word}
+	}
+	if bytes.HasPrefix(word, []byte("energy-weapon-")) {
+		return &Token{Line: z.line, Kind: EnergyWeaponUnit, Text: word}
 	}
 	if bytes.HasPrefix(word, []byte("factory-")) {
 		return &Token{Line: z.line, Kind: FactoryUnit, Text: word}
@@ -176,11 +194,26 @@ func (z *Tokenizer) Next() *Token {
 	if bytes.HasPrefix(word, []byte("life-support-")) {
 		return &Token{Line: z.line, Kind: LifeSupportUnit, Text: word}
 	}
+	if bytes.Equal(word, []byte("light-structural")) {
+		return &Token{Line: z.line, Kind: LightStructuralUnit, Text: word}
+	}
 	if bytes.Equal(word, []byte("metallics")) {
 		return &Token{Line: z.line, Kind: MetallicsUnit, Text: word}
 	}
+	if bytes.HasPrefix(word, []byte("military-robot-")) {
+		return &Token{Line: z.line, Kind: MilitaryRobotUnit, Text: word}
+	}
+	if bytes.Equal(word, []byte("military-supplies")) {
+		return &Token{Line: z.line, Kind: MilitarySuppliesUnit, Text: word}
+	}
 	if bytes.HasPrefix(word, []byte("mine-")) {
 		return &Token{Line: z.line, Kind: MineUnit, Text: word}
+	}
+	if bytes.HasPrefix(word, []byte("missile-")) {
+		return &Token{Line: z.line, Kind: MissileUnit, Text: word}
+	}
+	if bytes.HasPrefix(word, []byte("missile-launcher-")) {
+		return &Token{Line: z.line, Kind: MissileLauncherUnit, Text: word}
 	}
 	if bytes.Equal(word, []byte("name")) {
 		return &Token{Line: z.line, Kind: Name, Text: word}
@@ -199,6 +232,9 @@ func (z *Tokenizer) Next() *Token {
 	}
 	if bytes.Equal(word, []byte("structural")) {
 		return &Token{Line: z.line, Kind: StructuralUnit, Text: word}
+	}
+	if bytes.Equal(word, []byte("super-light-structural")) {
+		return &Token{Line: z.line, Kind: SuperLightStructuralUnit, Text: word}
 	}
 	if bytes.HasPrefix(word, []byte("transport-")) {
 		return &Token{Line: z.line, Kind: TransportUnit, Text: word}

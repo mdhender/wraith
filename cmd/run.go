@@ -114,10 +114,34 @@ var cmdRun = &cobra.Command{
 			}
 			player.Log("orders: loaded %s\n", ordersFile)
 
+			player.Log("\nOrder Parsing ---------------------------------------------------\n")
 			o, err := orders.Parse([]byte(b))
 			if err != nil {
-				player.Log("orders: parser: %+v\n\n", err)
+				player.Log("  parser error: %+v\n\n", err)
 				continue
+			}
+			foundErrors := false
+			for _, oo := range o {
+				if oo.Reject == nil && len(oo.Errors) == 0 {
+					continue
+				}
+				foundErrors = true
+				player.Log("  %d:  %s", oo.Line, oo.Verb.String())
+				for _, arg := range oo.Args {
+					player.Log(" %s", arg)
+				}
+				for _, arg := range oo.Reject {
+					player.Log(" %s", arg)
+				}
+				player.Log("\n")
+				for _, err := range oo.Errors {
+					player.Log("        %v\n", err)
+				}
+
+				//log.Printf("  %d: %d:  %s\n", player.Id, oo.Line, oo.Verb.String())
+			}
+			if !foundErrors {
+				player.Log("  no errors found during initial parse\n")
 			}
 
 			adapters.OrdersToPhaseOrders(po, o...)

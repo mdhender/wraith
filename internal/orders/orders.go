@@ -80,6 +80,16 @@ func (o *Order) expectAssemble(z *tokens.Tokenizer) bool {
 		return false
 	}
 	o.Args = append(o.Args, t)
+	if t = accept(z, tokens.ConstructionWorkerUnit); t != nil {
+		o.Verb.Kind = tokens.AssembleConstructionCrew
+		o.Args = append(o.Args, t)
+		if t = accept(z, tokens.EOL, tokens.EOF); t == nil {
+			o.Errors = append(o.Errors, fmt.Errorf("%d: unexpected input following construction-crew", o.Line))
+			o.reject(z)
+			return false
+		}
+		return true
+	}
 	if t = accept(z, tokens.FactoryUnit); t != nil {
 		o.Verb.Kind = tokens.AssembleFactoryGroup
 		o.Args = append(o.Args, t)
@@ -96,6 +106,7 @@ func (o *Order) expectAssemble(z *tokens.Tokenizer) bool {
 		return o.expectMineGroup(z)
 	}
 	o.Errors = append(o.Errors, fmt.Errorf("%d: unexpected input on assemble group order", o.Line))
+	o.reject(z)
 	return true
 }
 
@@ -118,12 +129,14 @@ func (o *Order) expectCorSId(z *tokens.Tokenizer) bool {
 func (o *Order) expectFactoryGroup(z *tokens.Tokenizer) bool {
 	var t *tokens.Token
 	if t = accept(z,
-		tokens.AutomationUnit, tokens.ConsumerGoodsUnit,
+		tokens.AntiMissileUnit, tokens.AssaultCraftUnit, tokens.AssaultWeaponUnit,
+		tokens.AutomationUnit, tokens.ConsumerGoodsUnit, tokens.ConstructionWorkerUnit,
+		tokens.EnergyShieldUnit, tokens.EnergyWeaponUnit,
 		tokens.FactoryUnit, tokens.FarmUnit,
-		tokens.HyperDriveUnit, tokens.LifeSupportUnit,
-		tokens.MineUnit, tokens.ResearchUnit,
-		tokens.SensorUnit, tokens.SpaceDriveUnit,
-		tokens.StructuralUnit, tokens.TransportUnit); t == nil {
+		tokens.HyperDriveUnit, tokens.LifeSupportUnit, tokens.LightStructuralUnit,
+		tokens.MilitaryRobotUnit, tokens.MilitarySuppliesUnit, tokens.MineUnit,
+		tokens.ResearchUnit, tokens.SensorUnit, tokens.SpaceDriveUnit,
+		tokens.StructuralUnit, tokens.SuperLightStructuralUnit, tokens.TransportUnit); t == nil {
 		o.Errors = append(o.Errors, fmt.Errorf("%d: expected unit to produce", o.Line))
 		o.reject(z)
 		return false

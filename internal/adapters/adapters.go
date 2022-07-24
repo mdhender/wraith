@@ -68,6 +68,12 @@ func OrdersToPhaseOrders(epo *wraith.PhaseOrders, o ...*orders.Order) *wraith.Ph
 			continue
 		}
 		switch order.Verb.Kind {
+		case tokens.AssembleConstructionCrew:
+			o := &wraith.AssembleConstructionCrewOrder{
+				CorS:     string(order.Args[0].Text),
+				Quantity: order.Args[1].Integer,
+			}
+			epo.Assembly = append(epo.Assembly, &wraith.AssemblyPhaseOrder{ConstructionCrew: o})
 		case tokens.AssembleFactoryGroup:
 			o := &wraith.AssembleFactoryGroupOrder{
 				CorS:     string(order.Args[0].Text),
