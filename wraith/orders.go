@@ -215,8 +215,12 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 		}
 	}
 
+	for _, po := range pos {
+		po.Player.Log("\nBookkeeping -----------------------------------------------------\n")
+	}
 	// bookkeeping
 	for _, cs := range e.CorSById {
+		cs.Log("%s:\n", cs.HullId)
 		// population changes
 		if cs.Kind == "ship" {
 			cs.Population.BirthsPriorTurn = 0
@@ -258,6 +262,7 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 				cs.Inventory = append(cs.Inventory, unit)
 				sort.Sort(cs.Inventory)
 			}
+			cs.Log("farm group %d inventory %s stowed %d adding %d %d %d %d\n", group.No, group.Product.Code, unit.StowedQty, group.StageQty[0], group.StageQty[1], group.StageQty[2], group.StageQty[3])
 			unit.StowedQty += group.StageQty[3]
 			group.StageQty[3] = 0
 		}
@@ -275,6 +280,7 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 				sort.Sort(cs.Inventory)
 			}
 			unit.StowedQty += group.StageQty[3]
+			cs.Log("mine group %d deposit %d stowed %d adding %d %d %d %d\n", group.No, group.Deposit.No, unit.StowedQty, group.StageQty[0], group.StageQty[1], group.StageQty[2], group.StageQty[3])
 			group.StageQty[3] = 0
 		}
 		for _, group := range cs.FactoryGroups {
@@ -291,6 +297,7 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 				sort.Sort(cs.Inventory)
 			}
 			unit.StowedQty += group.StageQty[3]
+			cs.Log("factory group %d inventory %s stowed %d adding %d %d %d %d\n", group.No, group.Product.Code, unit.StowedQty, group.StageQty[0], group.StageQty[1], group.StageQty[2], group.StageQty[3])
 			group.StageQty[3] = 0
 		}
 	}
