@@ -64,6 +64,7 @@ const (
 	AssembleFactoryGroup
 	AssembleFarmGroup
 	AssembleMineGroup
+	AssembleSpyTeam
 	Control
 	Name
 
@@ -74,7 +75,7 @@ const (
 	AssaultWeaponUnit
 	AutomationUnit
 	ConsumerGoodsUnit
-	ConstructionWorkerUnit
+	ConstructionCrew
 	EnergyShieldUnit
 	EnergyWeaponUnit
 	FactoryUnit
@@ -95,6 +96,7 @@ const (
 	ResearchUnit
 	SensorUnit
 	SpaceDriveUnit
+	SpyTeam
 	StructuralUnit
 	SuperLightStructuralUnit
 	TransportUnit

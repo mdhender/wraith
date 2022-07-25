@@ -97,6 +97,12 @@ func OrdersToPhaseOrders(epo *wraith.PhaseOrders, o ...*orders.Order) *wraith.Ph
 				Unit:     order.Args[2].String(),
 				Deposit:  order.Args[3].String(),
 			}})
+		case tokens.AssembleSpyTeam:
+			o := &wraith.AssembleSpyTeamOrder{
+				CorS:     string(order.Args[0].Text),
+				Quantity: order.Args[1].Integer,
+			}
+			epo.Assembly = append(epo.Assembly, &wraith.AssemblyPhaseOrder{SpyTeam: o})
 		case tokens.Control:
 			id := string(order.Args[0].Text)
 			if order.Args[0].Kind == tokens.ColonyId {

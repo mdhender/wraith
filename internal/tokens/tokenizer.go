@@ -161,8 +161,8 @@ func (z *Tokenizer) Next() *Token {
 	if bytes.Equal(word, []byte("consumer-goods")) {
 		return &Token{Line: z.line, Kind: ConsumerGoodsUnit, Text: word}
 	}
-	if bytes.Equal(word, []byte("construction-worker")) {
-		return &Token{Line: z.line, Kind: ConstructionWorkerUnit, Text: word}
+	if bytes.Equal(word, []byte("construction-crew")) {
+		return &Token{Line: z.line, Kind: ConstructionCrew, Text: word}
 	}
 	if bytes.Equal(word, []byte("control")) {
 		return &Token{Line: z.line, Kind: Control, Text: word}
@@ -229,6 +229,9 @@ func (z *Tokenizer) Next() *Token {
 	}
 	if bytes.HasPrefix(word, []byte("space-drive-")) {
 		return &Token{Line: z.line, Kind: SpaceDriveUnit, Text: word}
+	}
+	if bytes.Equal(word, []byte("spy-team")) {
+		return &Token{Line: z.line, Kind: SpyTeam, Text: word}
 	}
 	if bytes.Equal(word, []byte("structural")) {
 		return &Token{Line: z.line, Kind: StructuralUnit, Text: word}

@@ -51,6 +51,7 @@ type AssemblyPhaseOrder struct {
 	FactoryGroup     *AssembleFactoryGroupOrder
 	FarmGroup        *AssembleFarmGroupOrder
 	MiningGroup      *AssembleMineGroupOrder
+	SpyTeam          *AssembleSpyTeamOrder
 }
 type AssembleConstructionCrewOrder struct {
 	CorS     string // id of ship or colony to assemble in
@@ -77,6 +78,11 @@ type AssembleMineGroupOrder struct {
 	Unit       string
 	Deposit    string
 	cons, fuel requisition
+}
+type AssembleSpyTeamOrder struct {
+	CorS     string // id of ship or colony to assemble in
+	Quantity int
+	pro, uns requisition
 }
 
 type RetoolPhaseOrder struct {
@@ -393,6 +399,9 @@ func (e *Engine) ExecuteAssemblyPhase(pos []*PhaseOrders) (errs []error) {
 			if err := order.MiningGroup.Execute(e, o.Player); err != nil {
 				errs = append(errs, err)
 			}
+			if err := order.SpyTeam.Execute(e, o.Player); err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
 	return errs
@@ -404,7 +413,7 @@ func (o *AssembleConstructionCrewOrder) Execute(e *Engine, p *Player) error {
 	if o == nil {
 		return nil
 	}
-	p.Log("  assemble %s: %d construction-crews\n", o.CorS, o.Quantity)
+	p.Log("  assemble %s: %d construction-crew\n", o.CorS, o.Quantity)
 	if o.Quantity <= 0 {
 		p.Log("           %s: nothing to do\n", o.CorS)
 		return nil
@@ -559,7 +568,7 @@ func (o *AssembleFactoryGroupOrder) Execute(e *Engine, p *Player) error {
 
 	// be optimistic and assume that we can build all that were requested
 	consAllocated := int(math.Ceil(float64(amtToAssemble) * factory.MassPerUnit / 500))
-	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, "construction-crews", consAllocated, availableCon(cs))
+	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, "construction-crew", consAllocated, availableCon(cs))
 	if availableCon(cs) < consAllocated {
 		p.Log("           %s: not enough CON to assemble %d %q\n", o.CorS, amtToAssemble, o.Unit)
 		amtToAssemble = int(math.Floor(float64(availableCon(cs)) * 500 / factory.MassPerUnit))
@@ -699,7 +708,7 @@ func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 
 	// be optimistic and assume that we can build all that were requested
 	consAllocated := int(math.Ceil(float64(amtToAssemble) * farm.MassPerUnit / 500))
-	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, "construction-crews", consAllocated, availableCon(cs))
+	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, "construction-crew", consAllocated, availableCon(cs))
 	if availableCon(cs) < consAllocated {
 		p.Log("           %s: not enough CON to assemble %d %q\n", o.CorS, amtToAssemble, o.Unit)
 		amtToAssemble = int(math.Floor(float64(availableCon(cs)) * 500 / farm.MassPerUnit))
@@ -848,7 +857,7 @@ func (o *AssembleMineGroupOrder) Execute(e *Engine, p *Player) error {
 	// verify that we have enough crews to assemble.
 	// if we don't, then adjust the number of units that we're able to assemble.
 	o.cons.needed = int(math.Ceil(float64(amtToAssemble) * mine.MassPerUnit / 500))
-	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, "construction-crews", o.cons.needed, availableCon(cs))
+	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, "construction-crew", o.cons.needed, availableCon(cs))
 	var consAllocated int
 	if availableCon(cs) < o.cons.needed {
 		p.Log("           %s: not enough CON to assemble %d %q\n", o.CorS, amtToAssemble, o.Unit)
@@ -871,6 +880,53 @@ func (o *AssembleMineGroupOrder) Execute(e *Engine, p *Player) error {
 	mg.Unit.StowedQty = 0 // we should never have stowed units in a mine group
 
 	p.Log("           %s: group %2d: %-11s product %s: capacity now %d\n", o.CorS, mg.No, mine.Name, deposit.Product.Name, mg.Unit.ActiveQty)
+
+	return nil
+}
+
+// Execute assembles a spy team on the colony or ship.
+// Will fail if the colony or ship is not controlled by the player.
+func (o *AssembleSpyTeamOrder) Execute(e *Engine, p *Player) error {
+	if o == nil {
+		return nil
+	}
+	p.Log("  assemble %s: %d spy-team\n", o.CorS, o.Quantity)
+	if o.Quantity <= 0 {
+		p.Log("           %s: nothing to do\n", o.CorS)
+		return nil
+	}
+
+	// find colony or ship
+	cs, ok := e.findColony(o.CorS)
+	if !ok {
+		if cs, ok = e.findShip(o.CorS); !ok {
+			p.Log("  assemble %s: no such colony or ship\n", o.CorS)
+			return fmt.Errorf("no such colony or ship %q", o.CorS)
+		}
+	}
+	// fail if controlled by another player
+	if cs.ControlledBy != nil && cs.ControlledBy != p {
+		p.Log("  assemble %s: no such colony or ship\n", o.CorS)
+		return fmt.Errorf("no such colony or ship %q", o.CorS)
+	}
+
+	// be optimistic and assume that we'll assemble everything requested
+	amtToAssemble := o.Quantity
+
+	// allocate labor. 1 CON requires 1 PRO and 1 SOL
+	o.pro.needed = o.Quantity
+	if availablePro(cs) < amtToAssemble {
+		amtToAssemble = availablePro(cs)
+	}
+	if availableUns(cs) < amtToAssemble {
+		amtToAssemble = availableUns(cs)
+	}
+
+	cs.spy.available += amtToAssemble
+	cs.pro.allocated += amtToAssemble
+	cs.sol.allocated += amtToAssemble
+
+	p.Log("           %s: assembled %d, %d now available\n", o.CorS, amtToAssemble, availableSpy(cs))
 
 	return nil
 }
