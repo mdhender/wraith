@@ -134,7 +134,7 @@ func (o *Order) expectFactoryGroup(z *tokens.Tokenizer) bool {
 		tokens.EnergyShieldUnit, tokens.EnergyWeaponUnit,
 		tokens.FactoryUnit, tokens.FarmUnit,
 		tokens.HyperDriveUnit, tokens.LifeSupportUnit, tokens.LightStructuralUnit,
-		tokens.MilitaryRobotUnit, tokens.MilitarySuppliesUnit, tokens.MineUnit,
+		tokens.MilitaryRobotUnit, tokens.MilitarySuppliesUnit, tokens.MineUnit, tokens.MissileUnit, tokens.MissileLauncherUnit,
 		tokens.ResearchUnit, tokens.SensorUnit, tokens.SpaceDriveUnit,
 		tokens.StructuralUnit, tokens.SuperLightStructuralUnit, tokens.TransportUnit); t == nil {
 		o.Errors = append(o.Errors, fmt.Errorf("%d: expected unit to produce", o.Line))
