@@ -1,0 +1,62 @@
+////////////////////////////////////////////////////////////////////////////////
+// wraith - the wraith game engine and server
+// Copyright (c) 2022 Michael D. Henderson
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+////////////////////////////////////////////////////////////////////////////////
+
+package carnac
+
+import (
+	"testing"
+)
+
+func TestCarnac(t *testing.T) {
+	r := New(Source{1, 2, 3, 4, -5})
+	for _, want := range []int{
+		1, 2, 3, 4, 5,
+		// repeat the first three to test the ring
+		1, 2, 3,
+	} {
+		if n := r.Int(); want != n {
+			t.Errorf("want %d: got %d", want, n)
+		}
+	}
+	r.Seed(42)
+	for _, want := range []int{
+		130309917977, 2751111558240296465, 494774574766035043,
+		3328955499162683001, 6509226717045011998, 6231883134394460335, 6766046161238400452,
+		7086645054634218597, 2049389266274087155, 6648530111488680651, 5700202082767297765,
+		7150449646241278497, 9131460288138241088, 2204288939834915585, 969390871580440403,
+		5363299754560747170, 5183889753929152173, 5811071914668458764, 8406620779638777180,
+		2940200503125666379, 6867089749043578620, 6842914326446429039, 3641393426743667291,
+		2959314366958261487, 7717418335250335641, 7776565339797862537, 7836764449353166960,
+		8776055729430669684, 6481350461255511109, 2571470144033932689, 315382866980852283,
+		8926847610142650300, 3962705497199235311, 9134176451428609219, 5053306119937877505,
+		4640388266419905622, 1045886859714160820, 8218254282886440042, 6695679066570085778,
+		5318923702840825397, 3016056460010586386, 4269600332355624799, 6282651990664222649,
+		1393331340551319046, 7541921429913039208, 5759220819305288029, 5090639399637137632,
+		6297268324603011422, 6980966246883852294, 7361231112981313998, 2162299506054920882,
+		7296200460472564129, 5610148738843250976, 2639117800880183511, 901514716558440756,
+		774653345686484990, 7312759584910676, 292818375943813484, 4048968755547738496,
+		4086026222582473056, 8158460451056707640, 4078066099006158372, 526559239004513696,
+		4027872275357949758,
+		// repeat the first three to test the ring
+		130309917977, 2751111558240296465, 494774574766035043,
+	} {
+		if n := r.Int(); want != n {
+			t.Errorf("want %d: got %d", want, n)
+		}
+	}
+}
