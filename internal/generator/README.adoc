@@ -1,0 +1,66 @@
+= Generator
+
+* A cluster contains systems
+* A system contains stars
+** A star contains orbits
+** An orbit may contain planets
+*** A planet may contain natural resources
+
+== Players
+Many settings depend on the number of players.
+
+The variable `N~P~` represents the number of players.
+
+== Cluster
+The radius of the cluster depends on the number of players.
+
+The variable `C~r~` represents the radius (in light years).
+
+The formula for determining ~C~r~` is `C~r~ = N~P~`.
+
+If `C~r~` is less than 3, it will be set to 3.
+
+The number of stars in a cluster depends on the radius of the cluster.
+
+The variable `N~s~` represents the number of stars.
+
+The formula for determining `N~s~` is `N~s~ = C~r~^2^`.
+
+A cluster with a radius of 3 would have 9 stars
+and one with a radius of 16 would have 256 stars.
+
+== Systems
+The number of systems will vary based on the random number generator's seed and the size of the cluster.
+It will never be less than 1 or exceed the number of stars in the cluster.
+(In other words, every system will have at least one star.)
+
+Each system has a coordinate.
+The game uses Cartesian coordinates `(X,Y,Z)`.
+
+The location of a system is generated randomly (but with a few constraints).
+We use a method based on a FAQ by https://www.cs.cmu.edu/~mws/rpos.html[Mel Siegel] to pick the coordinates.
+
+For each system after the first, we do the following 16 times:
+
+. Set the "keeper" coordinate to `nil`.
+. Pick a new coordinate.
+. Find the minimum and median distance from this coordinate to all other existing systems.
+. If the minimum distance is less than "a certain value",
+reject it and start over at step 1.
+. If the "keeper" coordinate is `nil` or the median distance of the "keeper" coordinate is less than this coordinate:
+.. Set the "keeper" coordinate to this coordinate
+
+Use the "keeper" coordinate for the new system.
+
+The number of stars in a system is determined randomly,
+but is influenced by the distance from the system to the origin of cluster.
+
+== Stars
+
+The variable `N~s~` represents the number of stars.
+
+The formula for determining `N~s~` is `N~s~ = C~r~^2^`.
+
+A cluster with a radius of 3 would have 9 stars
+and one with a radius of 16 would have 256 stars.
+

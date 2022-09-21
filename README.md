@@ -63,3 +63,14 @@ FWIW, this is my starter:
     PS C:\Program Files\MariaDB 10.5\bin> .\mysqldump.exe -u wraith --password=whisper --skip-set-charset --default-character-set=utf8mb4 wraith -r D:\wraith\testdata\data-dump.sql
 
     $ mysql -u wraith --password=whisper wraith < /tmp/data-dump.sql
+
+## Food
+https://worldbuilding.stackexchange.com/questions/9582/how-many-people-can-you-feed-per-square-kilometer-of-farmland
+
+https://worldbuilding.stackexchange.com/questions/25800/how-large-would-a-space-ship-need-to-be-to-feed-10-000-people?rq=1
+
+## Images
+https://en.wikipedia.org/wiki/Supersymmetry#/media/File:CMS_Higgs-event.jpg
+
+http://cdsweb.cern.ch/record/628469
+

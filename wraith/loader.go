@@ -86,6 +86,17 @@ type CorS struct {
 	nonCombatDeaths                     int
 }
 
+func (cs *CorS) InitializeInventory() {
+	for _, u := range cs.Hull {
+		u.operational.initial, u.operational.allocated, u.operational.created, u.operational.destroyed = u.ActiveQty, 0, 0, 0
+		u.stowed.initial, u.stowed.allocated, u.operational.created, u.stowed.destroyed = u.StowedQty, 0, 0, 0
+	}
+	for _, u := range cs.Inventory {
+		u.operational.initial, u.operational.allocated, u.stowed.created, u.operational.destroyed = u.ActiveQty, 0, 0, 0
+		u.stowed.initial, u.stowed.allocated, u.stowed.created, u.stowed.destroyed = u.StowedQty, 0, 0, 0
+	}
+}
+
 func (cs *CorS) lifeSupportCheck() {
 	if !(cs.Kind == "enclosed" || cs.Kind == "orbital" || cs.Kind == "ship") {
 		return
@@ -110,17 +121,41 @@ func (cs *CorS) lifeSupportInitialization(pos []*PhaseOrders) {
 	if !(cs.Kind == "enclosed" || cs.Kind == "orbital" || cs.Kind == "ship") {
 		return
 	}
-	for _, u := range cs.Hull {
-		if cs.fuel.available <= 0 {
+
+	// find fuel in inventory.
+	// note that fuel must always be stowed.
+	var fuel *InventoryUnit
+	for _, u := range cs.Inventory {
+		if u.Unit.Kind == "fuel" {
+			fuel = u
 			break
-		} else if u.Unit.Kind != "life-support" {
+		}
+	}
+
+	for _, u := range cs.Hull {
+		if u.Unit.Kind != "life-support" {
+			continue
+		} else if fuel.stowed.available() == 0 {
+			cs.Log("  **** no fuel available for life support!\n")
+			break
+		}
+		// allocate fuel to the life support unit
+		fuelNeeded := int(math.Ceil(u.Unit.FuelPerUnitPerTurn * float64(u.operational.available())))
+		if fuelNeeded == 0 {
 			continue
 		}
-		// allocateFuel will set activeQty
-		cs.fuel.available -= u.allocateFuel(cs.fuel.available)
+		fuelAllocated := fuel.stowed.allocate(fuelNeeded)
+		lsuActivated := int(float64(fuelAllocated) / u.Unit.FuelPerUnitPerTurn)
+		u.operational.allocate(lsuActivated)
+
 		// capacity is number of units times the unit's tech level squared
-		cs.lifeSupportCapacity += u.activeQty * u.Unit.TechLevel * u.Unit.TechLevel
+		cs.lifeSupportCapacity += lsuActivated * u.Unit.TechLevel * u.Unit.TechLevel
+
+		cs.Log("  %13d %-20s  %13d activated  %13d fuel allocated\n",
+			u.operational.initial, u.Unit.Name, u.operational.allocated, fuelAllocated)
 	}
+
+	cs.Log("  %13d population capacity\n", cs.lifeSupportCapacity)
 }
 
 func (cs *CorS) Log(format string, args ...interface{}) {
@@ -234,40 +269,111 @@ func (f FarmGroups) Swap(i, j int) {
 }
 
 type requisition struct {
-	available int
-	needed    int
+	initial   int
 	allocated int
-	used      int
+	created   int
+	destroyed int
+
+	needed, operational int
 }
 
 type InventoryUnit struct {
-	Unit           *Unit
-	ActiveQty      int // number of active/operational units
-	StowedQty      int // number of units that are disassembled for storage
-	activeQty      int
-	fuel, pro, uns requisition
+	Unit                 *Unit
+	ActiveQty            int // number of active/operational units
+	StowedQty            int // number of units that are disassembled for storage
+	activeQty            int
+	fuel, pro, uns       requisition
+	available, allocated int
+	operational, stowed  requisition
 }
 
-// allocateFuel activates as many units as it can given the amount of fuel available.
-// it returns the amount actually used.
-func (u *InventoryUnit) allocateFuel(fuelAvailable int) int {
-	u.fuel.needed, u.fuel.allocated, u.fuel.used = 0, 0, 0
-
-	u.fuel.needed = int(math.Ceil(u.Unit.FuelPerUnitPerTurn * float64(u.ActiveQty)))
-	if u.fuel.needed == 0 {
-		// nothing to do
-		return 0
-	} else if fuelAvailable < u.fuel.needed {
-		// activate as many units as we can
-		u.activeQty = int(float64(fuelAvailable) / u.Unit.FuelPerUnitPerTurn)
-		u.fuel.allocated = int(math.Ceil(u.Unit.FuelPerUnitPerTurn * float64(u.ActiveQty)))
-	} else {
-		u.activeQty = u.ActiveQty
-		u.fuel.allocated = u.fuel.needed
+// allocate activates as many units as it can with the remaining available units.
+// it returns the amount actually allocated.
+func (r *requisition) allocate(qty int) int {
+	if r.available() < qty {
+		qty = r.available()
 	}
-
-	return u.fuel.allocated
+	r.allocated += qty
+	return qty
 }
+
+// available returns the number of units available.
+// assumes that destroyed units update the allocated amount, too.
+func (r *requisition) available() (qty int) {
+	if qty = r.initial - r.destroyed - r.allocated; qty < 0 {
+		qty = 0
+	}
+	return qty
+}
+
+// create adds new units.
+// they will not be available until after the bookkeeping phase.
+func (r *requisition) create(qty int) {
+	r.created += qty
+}
+
+// destroy flags units as being destroyed.
+// it updates both the destroyed and allocated quantities.
+// destroyed units will be removed from inventory during the bookkeeping phase.
+// it returns the number of units that were destroyed, which will be
+// less than the requested amount when there aren't enough units left.
+func (r *requisition) destroy(qty int) int {
+	// should never happen, but check for zero inventory anyway
+	if r.initial == 0 {
+		r.destroyed, r.allocated = 0, 0
+		return 0
+	}
+	// remaining is the number of un-destroyed units
+	remaining := r.initial - r.destroyed
+	// if we are destroying all the remaining units, flag them as destroyed and allocated.
+	if remaining <= qty {
+		r.destroyed, r.allocated = r.initial, 0
+		return remaining
+	}
+	// if we've already allocated all the units, update only the destroyed quantity
+	if r.initial <= r.allocated {
+		if r.allocated -= qty; r.allocated < 0 {
+			r.allocated = 0
+		}
+		if r.destroyed += qty; r.initial < r.destroyed {
+			r.destroyed = r.initial
+		}
+		return qty
+	}
+	// otherwise allocate the quantity between allocated and un-allocated units.
+	// we do this by moving some of the previously allocated units to destroyed.
+	// when doing so, ensure that we don't exceed the initial quantity.
+	pctDestroyed := float64(qty) / float64(r.initial)
+	amtAllocatedDestroyed := int(math.Ceil(pctDestroyed * float64(r.allocated)))
+	if r.allocated -= amtAllocatedDestroyed; r.allocated < 0 {
+		r.allocated = 0
+	}
+	if r.destroyed += qty; r.initial < r.destroyed {
+		r.destroyed = r.initial
+	}
+	return qty
+}
+
+//// allocateFuel activates as many units as it can given the amount of fuel available.
+//// it returns the amount actually allocated.
+//func (u *InventoryUnit) allocateFuel(fuelAvailable int) int {
+//	u.fuel.needed, u.fuel.allocated, u.fuel.used = 0, 0, 0
+//
+//	u.fuel.needed = int(math.Ceil(u.Unit.FuelPerUnitPerTurn * float64(u.ActiveQty)))
+//	if u.fuel.needed == 0 {
+//		// nothing to do
+//		return 0
+//	} else if fuelAvailable < u.fuel.needed {
+//		// activate as many units as we can
+//		u.activeQty = int(float64(fuelAvailable) / u.Unit.FuelPerUnitPerTurn)
+//		u.fuel.allocated = int(math.Ceil(u.Unit.FuelPerUnitPerTurn * float64(u.ActiveQty)))
+//	} else {
+//		u.activeQty = u.ActiveQty
+//		u.fuel.allocated = u.fuel.needed
+//	}
+//
+//	return u.fuel.allocated
+//}
 
 func (u *InventoryUnit) totalMass() int {
 	return int(math.Ceil(float64(u.ActiveQty+u.StowedQty) * u.Unit.MassPerUnit))

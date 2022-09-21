@@ -41,6 +41,7 @@ var globalRun struct {
 	Quarter int
 	Game    string
 	Phases  string
+	Loops   int
 }
 
 var cmdRun = &cobra.Command{
@@ -77,94 +78,102 @@ var cmdRun = &cobra.Command{
 			return errors.New("invalid quarter")
 		}
 
-		jg, err := jdb.Load(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", globalRun.Year), fmt.Sprintf("%d", globalRun.Quarter), "game.json"))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		e, err := adapters.JdbGameToWraithEngine(jg)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("loaded engine version %q\n", e.Version)
-		log.Printf("loaded game %s: turn %04d/%d\n", e.Game.Code, e.Game.Turn.Year, e.Game.Turn.Quarter)
-
-		for _, player := range e.Players {
-			loggerFile := filepath.Join(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", globalRun.Year), fmt.Sprintf("%d", globalRun.Quarter), fmt.Sprintf("%d.log.txt", player.Id)))
-			player.Logger.W, err = os.OpenFile(loggerFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+		for ; globalRun.Loops > 0; globalRun.Loops-- {
+			gameFile := filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", globalRun.Year), fmt.Sprintf("%d", globalRun.Quarter), "game.json")
+			log.Printf("game: %s\n", gameFile)
+			jg, err := jdb.Load(gameFile)
 			if err != nil {
-				log.Println(err)
-				continue
+				log.Fatal(err)
 			}
-			player.Logger.MP = message.NewPrinter(language.English)
-		}
 
-		var pos []*wraith.PhaseOrders
-		for _, player := range e.Players {
-			player.Log("player %4d handle %-32q nation %3d\n\n", player.Id, player.Name, player.MemberOf.No)
-			po := &wraith.PhaseOrders{Player: player}
-			pos = append(pos, po)
-
-			ordersFile := filepath.Join(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", globalRun.Year), fmt.Sprintf("%d", globalRun.Quarter), fmt.Sprintf("%d.orders.txt", player.Id)))
-
-			b, err := os.ReadFile(ordersFile)
+			e, err := adapters.JdbGameToWraithEngine(jg)
 			if err != nil {
-				player.Log("orders: read: %+v\n\n", err)
-				continue
+				log.Fatal(err)
 			}
-			player.Log("orders: loaded %s\n", ordersFile)
+			log.Printf("loaded engine version %q\n", e.Version)
+			log.Printf("loaded game %s: turn %04d/%d\n", e.Game.Code, e.Game.Turn.Year, e.Game.Turn.Quarter)
 
-			player.Log("\nOrder Parsing ---------------------------------------------------\n")
-			o, err := orders.Parse([]byte(b))
-			if err != nil {
-				player.Log("  parser error: %+v\n\n", err)
-				continue
-			}
-			foundErrors := false
-			for _, oo := range o {
-				if oo.Reject == nil && len(oo.Errors) == 0 {
+			for _, player := range e.Players {
+				loggerFile := filepath.Join(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", globalRun.Year), fmt.Sprintf("%d", globalRun.Quarter), fmt.Sprintf("%d.log.txt", player.Id)))
+				player.Logger.W, err = os.OpenFile(loggerFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+				if err != nil {
+					log.Println(err)
 					continue
 				}
-				foundErrors = true
-				player.Log("  %d:  %s", oo.Line, oo.Verb.String())
-				for _, arg := range oo.Args {
-					player.Log(" %s", arg)
-				}
-				for _, arg := range oo.Reject {
-					player.Log(" %s", arg)
-				}
-				player.Log("\n")
-				for _, err := range oo.Errors {
-					player.Log("        %v\n", err)
-				}
-
-				//log.Printf("  %d: %d:  %s\n", player.Id, oo.Line, oo.Verb.String())
-			}
-			if !foundErrors {
-				player.Log("  no errors found during initial parse\n")
+				player.Logger.MP = message.NewPrinter(language.English)
 			}
 
-			adapters.OrdersToPhaseOrders(po, o...)
-		}
+			var pos []*wraith.PhaseOrders
+			for _, player := range e.Players {
+				player.Log("player %4d handle %-32q nation %3d\n\n", player.Id, player.Name, player.MemberOf.No)
+				po := &wraith.PhaseOrders{Player: player}
+				pos = append(pos, po)
 
-		phases := strings.Split(globalRun.Phases, ",")
-		err = e.Execute(pos, phases...)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("wow. executed!\n")
+				ordersFile := filepath.Join(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", globalRun.Year), fmt.Sprintf("%d", globalRun.Quarter), fmt.Sprintf("%d.orders.txt", player.Id)))
 
-		// bump the turn
-		if e.Game.Turn.Quarter = e.Game.Turn.Quarter + 1; e.Game.Turn.Quarter > 4 {
-			e.Game.Turn.Year = e.Game.Turn.Year + 1
-			e.Game.Turn.Quarter = 1
-		}
+				b, err := os.ReadFile(ordersFile)
+				if err != nil {
+					player.Log("orders: read: %+v\n\n", err)
+					continue
+				}
+				player.Log("orders: loaded %s\n", ordersFile)
 
-		// and save the game
-		jg = adapters.WraithEngineToJdbGame(e)
-		err = jg.Write(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", jg.Turn.Year), fmt.Sprintf("%d", jg.Turn.Quarter), "game.json"))
-		if err != nil {
-			log.Fatal(err)
+				player.Log("\nOrder Parsing ---------------------------------------------------\n")
+				o, err := orders.Parse([]byte(b))
+				if err != nil {
+					player.Log("  parser error: %+v\n\n", err)
+					continue
+				}
+				foundErrors := false
+				for _, oo := range o {
+					if oo.Reject == nil && len(oo.Errors) == 0 {
+						continue
+					}
+					foundErrors = true
+					player.Log("  %d:  %s", oo.Line, oo.Verb.String())
+					for _, arg := range oo.Args {
+						player.Log(" %s", arg)
+					}
+					for _, arg := range oo.Reject {
+						player.Log(" %s", arg)
+					}
+					player.Log("\n")
+					for _, err := range oo.Errors {
+						player.Log("        %v\n", err)
+					}
+
+					//log.Printf("  %d: %d:  %s\n", player.Id, oo.Line, oo.Verb.String())
+				}
+				if !foundErrors {
+					player.Log("  no errors found during initial parse\n")
+				}
+
+				adapters.OrdersToPhaseOrders(po, o...)
+			}
+
+			phases := strings.Split(globalRun.Phases, ",")
+			err = e.Execute(pos, phases...)
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Printf("wow. executed!\n")
+
+			// bump the turn
+			if globalRun.Quarter = globalRun.Quarter + 1; globalRun.Quarter > 4 {
+				globalRun.Year = globalRun.Year + 1
+				globalRun.Quarter = 1
+			}
+			if e.Game.Turn.Quarter = e.Game.Turn.Quarter + 1; e.Game.Turn.Quarter > 4 {
+				e.Game.Turn.Year = e.Game.Turn.Year + 1
+				e.Game.Turn.Quarter = 1
+			}
+
+			// and save the game
+			jg = adapters.WraithEngineToJdbGame(e)
+			err = jg.Write(filepath.Join(globalRun.Root, globalRun.Game, fmt.Sprintf("%04d", jg.Turn.Year), fmt.Sprintf("%d", jg.Turn.Quarter), "game.json"))
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 
 		return nil
@@ -182,6 +191,7 @@ func init() {
 	_ = cmdRun.MarkFlagRequired("quarter")
 	cmdRun.Flags().StringVar(&globalRun.Phases, "phases", "", "comma separated list of phases to process")
 	_ = cmdRun.MarkFlagRequired("phases")
+	cmdRun.Flags().IntVar(&globalRun.Loops, "loops", 1, "number of turns to run")
 
 	cmdBase.AddCommand(cmdRun)
 }

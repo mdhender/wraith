@@ -229,11 +229,12 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 			birthRate := 0.0025 // 0.25% per year baseline
 			cs.Population.BirthsPriorTurn = int(float64(totalPop(cs)) * birthRate / 4)
 		}
-		cs.Population.ProfessionalQty = cs.pro.available
-		cs.Population.SoldierQty = cs.sol.available
-		cs.Population.UnskilledQty = cs.uns.available
-		cs.Population.ConstructionCrewQty = cs.cons.available
-		cs.Population.UnemployedQty = cs.uem.available + cs.Population.BirthsPriorTurn
+		cs.Population.ProfessionalQty = cs.pro.initial + cs.pro.created - cs.pro.destroyed
+		cs.Population.SoldierQty = cs.sol.initial + cs.sol.created - cs.sol.destroyed
+		cs.Population.UnskilledQty = cs.uns.initial + cs.uns.created - cs.uns.destroyed
+		cs.Population.ConstructionCrewQty = cs.cons.initial + cs.cons.created - cs.cons.destroyed
+		cs.Population.SpyTeamQty = cs.spy.initial + cs.spy.created - cs.spy.destroyed
+		cs.Population.UnemployedQty = cs.uem.initial + cs.uem.created - cs.uem.destroyed // + cs.Population.BirthsPriorTurn
 		cs.Population.NaturalDeathsPriorTurn = cs.nonCombatDeaths
 
 		// update fuel depot
@@ -243,7 +244,7 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 				if foundFuel {
 					u.ActiveQty, u.StowedQty = 0, 0
 				} else {
-					foundFuel, u.ActiveQty, u.StowedQty = true, 0, cs.fuel.available
+					foundFuel, u.ActiveQty, u.StowedQty = true, 0, cs.fuel.available()
 				}
 			}
 		}
@@ -262,7 +263,7 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 				cs.Inventory = append(cs.Inventory, unit)
 				sort.Sort(cs.Inventory)
 			}
-			cs.Log("farm group %d inventory %s stowed %d adding %d %d %d %d\n", group.No, group.Product.Code, unit.StowedQty, group.StageQty[0], group.StageQty[1], group.StageQty[2], group.StageQty[3])
+			cs.Log("   farm group %d inventory %s stowed %d adding %d %d %d %d\n", group.No, group.Product.Code, unit.StowedQty, group.StageQty[0], group.StageQty[1], group.StageQty[2], group.StageQty[3])
 			unit.StowedQty += group.StageQty[3]
 			group.StageQty[3] = 0
 		}
@@ -280,7 +281,7 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 				sort.Sort(cs.Inventory)
 			}
 			unit.StowedQty += group.StageQty[3]
-			cs.Log("mine group %d deposit %d stowed %d adding %d %d %d %d\n", group.No, group.Deposit.No, unit.StowedQty, group.StageQty[0], group.StageQty[1], group.StageQty[2], group.StageQty[3])
+			cs.Log("   mine group %d deposit %d stowed %d adding %d %d %d %d\n", group.No, group.Deposit.No, unit.StowedQty, group.StageQty[0], group.StageQty[1], group.StageQty[2], group.StageQty[3])
 			group.StageQty[3] = 0
 		}
 		for _, group := range cs.FactoryGroups {
@@ -297,7 +298,7 @@ func (e *Engine) Execute(pos []*PhaseOrders, phases ...string) error {
 				sort.Sort(cs.Inventory)
 			}
 			unit.StowedQty += group.StageQty[3]
-			cs.Log("factory group %d inventory %s stowed %d adding %d %d %d %d\n", group.No, group.Product.Code, unit.StowedQty, group.StageQty[0], group.StageQty[1], group.StageQty[2], group.StageQty[3])
+			cs.Log("   factory group %d inventory %s stowed %d adding %d %d %d %d\n", group.No, group.Product.Code, unit.StowedQty, group.StageQty[0], group.StageQty[1], group.StageQty[2], group.StageQty[3])
 			group.StageQty[3] = 0
 		}
 	}
@@ -441,22 +442,23 @@ func (o *AssembleConstructionCrewOrder) Execute(e *Engine, p *Player) error {
 	}
 
 	// be optimistic and assume that we'll assemble everything requested
-	amtToAssemble := o.Quantity
+	requested := o.Quantity
 
 	// allocate labor. 1 CON requires 1 PRO and 1 UNS
-	o.pro.needed = o.Quantity
-	if availablePro(cs) < amtToAssemble {
-		amtToAssemble = availablePro(cs)
+	if cs.pro.available() < requested {
+		requested = cs.pro.available()
 	}
-	if availableUns(cs) < amtToAssemble {
-		amtToAssemble = availableUns(cs)
+	cs.Log("          : professional       %13d  %13d  %13d\n", o.Quantity, cs.pro.available(), requested)
+	if cs.uns.available() < requested {
+		requested = cs.uns.available()
 	}
+	cs.Log("          : unskilled workers  %13d  %13d  %13d\n", o.Quantity, cs.uns.available(), requested)
 
-	cs.cons.available += amtToAssemble
-	cs.pro.allocated += amtToAssemble
-	cs.uns.allocated += amtToAssemble
+	cs.cons.created += requested
+	cs.pro.allocate(requested)
+	cs.uns.allocate(requested)
 
-	p.Log("           %s: assembled %d, %d now available\n", o.CorS, amtToAssemble, availableCon(cs))
+	p.Log("           %s: assembled %d, %d now available\n", o.CorS, requested, cs.cons.available())
 
 	return nil
 }
@@ -504,34 +506,36 @@ func (o *AssembleFactoryGroupOrder) Execute(e *Engine, p *Player) error {
 		}
 	}
 	if inventory == nil {
-		p.Log("           %s: no such unit %q in inventory\n", o.CorS, o.Unit)
-		return fmt.Errorf("no such unit %q in inventory", o.Unit)
+		p.Log("           %s: %q: not in inventory\n", o.CorS, o.Unit)
+		return fmt.Errorf("%q: not in inventory", o.Unit)
 	}
-	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, factory.Name, o.Quantity, inventory.StowedQty)
+	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, factory.Name, o.Quantity, inventory.stowed.available())
 
 	// be optimistic and assume that we'll assemble everything requested
 	amtToAssemble := o.Quantity
 
-	// allocate from inventory
-	if inventory.StowedQty < amtToAssemble {
+	// try to assemble as many as possible with our available inventory.
+	if inventory.stowed.available() < amtToAssemble {
 		p.Log("           %s: not enough inventory to assemble %d %q\n", o.CorS, o.Quantity, o.Unit)
-		if amtToAssemble = inventory.StowedQty; amtToAssemble < 0 {
+		if amtToAssemble = inventory.stowed.available(); amtToAssemble < 0 {
 			amtToAssemble = 0
 		}
 		p.Log("                 reducing request to %d\n", amtToAssemble)
 		if amtToAssemble == 0 {
-			return fmt.Errorf("unit %q not available", o.Unit)
+			return fmt.Errorf("%q: not available", o.Unit)
 		}
 	}
 
 	// fetch the product from the order.
-	// assumes that the parser has accepted only buildable products?
 	product, ok := unitFromString(e, o.Product)
 	if !ok {
 		p.Log("           %s: no such unit %q product %q\n", o.CorS, o.Unit, o.Product)
 		return fmt.Errorf("no such unit %q", o.Product)
 	} else if product.TechLevel > cs.TechLevel {
 		p.Log("           %s: unit %q product %q: invalid tech level\n", o.CorS, o.Unit, o.Product)
+		return fmt.Errorf("invalid tech level %q", o.Product)
+	} else if product.Kind == "food" || product.Kind == "fuel" || product.Kind == "gold" || product.Kind == "metallics" || product.Kind == "non-metallics" {
+		p.Log("           %s: factories can not product %q\n", o.CorS, o.Product)
 		return fmt.Errorf("invalid tech level %q", o.Product)
 	}
 
@@ -572,22 +576,21 @@ func (o *AssembleFactoryGroupOrder) Execute(e *Engine, p *Player) error {
 	// allocate labor. 1 CON per 500 tonnes.
 	// verify that we have enough crews to assemble.
 	// if we don't, then adjust the number of units that we're able to assemble.
-
-	// be optimistic and assume that we can build all that were requested
-	consAllocated := int(math.Ceil(float64(amtToAssemble) * factory.MassPerUnit / 500))
-	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, "construction-crew", consAllocated, availableCon(cs))
-	if availableCon(cs) < consAllocated {
+	consRequested := int(math.Ceil(float64(amtToAssemble) * factory.MassPerUnit / 500))
+	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, "construction-crew", consRequested, cs.cons.available())
+	if cs.cons.available() < consRequested {
 		p.Log("           %s: not enough CON to assemble %d %q\n", o.CorS, amtToAssemble, o.Unit)
-		amtToAssemble = int(math.Floor(float64(availableCon(cs)) * 500 / factory.MassPerUnit))
-		if availableCon(cs) <= 0 {
+		p.Log("           %s: todo: create construction group to continue assembly in future turns\n")
+		amtToAssemble = int(math.Floor(float64(cs.cons.available()) * 500 / factory.MassPerUnit))
+		p.Log("                 reducing request to %d\n", amtToAssemble)
+		if cs.cons.available() <= 0 {
 			p.Log("           %s: no construction crews available\n", o.CorS)
 			return fmt.Errorf("%s: no cons available", o.CorS)
 		}
-		consAllocated = availableCon(cs)
+		consRequested = cs.cons.available()
 	}
-	o.cons.allocated += consAllocated
 
-	// are there already units in the group or must we add them?
+	// does this group already have this type of unit or must we add them?
 	var unit *InventoryUnit
 	for _, u := range fg.Units {
 		if u.Unit.Code == factory.Code {
@@ -601,12 +604,9 @@ func (o *AssembleFactoryGroupOrder) Execute(e *Engine, p *Player) error {
 		sort.Sort(fg.Units)
 	}
 
-	cs.cons.allocated += consAllocated
-	inventory.activeQty += amtToAssemble
-	//inventory.ActiveQty += amtToAssemble
-	inventory.StowedQty -= amtToAssemble
-	unit.ActiveQty += amtToAssemble
-	unit.StowedQty = 0 // we should never have stowed units in a factory group
+	o.cons.allocated += consRequested
+	inventory.stowed.allocated += amtToAssemble
+	unit.operational.created += amtToAssemble
 
 	p.Log("           %s: group %2d: %-11s product %s: capacity now %d\n", o.CorS, fg.No, unit.Unit.Name, product.Name, unit.ActiveQty)
 
@@ -659,20 +659,20 @@ func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 		p.Log("           %s: no such unit %q in inventory\n", o.CorS, o.Unit)
 		return fmt.Errorf("no such unit %q in inventory", o.Unit)
 	}
-	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, farm.Name, o.Quantity, inventory.StowedQty)
+	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, farm.Name, o.Quantity, inventory.stowed.available())
 
 	// be optimistic and assume that we'll assemble everything requested
 	amtToAssemble := o.Quantity
 
-	// allocate from inventory
-	if inventory.StowedQty < amtToAssemble {
+	// try to assemble as many as possible with our available inventory.
+	if inventory.stowed.available() < amtToAssemble {
 		p.Log("           %s: not enough inventory to assemble %d %q\n", o.CorS, o.Quantity, o.Unit)
-		if amtToAssemble = inventory.StowedQty; amtToAssemble < 0 {
+		if amtToAssemble = inventory.stowed.available(); amtToAssemble < 0 {
 			amtToAssemble = 0
 		}
 		p.Log("                 reducing request to %d\n", amtToAssemble)
 		if amtToAssemble == 0 {
-			return fmt.Errorf("unit %q not available", o.Unit)
+			return fmt.Errorf("%q: not available", o.Unit)
 		}
 	}
 
@@ -681,12 +681,12 @@ func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 	if !ok {
 		p.Log("           %s: no such unit %q product %q\n", o.CorS, o.Unit, o.Product)
 		return fmt.Errorf("no such unit %q", o.Product)
-	} else if product.Kind != "food" {
-		p.Log("           %s: unit %q product %q: invalid food\n", o.CorS, o.Unit, o.Product)
-		return fmt.Errorf("invalid food %q", o.Product)
 	} else if product.TechLevel > cs.TechLevel {
 		p.Log("           %s: unit %q product %q: invalid tech level\n", o.CorS, o.Unit, o.Product)
 		return fmt.Errorf("invalid tech level %q", o.Product)
+	} else if product.Kind != "food" {
+		p.Log("           %s: farms can not product %q\n", o.CorS, o.Product)
+		return fmt.Errorf("invalid food %q", o.Product)
 	}
 
 	// is there a group already producing this product or must we create a new group?
@@ -708,27 +708,26 @@ func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 		cs.FarmGroups = append(cs.FarmGroups, fg)
 		sort.Sort(cs.FarmGroups)
 	}
+	p.Log("           %s: group %2d: %-11s product %s\n", o.CorS, fg.No, farm.Name, product.Name)
 
 	// allocate labor. 1 CON per 500 tonnes.
 	// verify that we have enough crews to assemble.
 	// if we don't, then adjust the number of units that we're able to assemble.
-
-	// be optimistic and assume that we can build all that were requested
-	consAllocated := int(math.Ceil(float64(amtToAssemble) * farm.MassPerUnit / 500))
-	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, "construction-crew", consAllocated, availableCon(cs))
-	if availableCon(cs) < consAllocated {
+	consRequested := int(math.Ceil(float64(amtToAssemble) * farm.MassPerUnit / 500))
+	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, "construction-crew", consRequested, availableCon(cs))
+	if cs.cons.available() < consRequested {
 		p.Log("           %s: not enough CON to assemble %d %q\n", o.CorS, amtToAssemble, o.Unit)
-		amtToAssemble = int(math.Floor(float64(availableCon(cs)) * 500 / farm.MassPerUnit))
-		p.Log("                 reducing request to %d !!!\n", amtToAssemble)
-		if availableCon(cs) <= 0 {
+		p.Log("           %s: todo: create construction group to continue assembly in future turns\n")
+		amtToAssemble = int(math.Floor(float64(cs.cons.available()) * 500 / farm.MassPerUnit))
+		p.Log("                 reducing request to %d\n", amtToAssemble)
+		if cs.cons.available() <= 0 {
 			p.Log("           %s: no construction crews available\n", o.CorS)
 			return fmt.Errorf("%s: no cons available", o.CorS)
 		}
-		consAllocated = availableCon(cs)
+		consRequested = availableCon(cs)
 	}
-	o.cons.allocated += consAllocated
 
-	// are there already units in the group or must we add them?
+	// does this group already have this type of unit or must we add them?
 	var unit *InventoryUnit
 	for _, u := range fg.Units {
 		if u.Unit.Code == farm.Code {
@@ -742,11 +741,9 @@ func (o *AssembleFarmGroupOrder) Execute(e *Engine, p *Player) error {
 		sort.Sort(fg.Units)
 	}
 
-	cs.cons.allocated += consAllocated
-	inventory.activeQty += amtToAssemble
-	inventory.StowedQty -= amtToAssemble
-	unit.ActiveQty += amtToAssemble
-	unit.StowedQty = 0 // we should never have stowed units in a farm group
+	cs.cons.allocated += consRequested
+	inventory.stowed.allocated += amtToAssemble
+	unit.operational.created += amtToAssemble
 
 	p.Log("           %s: group %2d: %-11s product %s: capacity now %d\n", o.CorS, fg.No, unit.Unit.Name, product.Name, unit.ActiveQty)
 
@@ -804,14 +801,16 @@ func (o *AssembleMineGroupOrder) Execute(e *Engine, p *Player) error {
 	// be optimistic and assume that we'll assemble everything requested
 	amtToAssemble := o.Quantity
 
-	// allocate from inventory
-	if inventory.StowedQty < amtToAssemble {
+	// try to assemble as many as possible with our available inventory.
+	if inventory.stowed.available() < amtToAssemble {
 		p.Log("           %s: not enough inventory to assemble %d %q\n", o.CorS, o.Quantity, o.Unit)
-		p.Log("                 reducing request to %d\n", inventory.StowedQty)
-		if inventory.StowedQty <= 0 {
-			return fmt.Errorf("unit %q not available", o.Unit)
+		if amtToAssemble = inventory.stowed.available(); amtToAssemble < 0 {
+			amtToAssemble = 0
 		}
-		amtToAssemble = inventory.StowedQty
+		p.Log("                 reducing request to %d\n", amtToAssemble)
+		if amtToAssemble == 0 {
+			return fmt.Errorf("%q: not available", o.Unit)
+		}
 	}
 
 	// fetch the deposit from the order
@@ -863,28 +862,23 @@ func (o *AssembleMineGroupOrder) Execute(e *Engine, p *Player) error {
 	// allocate labor. 1 CON per 500 tonnes.
 	// verify that we have enough crews to assemble.
 	// if we don't, then adjust the number of units that we're able to assemble.
-	o.cons.needed = int(math.Ceil(float64(amtToAssemble) * mine.MassPerUnit / 500))
-	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, "construction-crew", o.cons.needed, availableCon(cs))
-	var consAllocated int
-	if availableCon(cs) < o.cons.needed {
+	consRequested := int(math.Ceil(float64(amtToAssemble) * mine.MassPerUnit / 500))
+	p.Log("           %s: %-20s  %12d requested  %13d available\n", cs.HullId, "construction-crew", consRequested, cs.cons.available())
+	if cs.cons.available() < consRequested {
 		p.Log("           %s: not enough CON to assemble %d %q\n", o.CorS, amtToAssemble, o.Unit)
-		amtToAssemble = int(math.Floor(float64(availableCon(cs)) * 500 / mine.MassPerUnit))
+		p.Log("           %s: todo: create construction group to continue assembly in future turns\n")
+		amtToAssemble = int(math.Floor(float64(cs.cons.available()) * 500 / mine.MassPerUnit))
 		p.Log("                 reducing request to %d\n", amtToAssemble)
-		if availableCon(cs) <= 0 {
+		if cs.cons.available() <= 0 {
 			p.Log("           %s: no construction crews available\n", o.CorS)
 			return fmt.Errorf("%s: no cons available", o.CorS)
 		}
-		consAllocated = availableCon(cs)
-	} else {
-		consAllocated = o.cons.needed
+		consRequested = cs.cons.available()
 	}
-	o.cons.allocated += consAllocated
 
-	cs.cons.allocated += consAllocated
-	inventory.activeQty += amtToAssemble
-	inventory.StowedQty -= amtToAssemble
-	mg.Unit.ActiveQty += amtToAssemble
-	mg.Unit.StowedQty = 0 // we should never have stowed units in a mine group
+	o.cons.allocated += consRequested
+	inventory.stowed.allocated += amtToAssemble
+	mg.Unit.operational.created += amtToAssemble
 
 	p.Log("           %s: group %2d: %-11s product %s: capacity now %d\n", o.CorS, mg.No, mine.Name, deposit.Product.Name, mg.Unit.ActiveQty)
 
@@ -918,22 +912,23 @@ func (o *AssembleSpyTeamOrder) Execute(e *Engine, p *Player) error {
 	}
 
 	// be optimistic and assume that we'll assemble everything requested
-	amtToAssemble := o.Quantity
+	requested := o.Quantity
 
 	// allocate labor. 1 CON requires 1 PRO and 1 SOL
-	o.pro.needed = o.Quantity
-	if availablePro(cs) < amtToAssemble {
-		amtToAssemble = availablePro(cs)
+	if cs.pro.available() < requested {
+		requested = cs.pro.available()
 	}
-	if availableUns(cs) < amtToAssemble {
-		amtToAssemble = availableUns(cs)
+	cs.Log("          : professional       %13d  %13d  %13d\n", o.Quantity, cs.pro.available(), requested)
+	if cs.uns.available() < requested {
+		requested = cs.uns.available()
 	}
+	cs.Log("          : unskilled workers  %13d  %13d  %13d\n", o.Quantity, cs.uns.available(), requested)
 
-	cs.spy.available += amtToAssemble
-	cs.pro.allocated += amtToAssemble
-	cs.sol.allocated += amtToAssemble
+	cs.spy.created += requested
+	cs.pro.allocate(requested)
+	cs.sol.allocate(requested)
 
-	p.Log("           %s: assembled %d, %d now available\n", o.CorS, amtToAssemble, availableSpy(cs))
+	p.Log("           %s: assembled %d, %d now available\n", o.CorS, requested, cs.spy.available())
 
 	return nil
 }
